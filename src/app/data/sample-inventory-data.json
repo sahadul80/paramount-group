@@ -1,0 +1,615 @@
+{
+  "modules": {
+    "inventory": {
+      "locations": {
+        "anitas": {
+          "name": "Anita's",
+          "fabric": [
+            {
+              "sl_no": "F001",
+              "swatch_code": "SW001",
+              "swatch_picture": "/images/swatches/sw001.jpg",
+              "initial_quantity": 150,
+              "available_quantity": 120,
+              "unit_cost_price": 25.50,
+              "total_cost": 3825.00,
+              "fabric_type": "Cotton Blend",
+              "color": "Navy Blue",
+              "dispo_no": "D001",
+              "used_quantity_in_finished_goods": [
+                {
+                  "finished_good_id": "FG001",
+                  "quantity_used": 30
+                }
+              ],
+              "quantity_sold": 0,
+              "unit_sales_price": 35.00,
+              "total_sales": 0,
+              "inventory_location": "anitas"
+            },
+            {
+              "sl_no": "F002",
+              "swatch_code": "SW002",
+              "swatch_picture": "/images/swatches/sw002.jpg",
+              "initial_quantity": 200,
+              "available_quantity": 180,
+              "unit_cost_price": 30.00,
+              "total_cost": 6000.00,
+              "fabric_type": "Silk",
+              "color": "Ivory",
+              "dispo_no": "D002",
+              "used_quantity_in_finished_goods": [
+                {
+                  "finished_good_id": "FG002",
+                  "quantity_used": 20
+                }
+              ],
+              "quantity_sold": 0,
+              "unit_sales_price": 42.00,
+              "total_sales": 0,
+              "inventory_location": "anitas"
+            }
+          ],
+          "finished_goods": [
+            {
+              "sl_no": "FG001",
+              "dispo_no": "D001",
+              "design_no": "DS001",
+              "design_picture": "/images/designs/ds001.jpg",
+              "used_accessories": [
+                {
+                  "accessory_id": "A001",
+                  "quantity_per_unit": 5
+                },
+                {
+                  "accessory_id": "A002",
+                  "quantity_per_unit": 2
+                }
+              ],
+              "initial_quantity": {
+                "s": 20,
+                "m": 25,
+                "l": 30,
+                "xl": 20,
+                "xxl": 15,
+                "xxxl": 10
+              },
+              "available_quantity": {
+                "s": 18,
+                "m": 22,
+                "l": 25,
+                "xl": 18,
+                "xxl": 13,
+                "xxxl": 8
+              },
+              "sold_quantity": {
+                "s": 2,
+                "m": 3,
+                "l": 5,
+                "xl": 2,
+                "xxl": 2,
+                "xxxl": 2
+              },
+              "cost_per_quantity": {
+                "s": 45.00,
+                "m": 47.00,
+                "l": 49.00,
+                "xl": 51.00,
+                "xxl": 53.00,
+                "xxxl": 55.00
+              },
+              "sales_price_per_unit": {
+                "s": 75.00,
+                "m": 78.00,
+                "l": 82.00,
+                "xl": 85.00,
+                "xxl": 88.00,
+                "xxxl": 92.00
+              },
+              "amount_sold": {
+                "s": 150.00,
+                "m": 234.00,
+                "l": 410.00,
+                "xl": 170.00,
+                "xxl": 176.00,
+                "xxxl": 184.00
+              }
+            }
+          ],
+          "accessories": [
+            {
+              "sl_no": "A001",
+              "type": "Buttons",
+              "picture": "/images/accessories/buttons001.jpg",
+              "initial_quantity": 1000,
+              "available_quantity": 800,
+              "used_in_finished_goods": [
+                {
+                  "finished_good_id": "FG001",
+                  "quantity_used": 200
+                }
+              ],
+              "cost_per_unit": 0.50,
+              "total_cost": 500.00
+            },
+            {
+              "sl_no": "A002",
+              "type": "Zippers",
+              "picture": "/images/accessories/zippers001.jpg",
+              "initial_quantity": 500,
+              "available_quantity": 450,
+              "used_in_finished_goods": [
+                {
+                  "finished_good_id": "FG001",
+                  "quantity_used": 50
+                }
+              ],
+              "cost_per_unit": 2.00,
+              "total_cost": 1000.00
+            }
+          ]
+        },
+        "warehouse": {
+          "name": "Warehouse",
+          "fabric": [
+            {
+              "sl_no": "F003",
+              "swatch_code": "SW003",
+              "swatch_picture": "/images/swatches/sw003.jpg",
+              "initial_quantity": 300,
+              "available_quantity": 280,
+              "unit_cost_price": 22.00,
+              "total_cost": 6600.00,
+              "fabric_type": "Polyester",
+              "color": "Black",
+              "dispo_no": "D003",
+              "used_quantity_in_finished_goods": [
+                {
+                  "finished_good_id": "FG003",
+                  "quantity_used": 20
+                }
+              ],
+              "quantity_sold": 0,
+              "unit_sales_price": 32.00,
+              "total_sales": 0,
+              "inventory_location": "warehouse"
+            }
+          ],
+          "finished_goods": [
+            {
+              "sl_no": "FG002",
+              "dispo_no": "D002",
+              "design_no": "DS002",
+              "design_picture": "/images/designs/ds002.jpg",
+              "used_accessories": [
+                {
+                  "accessory_id": "A003",
+                  "quantity_per_unit": 3
+                }
+              ],
+              "initial_quantity": {
+                "s": 15,
+                "m": 20,
+                "l": 25,
+                "xl": 15,
+                "xxl": 10,
+                "xxxl": 5
+              },
+              "available_quantity": {
+                "s": 13,
+                "m": 18,
+                "l": 22,
+                "xl": 13,
+                "xxl": 8,
+                "xxxl": 4
+              },
+              "sold_quantity": {
+                "s": 2,
+                "m": 2,
+                "l": 3,
+                "xl": 2,
+                "xxl": 2,
+                "xxxl": 1
+              },
+              "cost_per_quantity": {
+                "s": 55.00,
+                "m": 58.00,
+                "l": 62.00,
+                "xl": 65.00,
+                "xxl": 68.00,
+                "xxxl": 72.00
+              },
+              "sales_price_per_unit": {
+                "s": 85.00,
+                "m": 90.00,
+                "l": 95.00,
+                "xl": 100.00,
+                "xxl": 105.00,
+                "xxxl": 110.00
+              },
+              "amount_sold": {
+                "s": 170.00,
+                "m": 180.00,
+                "l": 285.00,
+                "xl": 200.00,
+                "xxl": 210.00,
+                "xxxl": 110.00
+              }
+            }
+          ],
+          "accessories": [
+            {
+              "sl_no": "A003",
+              "type": "Threads",
+              "picture": "/images/accessories/threads001.jpg",
+              "initial_quantity": 2000,
+              "available_quantity": 1800,
+              "used_in_finished_goods": [
+                {
+                  "finished_good_id": "FG002",
+                  "quantity_used": 200
+                }
+              ],
+              "cost_per_unit": 0.25,
+              "total_cost": 500.00
+            }
+          ]
+        },
+        "nine2five": {
+          "name": "Nine2Five",
+          "fabric": [
+            {
+              "sl_no": "F004",
+              "swatch_code": "SW004",
+              "swatch_picture": "/images/swatches/sw004.jpg",
+              "initial_quantity": 180,
+              "available_quantity": 160,
+              "unit_cost_price": 28.00,
+              "total_cost": 5040.00,
+              "fabric_type": "Linen",
+              "color": "Beige",
+              "dispo_no": "D004",
+              "used_quantity_in_finished_goods": [
+                {
+                  "finished_good_id": "FG003",
+                  "quantity_used": 20
+                }
+              ],
+              "quantity_sold": 0,
+              "unit_sales_price": 38.00,
+              "total_sales": 0,
+              "inventory_location": "nine2five"
+            }
+          ],
+          "finished_goods": [
+            {
+              "sl_no": "FG003",
+              "dispo_no": "D003",
+              "design_no": "DS003",
+              "design_picture": "/images/designs/ds003.jpg",
+              "used_accessories": [
+                {
+                  "accessory_id": "A004",
+                  "quantity_per_unit": 4
+                }
+              ],
+              "initial_quantity": {
+                "s": 12,
+                "m": 18,
+                "l": 22,
+                "xl": 12,
+                "xxl": 8,
+                "xxxl": 4
+              },
+              "available_quantity": {
+                "s": 10,
+                "m": 15,
+                "l": 18,
+                "xl": 10,
+                "xxl": 6,
+                "xxxl": 3
+              },
+              "sold_quantity": {
+                "s": 2,
+                "m": 3,
+                "l": 4,
+                "xl": 2,
+                "xxl": 2,
+                "xxxl": 1
+              },
+              "cost_per_quantity": {
+                "s": 40.00,
+                "m": 42.00,
+                "l": 45.00,
+                "xl": 48.00,
+                "xxl": 50.00,
+                "xxxl": 53.00
+              },
+              "sales_price_per_unit": {
+                "s": 70.00,
+                "m": 75.00,
+                "l": 80.00,
+                "xl": 85.00,
+                "xxl": 90.00,
+                "xxxl": 95.00
+              },
+              "amount_sold": {
+                "s": 140.00,
+                "m": 225.00,
+                "l": 320.00,
+                "xl": 170.00,
+                "xxl": 180.00,
+                "xxxl": 95.00
+              }
+            }
+          ],
+          "accessories": [
+            {
+              "sl_no": "A004",
+              "type": "Labels",
+              "picture": "/images/accessories/labels001.jpg",
+              "initial_quantity": 800,
+              "available_quantity": 700,
+              "used_in_finished_goods": [
+                {
+                  "finished_good_id": "FG003",
+                  "quantity_used": 100
+                }
+              ],
+              "cost_per_unit": 0.75,
+              "total_cost": 600.00
+            }
+          ]
+        }
+      }
+    },
+    "purchase": {
+      "vendors": [
+        {
+          "vendor_id": "V001",
+          "name": "Textile Solutions Ltd",
+          "address": "123 Industrial Area, Sector 15, Gurgaon, Haryana 122001",
+          "phone": "+91-124-4567890",
+          "mobile": "+91-9876543210",
+          "email": "contact@textilesolutions.com",
+          "website": "www.textilesolutions.com"
+        },
+        {
+          "vendor_id": "V002",
+          "name": "Fashion Accessories Co",
+          "address": "456 Market Street, Karol Bagh, New Delhi 110005",
+          "phone": "+91-11-2345678",
+          "mobile": "+91-9876543211",
+          "email": "sales@fashionaccessories.com",
+          "website": "www.fashionaccessories.com"
+        }
+      ],
+      "fabric_purchases": [
+        {
+          "purchase_id": "P001",
+          "vendor_id": "V001",
+          "fabric_sl_no": "F001",
+          "purchase_date": "2024-01-15",
+          "quantity_purchased": 50,
+          "unit_cost": 25.50,
+          "total_amount": 1275.00,
+          "delivery_date": "2024-01-20",
+          "payment_status": "paid",
+          "invoice_number": "INV-2024-001"
+        },
+        {
+          "purchase_id": "P002",
+          "vendor_id": "V001",
+          "fabric_sl_no": "F002",
+          "purchase_date": "2024-01-18",
+          "quantity_purchased": 75,
+          "unit_cost": 30.00,
+          "total_amount": 2250.00,
+          "delivery_date": "2024-01-25",
+          "payment_status": "pending",
+          "invoice_number": "INV-2024-002"
+        }
+      ],
+      "accessory_purchases": [
+        {
+          "purchase_id": "AP001",
+          "vendor_id": "V002",
+          "accessory_sl_no": "A001",
+          "purchase_date": "2024-01-10",
+          "quantity_purchased": 500,
+          "unit_cost": 0.50,
+          "total_amount": 250.00,
+          "delivery_date": "2024-01-12",
+          "payment_status": "paid",
+          "invoice_number": "ACC-INV-001"
+        }
+      ]
+    },
+    "sales": {
+      "customer_orders": [
+        {
+          "order_id": "SO001",
+          "customer_name": "Fashion Boutique Delhi",
+          "customer_phone": "+91-9876543212",
+          "customer_email": "orders@fashionboutique.com",
+          "order_date": "2024-02-01",
+          "items": [
+            {
+              "finished_good_id": "FG001",
+              "size": "m",
+              "quantity": 3,
+              "unit_price": 78.00,
+              "total_amount": 234.00
+            },
+            {
+              "finished_good_id": "FG001",
+              "size": "l",
+              "quantity": 5,
+              "unit_price": 82.00,
+              "total_amount": 410.00
+            }
+          ],
+          "total_order_amount": 644.00,
+          "payment_status": "paid",
+          "delivery_status": "delivered",
+          "delivery_date": "2024-02-05"
+        }
+      ],
+      "fabric_sales": [
+        {
+          "sale_id": "FS001",
+          "customer_name": "Local Tailor Shop",
+          "fabric_sl_no": "F001",
+          "sale_date": "2024-02-10",
+          "quantity_sold": 0,
+          "unit_price": 35.00,
+          "total_amount": 0,
+          "payment_status": "pending"
+        }
+      ]
+    },
+    "manufacture": {
+      "production_records": [
+        {
+          "production_id": "PR001",
+          "finished_good_id": "FG001",
+          "design_no": "DS001",
+          "production_date": "2024-01-25",
+          "fabric_requirements": [
+            {
+              "fabric_sl_no": "F001",
+              "fabric_type": "Cotton Blend",
+              "quantity_per_unit": {
+                "s": 0.8,
+                "m": 0.9,
+                "l": 1.0,
+                "xl": 1.1,
+                "xxl": 1.2,
+                "xxxl": 1.3
+              },
+              "total_fabric_used": 30
+            }
+          ],
+          "accessory_requirements": [
+            {
+              "accessory_sl_no": "A001",
+              "accessory_type": "Buttons",
+              "quantity_per_unit": {
+                "s": 5,
+                "m": 5,
+                "l": 5,
+                "xl": 5,
+                "xxl": 5,
+                "xxxl": 5
+              },
+              "total_accessories_used": 200
+            },
+            {
+              "accessory_sl_no": "A002",
+              "accessory_type": "Zippers",
+              "quantity_per_unit": {
+                "s": 2,
+                "m": 2,
+                "l": 2,
+                "xl": 2,
+                "xxl": 2,
+                "xxxl": 2
+              },
+              "total_accessories_used": 50
+            }
+          ],
+          "total_manufactured_quantity": {
+            "s": 20,
+            "m": 25,
+            "l": 30,
+            "xl": 20,
+            "xxl": 15,
+            "xxxl": 10
+          },
+          "per_manufacture_cost": {
+            "s": 35.00,
+            "m": 37.00,
+            "l": 39.00,
+            "xl": 41.00,
+            "xxl": 43.00,
+            "xxxl": 45.00
+          },
+          "total_manufacturing_cost": {
+            "s": 700.00,
+            "m": 925.00,
+            "l": 1170.00,
+            "xl": 820.00,
+            "xxl": 645.00,
+            "xxxl": 450.00
+          },
+          "labor_cost": 2000.00,
+          "overhead_cost": 500.00,
+          "total_production_cost": 6210.00
+        },
+        {
+          "production_id": "PR002",
+          "finished_good_id": "FG002",
+          "design_no": "DS002",
+          "production_date": "2024-01-28",
+          "fabric_requirements": [
+            {
+              "fabric_sl_no": "F002",
+              "fabric_type": "Silk",
+              "quantity_per_unit": {
+                "s": 1.0,
+                "m": 1.1,
+                "l": 1.2,
+                "xl": 1.3,
+                "xxl": 1.4,
+                "xxxl": 1.5
+              },
+              "total_fabric_used": 20
+            }
+          ],
+          "accessory_requirements": [
+            {
+              "accessory_sl_no": "A003",
+              "accessory_type": "Threads",
+              "quantity_per_unit": {
+                "s": 3,
+                "m": 3,
+                "l": 3,
+                "xl": 3,
+                "xxl": 3,
+                "xxxl": 3
+              },
+              "total_accessories_used": 200
+            }
+          ],
+          "total_manufactured_quantity": {
+            "s": 15,
+            "m": 20,
+            "l": 25,
+            "xl": 15,
+            "xxl": 10,
+            "xxxl": 5
+          },
+          "per_manufacture_cost": {
+            "s": 45.00,
+            "m": 48.00,
+            "l": 52.00,
+            "xl": 55.00,
+            "xxl": 58.00,
+            "xxxl": 62.00
+          },
+          "total_manufacturing_cost": {
+            "s": 675.00,
+            "m": 960.00,
+            "l": 1300.00,
+            "xl": 825.00,
+            "xxl": 580.00,
+            "xxxl": 310.00
+          },
+          "labor_cost": 1800.00,
+          "overhead_cost": 400.00,
+          "total_production_cost": 6850.00
+        }
+      ]
+    }
+  }
+}

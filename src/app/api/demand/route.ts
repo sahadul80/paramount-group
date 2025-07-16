@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://paramount-group-d7a1ud21b-md-sahadul-haques-projects.vercel.app/',
+  'https://paramount-group-i6arxbja8-md-sahadul-haques-projects.vercel.app/',
 ];
 
 const SPREADSHEET_ID = '1K1XDOjvG6qAPiwuQcG3C5E1245rXHeFXl8f-zn_kc2E';

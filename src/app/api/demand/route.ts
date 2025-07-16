@@ -4,6 +4,8 @@ import axios from 'axios';
 const allowedOrigins = [
   'http://localhost:3000',
   'https://paramount-group-i6arxbja8-md-sahadul-haques-projects.vercel.app/',
+  'https://paramount-group-five.vercel.app/',
+  'https://paramount-group-git-main-md-sahadul-haques-projects.vercel.app/',
 ];
 
 const SPREADSHEET_ID = '1K1XDOjvG6qAPiwuQcG3C5E1245rXHeFXl8f-zn_kc2E';

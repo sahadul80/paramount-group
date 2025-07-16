@@ -15,7 +15,6 @@
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "embla-carousel-react": "^8.6.0",
-    "googleapis": "^153.0.0",
     "input-otp": "^1.4.2",
     "jose": "^6.0.12",
     "lucide-react": "^0.525.0",
@@ -36,11 +35,11 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^20.11.17",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.0.13",
+    "tailwindcss": "^4.0.2",
+    "typescript": "^5.4.5"
   }
 }

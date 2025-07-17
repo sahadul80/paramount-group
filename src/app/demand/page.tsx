@@ -1,14 +1,15 @@
 'use client'
-import { LogOut, Loader, X, Plus, CheckCircle } from "lucide-react";
+import { LogOut, Loader, X, Plus, CheckCircle, Download } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Badge } from "../components/ui/badge";
 import { useToast } from "../components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import axios from 'axios';
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface OrderEntry {
     concern: string;
@@ -141,6 +142,27 @@ export default function Demand() {
         }
     };
 
+    const handleDownloadPDF = () => {
+        if (!submittedDemand) return;
+      
+        const doc = new jsPDF();
+      
+        doc.setFontSize(14);
+        doc.text("Demand Summary:", 20, 20);
+      
+        doc.setFontSize(12);
+        doc.text(`Concern: ${submittedDemand.concern}`, 20, 30);
+        doc.text(`Submitted At: ${submittedDemand.timestamp}`, 20, 40);
+      
+        autoTable(doc, {
+          head: [["Product", "Quantity"]],
+          body: submittedDemand.products.map((item) => [item.product, item.quantity]),
+          startY: 50,
+        });
+      
+        doc.save("demand-submission.pdf");
+    };
+
     const closeSuccessModal = () => {
         setShowSuccessModal(false);
         setSubmittedDemand(null);
@@ -190,7 +212,7 @@ export default function Demand() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                                 {/* Concern Section */}
                                 <div className="space-y-2">
-                                    <Label className="text-xs sm:text-sm" htmlFor="concern-search">Select Concern</Label>
+                                    <Label className="text-md" htmlFor="concern-search">Select Concern</Label>
                                     <div className="relative">
                                         <Input
                                             id="concern-search"
@@ -198,7 +220,7 @@ export default function Demand() {
                                             value={searchConcern}
                                             onChange={e => setSearchConcern(e.target.value)}
                                             placeholder="Search concern..."
-                                            className="pl-8 text-xs sm:text-sm h-8 sm:h-9"
+                                            className="pl-8 text-sm h-8 sm:h-9"
                                         />
                                         <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2 top-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -206,11 +228,11 @@ export default function Demand() {
                                     </div>
 
                                     <div className="border rounded-md overflow-hidden">
-                                        <div className="max-h-20 overflow-y-auto">
+                                        <div className="max-h-30 overflow-y-auto">
                                             {filteredConcerns.map(c => (
                                                 <button
                                                     key={c}
-                                                    className={`block w-full text-left p-1 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${selectedConcern === c
+                                                    className={`block w-full text-left p-1 text-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${selectedConcern === c
                                                             ? 'bg-indigo-50 dark:bg-indigo-900/30 border-l-2 border-indigo-500'
                                                             : ''
                                                         }`}
@@ -232,7 +254,7 @@ export default function Demand() {
                                     </div>
 
                                     {selectedConcern && (
-                                        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded p-3 flex items-center text-xs sm:text-sm">
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded p-3 flex items-center text-sm">
                                             <div className="bg-indigo-100 dark:bg-indigo-800/30 rounded-full p-1 mr-2">
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -248,7 +270,7 @@ export default function Demand() {
 
                                 {/* Product Section */}
                                 <div className="space-y-2">
-                                    <Label className="text-xs sm:text-sm" htmlFor="product-search">Add Products</Label>
+                                    <Label className="text-md" htmlFor="product-search">Add Products</Label>
                                     <div className="relative">
                                         <Input
                                             id="product-search"
@@ -256,7 +278,7 @@ export default function Demand() {
                                             value={searchTerm}
                                             onChange={e => setSearchTerm(e.target.value)}
                                             placeholder="Search products..."
-                                            className="pl-8 text-xs sm:text-sm h-8 sm:h-9"
+                                            className="pl-8 text-sm h-8 sm:h-9"
                                         />
                                         <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2 top-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -264,11 +286,11 @@ export default function Demand() {
                                     </div>
 
                                     <div className="border rounded-md overflow-hidden">
-                                        <div className="max-h-20 overflow-y-auto">
+                                        <div className="max-h-30 overflow-y-auto">
                                             {filteredProducts.map(p => (
                                                 <button
                                                     key={p}
-                                                    className="block w-full text-left p-1 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                                                    className="block w-full text-left p-1 text-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
                                                     onClick={() => handleProductSelect(p)}
                                                 >
                                                     <span>{p}</span>
@@ -289,7 +311,7 @@ export default function Demand() {
                                 </h3>
 
                                 {orderItems.length === 0 ? (
-                                    <div className="text-center py-4 border-2 border-dashed rounded text-xs sm:text-sm">
+                                    <div className="text-center py-4 border-2 border-dashed rounded text-sm">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                         </svg>
@@ -370,51 +392,64 @@ export default function Demand() {
             {/* Success Modal */}
             {showSuccessModal && submittedDemand && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full shadow-xl">
-                        <div className="p-6">
-                            <div className="flex justify-center mb-4">
-                                <CheckCircle className="h-12 w-12 text-green-500" />
-                            </div>
-                            
-                            <h2 className="text-xl font-bold text-center mb-4">Demand Submitted Successfully!</h2>
-                            
-                            <div className="mb-6">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-medium">Concern:</span>
-                                    <span className="font-semibold">{submittedDemand.concern}</span>
-                                </div>
-                                
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-medium">Submitted At:</span>
-                                    <span>{submittedDemand.timestamp}</span>
-                                </div>
-                                
-                                <div className="mt-4">
-                                    <div className="flex justify-between">
-                                        <h3 className="font-semibold border-b pb-2">Products:</h3>
-                                        <h3 className="font-semibold border-b pb-2">Quantity:</h3>
-                                    </div>
-                                    <div className="max-h-60 overflow-y-auto mt-2">
-                                        {submittedDemand.products.map((item, index) => (
-                                            <div key={index} className="flex justify-between py-2 border-b">
-                                                <span className="truncate max-w-[60%]">{item.product}</span>
-                                                <span className="font-medium">{item.quantity}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <Button 
-                                onClick={closeSuccessModal}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700"
-                            >
-                                Close
-                            </Button>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full shadow-xl relative">
+                    {/* Download PDF Button */}
+                    <div className="absolute top-4 right-4">
+                        <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-sm text-indigo-600 hover:text-indigo-900 hover:cursor-pointer dark:invert"
+                        onClick={handleDownloadPDF}
+                        >
+                        <Download className="w-6 h-6" />
+                        <span className="hidden sm:inline">Download PDF</span>
+                        </Button>
+                    </div>
+
+                    <div className="p-6 pt-12">
+                        <div className="flex justify-center mb-4">
+                        <CheckCircle className="h-12 w-12 text-green-500" />
                         </div>
+
+                        <h2 className="text-xl font-bold text-center mb-4">Demand Submitted Successfully!</h2>
+
+                        <div className="mb-6">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium">Concern:</span>
+                            <span className="font-semibold">{submittedDemand.concern}</span>
+                        </div>
+
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium">Submitted At:</span>
+                            <span>{submittedDemand.timestamp}</span>
+                        </div>
+
+                        <div className="mt-4">
+                            <div className="flex justify-between">
+                            <h3 className="font-semibold border-b pb-2">Products:</h3>
+                            <h3 className="font-semibold border-b pb-2">Quantity:</h3>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto mt-2">
+                            {submittedDemand.products.map((item, index) => (
+                                <div key={index} className="flex justify-between py-2 border-b">
+                                <span className="truncate max-w-[60%]">{item.product}</span>
+                                <span className="font-medium">{item.quantity}</span>
+                                </div>
+                            ))}
+                            </div>
+                        </div>
+                        </div>
+
+                        <Button
+                        onClick={closeSuccessModal}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700"
+                        >
+                        Close
+                        </Button>
+                    </div>
                     </div>
                 </div>
-            )}
+                )}
         </div>
     );
 }

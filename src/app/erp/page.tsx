@@ -50,6 +50,7 @@ export default function ERP() {
         } else {
           localStorage.removeItem("token");
           localStorage.removeItem("user");
+          localStorage.removeItem("role");
           router.push("/login");
         }
       } catch (error) {
@@ -72,7 +73,7 @@ export default function ERP() {
   }
 
   if (!isAuthenticated) {
-    return null; // Redirecting to login
+    router.push('/');
   }
 
   return (

@@ -38,7 +38,7 @@ export function ERPLayout({ children }: ERPLayoutProps) {
         <div className="backdrop-blur-md bg-black/10 border border-red-500 rounded-lg">
           <Button onClick={handleLogout} className="font-bold text-red-500 flex items-center">
             <LogOut className="h-4 w-4 text-red-500" />
-            Logout
+            <span className="hidden sm:inline">Logout</span>
           </Button>
         </div>
       </div>

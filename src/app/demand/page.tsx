@@ -172,14 +172,11 @@ export default function Demand() {
             </div>
 
             <Card className="w-full max-w-2xl mx-auto shadow-sm rounded-lg border-0 bg-white dark:bg-gray-800">
-                <CardHeader className="p-3 sm:p-4">
+                <CardHeader className="p-2 sm:p-4">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-base sm:text-lg font-bold">
                             Production Demand
                         </CardTitle>
-                        <Badge variant="secondary" className="text-xs">
-                            Production
-                        </Badge>
                     </div>
                 </CardHeader>
 
@@ -209,11 +206,11 @@ export default function Demand() {
                                     </div>
 
                                     <div className="border rounded-md overflow-hidden">
-                                        <div className="max-h-40 overflow-y-auto">
+                                        <div className="max-h-20 overflow-y-auto">
                                             {filteredConcerns.map(c => (
                                                 <button
                                                     key={c}
-                                                    className={`block w-full text-left p-2 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${selectedConcern === c
+                                                    className={`block w-full text-left p-1 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${selectedConcern === c
                                                             ? 'bg-indigo-50 dark:bg-indigo-900/30 border-l-2 border-indigo-500'
                                                             : ''
                                                         }`}
@@ -267,11 +264,11 @@ export default function Demand() {
                                     </div>
 
                                     <div className="border rounded-md overflow-hidden">
-                                        <div className="max-h-40 overflow-y-auto">
+                                        <div className="max-h-20 overflow-y-auto">
                                             {filteredProducts.map(p => (
                                                 <button
                                                     key={p}
-                                                    className="block w-full text-left p-2 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                                                    className="block w-full text-left p-1 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
                                                     onClick={() => handleProductSelect(p)}
                                                 >
                                                     <span>{p}</span>

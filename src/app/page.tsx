@@ -8,7 +8,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("sessionToken");
+    const token = localStorage.getItem("token");
     const user = localStorage.getItem("user");
     const role = localStorage.getItem("role");
 

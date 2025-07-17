@@ -188,7 +188,7 @@ export default function Inventory() {
       </div>
 
       <Tabs defaultValue="fabric" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 h-10 text-xs sm:text-xs sm:gap-1">
+        <TabsList className="grid w-full grid-cols-4 h-10 text-xs sm:text-xs sm:gap-1">
           <TabsTrigger value="fabric" className="flex items-center gap-1">
             <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Fabric
           </TabsTrigger>
@@ -197,6 +197,9 @@ export default function Inventory() {
           </TabsTrigger>
           <TabsTrigger value="accessories" className="flex items-center gap-1">
             <ShoppingBag className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Accessory
+          </TabsTrigger>
+          <TabsTrigger value="raw_material" className="flex items-center gap-1">
+            <ShoppingBag className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Raw Material
           </TabsTrigger>
         </TabsList>
 

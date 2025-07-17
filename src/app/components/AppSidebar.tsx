@@ -10,7 +10,7 @@ import {
   Archive,
   X,
   PanelLeft,
-  Users,
+  Users, // Add this import
 } from "lucide-react";
 
 import {
@@ -21,12 +21,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   useSidebar,
-  SidebarMobileToggle,
-} from "./ui/sidebar";
-
-type NavLinkState = {
-  isActive: boolean;
-};
+  SidebarMobileToggle, // Make sure this is imported
+} from "@/app/components/ui/sidebar";
 
 const menuItems = [
   { title: "Dashboard", url: "/erp", icon: Archive },
@@ -85,11 +81,11 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className={({ isActive }: NavLinkState) =>
+                      className={({ isActive }) =>
                         `flex items-center w-full px-3 py-2 rounded-md transition-all duration-200 ${
                           isActive
-                            ? "border-l-4 border-primary bg-black/25 text-primary dark:bg-white/25"
-                            : "text-sidebar-foreground hover:bg-black/20 dark:hover:bg-white/20"
+                            ? "border-l-4 border-primary bg-black/20 text-primary dark:bg-white/20"
+                            : "text-sidebar-foreground hover:bg-black/10 dark:hover:bg-white/10"
                         }`
                       }
                     >

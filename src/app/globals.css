@@ -3,6 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --sidebar-accent: 226 100% 97%; /* Example blue tint */
+  --sidebar-accent-foreground: 226 100% 40%;
 }
 
 @theme inline {

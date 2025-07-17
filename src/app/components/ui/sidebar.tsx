@@ -6,16 +6,16 @@ import { PanelLeft } from "lucide-react"
 import { useIsMobile } from "@/app/hooks/use-mobile"
 import { cn } from "@/app/lib/utils"
 import { Separator } from "@radix-ui/react-separator"
-import { Button } from "./button"
+import { Button } from "@/app/components/ui/button"
 import {
   Tooltip,
   TooltipProvider,
   TooltipContent,
   TooltipTrigger,
-} from "./tooltip"
-import { Input } from "./input"
-import { Sheet, SheetContent, SheetTitle } from "./sheet"
-import { Skeleton } from "./skeleton"
+} from "@/app/components/ui/tooltip"
+import { Input } from "@/app/components/ui/input"
+import { Sheet, SheetContent, SheetTitle } from "@/app/components/ui/sheet"
+import { Skeleton } from "@/app/components/ui/skeleton"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
@@ -189,6 +189,10 @@ const Sidebar = React.forwardRef<
               data-sidebar="sidebar"
               data-mobile="true"
               className="w-[--sidebar-width] p-0 text-sidebar-foreground bg-sidebar border-r border-sidebar-border dark:invert [&>button]:hidden transition-transform duration-300 ease-in-out"
+              style={{
+                transform: openMobile ? 'translateX(0)' : 'translateX(-100%)',
+                transition: 'transform 300ms cubic-bezier(0.32, 0.72, 0, 1)',
+              }}
               side={side}
             >
               <VisuallyHidden>
@@ -424,7 +428,7 @@ const SidebarContent = React.forwardRef<
       ref={ref}
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-2 backdrop-blur-lg bg-white overflow-auto group-data-[collapsible=icon]:overflow-hidden",
         className
       )}
       {...props}

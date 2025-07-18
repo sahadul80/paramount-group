@@ -1,6 +1,6 @@
+import { Products } from "@/app/demand/types";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Products } from "@/app/demand/page";
 import { X, Plus } from "lucide-react";
 
 interface ProductSectionProps {

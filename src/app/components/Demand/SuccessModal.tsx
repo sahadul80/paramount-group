@@ -1,7 +1,6 @@
 import { CheckCircle, Download } from "lucide-react";
 import { Button } from "../ui/button";
-import { DemandSummary } from "@/app/demand/page";
-import { formatDateTime } from "@/app/demand/page";
+import { DemandSummary, formatDateTime } from "@/app/demand/types";
 
 export default function SuccessModal({
     submittedDemand,

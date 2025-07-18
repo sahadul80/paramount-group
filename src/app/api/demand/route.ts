@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
+import { readSheet, appendToSheet } from '../../lib/googleSheets';
 
 const allowedOrigins = [
   'http://localhost:3000',
@@ -14,57 +14,6 @@ const SHEETS = {
   CONCERN: 'Concern',
   ORDERS: 'Orders',
 };
-
-const credentials = process.env.CREDIT;
-
-if (!credentials) {
-  console.error('Missing GOOGLE credentials.');
-  process.exit(1);
-}
-
-let parsedCredentials: any;
-try {
-  parsedCredentials = JSON.parse(credentials);
-} catch (error) {
-  console.error('Invalid GOOGLE credentials format.');
-  process.exit(1);
-}
-
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
-const jwtHeader = {
-  alg: 'RS256',
-  typ: 'JWT',
-};
-
-async function createJWT(): Promise<string> {
-    const now = Math.floor(Date.now() / 1000);
-    const payload = {
-      iss: parsedCredentials.client_email,
-      scope: SCOPES.join(' '),
-      aud: 'https://oauth2.googleapis.com/token',
-      exp: now + 3600,
-      iat: now,
-    };
-  
-    const jose = await import('jose');
-    const privateKey = await jose.importPKCS8(parsedCredentials.private_key, 'RS256');
-  
-    return await new jose.SignJWT(payload)
-      .setProtectedHeader(jwtHeader)
-      .sign(privateKey);
-  }
-  
-
-async function getAccessToken(): Promise<string> {
-  const jwt = await createJWT();
-  const res = await axios.post('https://oauth2.googleapis.com/token', null, {
-    params: {
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
-    },
-  });
-  return res.data.access_token;
-}
 
 function corsCheck(req: NextRequest): string | null {
   const origin = req.headers.get('origin');
@@ -87,21 +36,15 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const token = await getAccessToken();
-
-    const [concernRes, rawRes] = await Promise.all([
-      axios.get(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEETS.CONCERN}!A2:A`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      ),
-      axios.get(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEETS.RAW}!A2:A`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      ),
+    const [concernValues, rawValues] = await Promise.all([
+      readSheet(SPREADSHEET_ID, SHEETS.CONCERN, 'A2:A'),
+      readSheet(SPREADSHEET_ID, SHEETS.RAW, 'A2:B'),
     ]);
 
-    const concerns = concernRes.data.values?.flat().filter(Boolean) || [];
-    const products = rawRes.data.values?.flat().filter(Boolean) || [];
+    const concerns = concernValues.flat().filter(Boolean);
+    const products = rawValues
+      .filter(row => row[0])
+      .map(row => ({ product: row[0], uom: row[1] || '' }));
 
     return new NextResponse(JSON.stringify({ concerns, products }), {
       status: 200,
@@ -122,28 +65,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const rows = Array.isArray(body) ? body : [];
-
+    
     const values = rows
       .filter(row => row.quantity > 0)
       .map(row => [row.concern, row.product, row.quantity, new Date().toISOString()]);
 
-    const token = await getAccessToken();
-
-    await axios.post(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEETS.ORDERS}!A1:append`,
-      {
-        values,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        params: {
-          valueInputOption: 'RAW',
-        },
-      }
-    );
+    await appendToSheet(SPREADSHEET_ID, SHEETS.ORDERS, values);
 
     return new NextResponse(JSON.stringify({ message: 'Order submitted successfully' }), {
       status: 200,

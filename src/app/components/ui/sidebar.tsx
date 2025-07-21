@@ -188,7 +188,7 @@ const Sidebar = React.forwardRef<
             <SheetContent
               data-sidebar="sidebar"
               data-mobile="true"
-              className="w-[--sidebar-width] p-0 text-sidebar-foreground bg-sidebar border-r border-sidebar-border dark:invert [&>button]:hidden transition-transform duration-300 ease-in-out"
+              className="w-[--sidebar-width] p-0 text-sidebar-foreground bg-sidebar border-r border-border transition-transform duration-300 ease-in-out"
               style={{
                 transform: openMobile ? 'translateX(0)' : 'translateX(-100%)',
                 transition: 'transform 300ms cubic-bezier(0.32, 0.72, 0, 1)',
@@ -199,7 +199,7 @@ const Sidebar = React.forwardRef<
                 <SheetTitle>Sidebar Navigation</SheetTitle>
               </VisuallyHidden>
               <div 
-                className="flex h-full w-full flex-col backdrop-blur-md bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))]"
+                className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground"
                 onClick={(e) => {
                   // Close sidebar if a menu item was clicked
                   if ((e.target as HTMLElement).closest('[data-sidebar-item]')) {
@@ -249,7 +249,7 @@ const Sidebar = React.forwardRef<
         >
           <div
             data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
+            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-border group-data-[variant=floating]:shadow"
           >
             {children}
           </div>
@@ -412,7 +412,7 @@ const SidebarSeparator = React.forwardRef<
     <Separator
       ref={ref}
       data-sidebar="separator"
-      className={cn("mx-2 w-auto bg-sidebar-border", className)}
+      className={cn("mx-2 w-auto bg-border", className)}
       {...props}
     />
   )
@@ -428,7 +428,7 @@ const SidebarContent = React.forwardRef<
       ref={ref}
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 backdrop-blur-lg bg-white overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-2 bg-sidebar overflow-auto group-data-[collapsible=icon]:overflow-hidden backdrop-blur-md bg-white dark:bg-black",
         className
       )}
       {...props}
@@ -613,9 +613,9 @@ const SidebarMenuSkeleton = React.forwardRef<
       className={cn("space-y-1 py-1", className)}
       {...props}
     >
-      <Skeleton className="h-6 w-full rounded-md" />
-      <Skeleton className="h-6 w-full rounded-md" />
-      <Skeleton className="h-6 w-full rounded-md" />
+      <Skeleton className="h-6 w-full rounded-md bg-muted" />
+      <Skeleton className="h-6 w-full rounded-md bg-muted" />
+      <Skeleton className="h-6 w-full rounded-md bg-muted" />
     </div>
   )
 })

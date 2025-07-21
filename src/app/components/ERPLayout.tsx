@@ -19,11 +19,10 @@ export function ERPLayout({ children }: ERPLayoutProps) {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       setUsername(storedUser);
+    } else {
+      router.push("/login");
     }
-    else{
-      window.location.href="/login"
-    }
-  }, []);
+  }, [router]);
 
   function LogoutButton() {
     function handleLogout() {
@@ -34,11 +33,11 @@ export function ERPLayout({ children }: ERPLayoutProps) {
     };
 
     return (
-      <div className="absolute z-50 fixed top-2 right-4">
+      <div className="absolute z-50 fixed top-2 md:top-4 right-4">
         <div className="backdrop-blur-md bg-black/10 border border-red-500 rounded-lg">
           <Button onClick={handleLogout} className="font-bold text-red-500 flex items-center">
             <LogOut className="h-4 w-4 text-red-500" />
-            <span className="hidden sm:inline">Logout</span>
+            <span className="hidden md:inline">Logout</span>
           </Button>
         </div>
       </div>
@@ -54,17 +53,15 @@ export function ERPLayout({ children }: ERPLayoutProps) {
         {/* Main content */}
         <div className="flex-1 flex flex-col md:ml-[var(--sidebar-width)] transition-all duration-300">
           {/* Fixed Header */}
-          <header className="h-16 fixed top-0 z-50 w-full border-b bg-card flex items-center px-6 gap-4 backdrop-blur-md bg-black/10">
-            <SidebarTrigger />
+          <header className="h-16 md:h-19.5 fixed top-0 w-full border-b bg-card flex items-center px-6 gap-4 backdrop-blur-md bg-black/10">
+            <SidebarTrigger className="inline md:hidden" />
             <div className="flex-1">
               <h1 className="text-xl font-semibold text-foreground">
-                Welcome{username ? `, ${username}` : ""}
+                Welcome{username ? `, ${username.toUpperCase()}` : ""}
               </h1>
             </div>
           </header>
-
-          <LogoutButton />
-
+          <LogoutButton/>
           {/* Adjust top padding for fixed header */}
           <main className="flex-1 p-6 pt-20 bg-muted/20">
             {children}

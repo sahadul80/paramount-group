@@ -19,7 +19,7 @@ export default function Home() {
       } else {
         router.push("/login");
       }
-    }, 0); // delay ensures it's executed after hydration
+    }, 500); // delay ensures it's executed after hydration
 
     return () => clearTimeout(timeout);
   }, [router]);

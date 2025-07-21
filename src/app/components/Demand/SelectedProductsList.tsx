@@ -15,71 +15,58 @@ export default function SelectedProductsList({
   handleRemoveProduct,
 }: SelectedProductsListProps) {
   const [inputValues, setInputValues] = useState<string[]>([]);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    setInputValues(orderItems.map((item) => item.quantity.toString()));
+    setInputValues(
+      orderItems.map((item, idx) => {
+        if (idx === focusedIndex) {
+          return inputValues[idx] ?? item.quantity.toString();
+        }
+        return formatQuantity(item.quantity);
+      })
+    );
   }, [orderItems]);
 
+  const formatQuantity = (quantity: number): string => {
+    return quantity % 1 === 0
+      ? quantity.toString()
+      : quantity.toFixed(2).replace(/\.?0+$/, "");
+  };
+
   const updateInputValue = (index: number, raw: string) => {
-    // Remove all characters except digits and one decimal point
-    let filtered = raw.replace(/[^0-9.]/g, '');
-  
-    // Keep only the first decimal point
-    const parts = filtered.split('.');
+    let filtered = raw.replace(/[^0-9.]/g, "");
+
+    const parts = filtered.split(".");
     if (parts.length > 2) {
-      filtered = parts[0] + '.' + parts.slice(1).join('');
+      filtered = parts[0] + "." + parts.slice(1).join("");
     }
-  
-    // Handle leading decimals like ".5" => "0.5"
-    if (filtered.startsWith('.')) {
-      filtered = '0' + filtered;
+
+    if (filtered.startsWith(".")) {
+      filtered = "0" + filtered;
     }
-  
-    // Remove unnecessary leading zeros before the decimal or number
-    if (filtered.includes('.')) {
-      const [intPart, decPart] = filtered.split('.');
-      const cleanedInt = intPart.replace(/^0+(?=\d)/, ''); // remove leading zeros but keep one zero if followed by dot
-      filtered = `${cleanedInt || '0'}.${decPart}`;
-    } else {
-      // No decimal: remove leading zeros, fallback to '0' if all zeros
-      filtered = filtered.replace(/^0+(?=\d)/, '') || '0';
+
+    if (/^0[0-9]/.test(filtered)) {
+      filtered = filtered.replace(/^0+/, "") || "0";
     }
-  
-    // Limit to 3 decimal places
-    const [int, dec] = filtered.split('.');
-    if (dec?.length > 3) {
-      filtered = `${int}.${dec.substring(0, 3)}`;
+
+    const updatedParts = filtered.split(".");
+    if (updatedParts.length === 2) {
+      updatedParts[1] = updatedParts[1].slice(0, 2);
+      filtered = updatedParts[0] + "." + updatedParts[1];
     }
-  
+
     setInputValues((prev) => {
       const updated = [...prev];
       updated[index] = filtered;
       return updated;
     });
-  
-    const parsed = parseFloat(filtered);
-    if (!isNaN(parsed) && filtered !== '0.') {
-      handleQuantityChange(index, parsed);
-    }
-  };  
 
-  const handleInputBlur = (index: number) => {
-    const value = inputValues[index];
-    const parsed = parseFloat(value);
+    if (filtered.endsWith(".") || filtered === "") return;
+
+    const parsed = parseFloat(filtered);
     if (!isNaN(parsed)) {
-      handleQuantityChange(index, parseFloat(parsed.toFixed(3))); // rounded to 3 decimal places
-      setInputValues((prev) => {
-        const updated = [...prev];
-        updated[index] = parsed.toString();
-        return updated;
-      });
-    } else {
-      handleQuantityChange(index, 0);
-      setInputValues((prev) => {
-        const updated = [...prev];
-        updated[index] = '0';
-        return updated;
-      });
+      handleQuantityChange(index, parsed);
     }
   };
 
@@ -98,7 +85,9 @@ export default function SelectedProductsList({
             <div className="flex items-center border rounded overflow-hidden max-h-10">
               <button
                 className="px-2 py-2 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
-                onClick={() => handleQuantityChange(index, Math.max(0, parseFloat((item.quantity - 0.5).toFixed(3))))}
+                onClick={() =>
+                  handleQuantityChange(index, Math.max(0, item.quantity - 0.5))
+                }
               >
                 -
               </button>
@@ -107,15 +96,36 @@ export default function SelectedProductsList({
                 inputMode="decimal"
                 value={inputValues[index] ?? ""}
                 onChange={(e) => updateInputValue(index, e.target.value)}
-                onBlur={() => handleInputBlur(index)}
-                onFocus={(e) => {
-                  if (item.quantity === 0) e.target.select();
+                onFocus={() => setFocusedIndex(index)}
+                onBlur={() => {
+                  setFocusedIndex(null);
+                  const value = inputValues[index];
+
+                  if (!value || value === ".") {
+                    handleQuantityChange(index, 0);
+                    setInputValues((prev) => {
+                      const updated = [...prev];
+                      updated[index] = "0";
+                      return updated;
+                    });
+                    return;
+                  }
+
+                  const parsed = parseFloat(value);
+                  if (!isNaN(parsed)) {
+                    handleQuantityChange(index, parsed);
+                    setInputValues((prev) => {
+                      const updated = [...prev];
+                      updated[index] = formatQuantity(parsed);
+                      return updated;
+                    });
+                  }
                 }}
-                className="w-14 text-center border-0 shadow-none text-xs sm:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-14 md:w-16 text-center border-0 shadow-none text-xs sm:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <button
                 className="px-2 py-2 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
-                onClick={() => handleQuantityChange(index, parseFloat((item.quantity + 0.5).toFixed(3)))}
+                onClick={() => handleQuantityChange(index, item.quantity + 0.5)}
               >
                 +
               </button>

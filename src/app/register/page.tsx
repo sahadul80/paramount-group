@@ -108,11 +108,11 @@ export default function RegisterPage() {
             disabled={isLoading}
           >
             <option value="">Select Role</option>
-            <option value="/admin">Admin</option>
-            <option value="/erp">ERP Management</option>
-            <option value="/cms">CMS Management</option>
-            <option value="/supply">Supply Entry</option>
-            <option value="/demand">Demand Entry</option>
+            <option value="admin">Admin</option>
+            <option value="erp">ERP Management</option>
+            <option value="cms">CMS Management</option>
+            <option value="supply">Supply Entry</option>
+            <option value="demand">Demand Entry</option>
           </select>
 
           <div className="relative">

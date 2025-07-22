@@ -24,8 +24,9 @@ export default function RootLayout({
     const validateToken = async () => {
       const token = localStorage.getItem("token");
       const user = localStorage.getItem("user");
+      const role = localStorage.getItem("role");
       
-      if (!token || !user) {
+      if (!token || !user || !role || role !== "erp") {
         router.push("/login");
         return;
       }

@@ -74,7 +74,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
             
             {/* Mobile action buttons */}
-            <div className="flex justify-center sm:hidden gap-2 mt-4">
+            <div className="flex justify-center gap-2 mt-4">
               <Button size="sm" variant="outline" onClick={() => setEditMode(!editMode)}>
                 {editMode ? 'View' : 'Edit'}
               </Button>

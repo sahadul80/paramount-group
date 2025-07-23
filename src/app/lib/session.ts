@@ -4,6 +4,7 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import fs from "fs/promises";
 import path from "path";
+import { User } from "@/types/users";
 
 const secretKey = process.env.NEXTAUTH_SECRET;
 const encodedKey = new TextEncoder().encode(secretKey);
@@ -11,28 +12,22 @@ const encodedKey = new TextEncoder().encode(secretKey);
 // Path to users.json file
 const usersFilePath = path.resolve("public/users/users.json");
 
-// Define user types
-type User = {
-  username: string;
-  email: string;
-  role: string;
-  password: string;
-  status: number;
-  createdAt: string;
-  avatar?: string;
-  dob?: string;
-  address?: string;
-  phone?: string;
-};
-
 type SafeUser = Omit<User, "password">;
 
 type UpdateUserData = {
-  email?: string;
   avatar?: string;
   dob?: string;
   address?: string;
   phone?: string;
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  department?: string;
+  position?: string;
+  employeeId?: string;
+  nationality?: string;
+  salary?: string;
+  password?: string;
 };
 
 // Helper function to read users file
@@ -67,11 +62,7 @@ type NewUser = {
   email: string;
   role: string;
   password: string;
-  status?: number;
-  avatar?: string;
-  dob?: string;
-  address?: string;
-  phone?: string;
+  status: number;
 };
 
 export async function createUser({
@@ -79,11 +70,7 @@ export async function createUser({
   email,
   role,
   password,
-  status = 1,
-  avatar = "",
-  dob = "",
-  address = "",
-  phone = ""
+  status = 1
 }: NewUser): Promise<void> {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -104,10 +91,6 @@ export async function createUser({
       role,
       password: hashedPassword,
       status,
-      avatar,
-      dob,
-      address,
-      phone,
       createdAt: new Date().toISOString()
     });
 
@@ -269,6 +252,16 @@ export async function getUser(username: string): Promise<SafeUser | null> {
     return safeUser;
   } catch (error) {
     console.error("Error getting user:", error);
+    throw error;
+  }
+}
+
+export async function logOut(username: string): Promise<void> {
+  try {
+    const users = await readUsersFile();
+    updateUserStatus(username, 4);
+  } catch (error) {
+    console.error("Error Logging Out!", error);
     throw error;
   }
 }

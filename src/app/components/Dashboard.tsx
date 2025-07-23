@@ -76,7 +76,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6 px-2 sm:px-4">
+    <div className="space-y-6 py-4">
       <div>
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-xs sm:text-sm text-muted-foreground">Welcome to your textile ERP system</p>

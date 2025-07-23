@@ -127,7 +127,7 @@ export default function Purchase() {
   );
 
   return (
-    <div className="space-y-2 sm:space-y-6">
+    <div className="space-y-6 py-4">
       {/* Header */}
       <div className="flex gap-3 flex-row sm:items-center sm:justify-between">
         <div className="w-3/4 sm:w-auto">

@@ -6,13 +6,14 @@ import { AppSidebar } from "./AppSidebar";
 import { LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
+import { logOut } from "../lib/session";
 
 interface ERPLayoutProps {
   children: React.ReactNode;
 }
 
 export function ERPLayout({ children }: ERPLayoutProps) {
-  const [username, setUsername] = useState<string | null>(null);
+  const [username, setUsername] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -25,17 +26,22 @@ export function ERPLayout({ children }: ERPLayoutProps) {
   }, [router]);
 
   function LogoutButton() {
-    function handleLogout() {
+    function handleLogout(){
+      logOut(username);
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("role");
-      router.push("/login");       
-    };
+      router.push("/login");
+    }
 
     return (
       <div className="absolute z-50 fixed top-2 md:top-4 right-4">
         <div className="backdrop-blur-md bg-black/10 border border-red-500 rounded-lg">
-          <Button onClick={handleLogout} className="font-bold text-red-500 flex items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="font-bold text-red-500 flex items-center">
             <LogOut className="h-4 w-4 text-red-500" />
             <span className="hidden md:inline">Logout</span>
           </Button>

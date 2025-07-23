@@ -19,7 +19,7 @@ export default function TopBar() {
       </h1>
       <Button
         onClick={handleLogout}
-        variant="ghost"
+        variant="outline"
         size="sm"
         className="text-red-500 hover:bg-red-500/10 flex items-center gap-1 py-1 px-2"
       >

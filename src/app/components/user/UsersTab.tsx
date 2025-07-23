@@ -72,7 +72,7 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
   };
 
   return (
-    <Card className="fixed w-auto max-h-[80vh] overflow-auto shadow-sm">
+    <Card className="max-h-[80vh] overflow-auto shadow-sm">
       <CardHeader>
         <div className='flex flex-col sm:flex-row justify-between gap-4'>
           <div className='flex flex-col'>
@@ -88,7 +88,7 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
         </div>
       </CardHeader>
       
-      <CardContent className="mb-20">
+      <CardContent>
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
@@ -107,7 +107,7 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                   </h3>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {filteredUsers.length > 0 ? (
                     filteredUsers.map(user => (
                       <Card key={user.username} className="hover:shadow-md transition-shadow h-full">
@@ -239,7 +239,7 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
 
                 {/* All Users Tab */}
                 <TabsContent value="all">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-1 md:gap-3 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {filteredUsers.length > 0 ? (
                       filteredUsers.map(user => (
                         // User card - same as in other tabs
@@ -325,7 +325,7 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                 {/* Status Tabs */}
                 {statusFilters.map(filter => (
                   <TabsContent key={filter.value} value={filter.value}>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       {getUsersByStatus(filter.status).length > 0 ? (
                         getUsersByStatus(filter.status).map(user => (
                           <Card key={user.username} className="flex flex-col justify-between hover:shadow-lg transition-shadow h-full">

@@ -37,6 +37,9 @@ export default function Demand() {
 
   useEffect(() => {
     const validateToken = async () => {
+
+      if (typeof window === 'undefined') return;
+
       const token = localStorage.getItem("token");
       const user = localStorage.getItem("user");
       const role = localStorage.getItem("role");

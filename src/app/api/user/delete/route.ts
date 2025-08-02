@@ -1,5 +1,4 @@
 import { readUsersFile, writeUsersFile } from '@/app/lib/user-data';
-import { User } from '@/types/users';
 import { NextResponse } from 'next/server';
 
 export async function DELETE(req: Request) {

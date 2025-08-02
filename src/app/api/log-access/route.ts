@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function updateLog(logEntry: LogEntry): Promise<void> {
+async function updateLog(logEntry: LogEntry): Promise<void> {
   try {
     // Read existing logs
     let logs: LogEntry[] = [];

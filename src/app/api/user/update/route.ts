@@ -34,7 +34,7 @@ type SafeUser = Omit<User, 'password'>;
 
 type UpdateUserData = Partial<Omit<User, 'username' | 'createdAt' | 'status' | 'role'>>;
 
-export async function updateUser(
+async function updateUser(
   username: string,
   updateData: UpdateUserData
 ): Promise<SafeUser> {

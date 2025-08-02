@@ -3,7 +3,7 @@ import { User } from "@/types/users";
 
 type SafeUser = Omit<User, 'password'>;
 
-export async function getUsers(): Promise<SafeUser[]> {
+async function getUsers(): Promise<SafeUser[]> {
   try {
     const users = await readUsersFile();
     return users.map(user => {

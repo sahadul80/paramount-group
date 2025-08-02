@@ -3,7 +3,7 @@ import { User } from "@/types/users";
 
 type SafeUser = Omit<User, 'password'>;
 
-export async function getUser(username: string): Promise<SafeUser | null> {
+async function getUser(username: string): Promise<SafeUser | null> {
   try {
     const users = await readUsersFile();
     const user = users.find(u => u.username === username);

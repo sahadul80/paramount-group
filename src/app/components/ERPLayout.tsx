@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "./ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { LogOut } from "lucide-react";
-import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
-import { logOut } from "../lib/session";
+import { LogOutButton } from "./LogOutButton";
 
 interface ERPLayoutProps {
   children: React.ReactNode;
@@ -25,31 +23,6 @@ export function ERPLayout({ children }: ERPLayoutProps) {
     }
   }, [router]);
 
-  function LogoutButton() {
-    function handleLogout(){
-      logOut(username);
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("role");
-      router.push("/login");
-    }
-
-    return (
-      <div className="absolute z-50 fixed top-2 md:top-4 right-4">
-        <div className="backdrop-blur-md bg-black/10 border border-red-500 rounded-lg">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="font-bold text-red-500 flex items-center">
-            <LogOut className="h-4 w-4 text-red-500" />
-            <span className="hidden md:inline">Logout</span>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
@@ -67,7 +40,7 @@ export function ERPLayout({ children }: ERPLayoutProps) {
               </h1>
             </div>
           </header>
-          <LogoutButton/>
+          <LogOutButton username={username}/>
           {/* Adjust top padding for fixed header */}
           <main className="flex-1 p-6 pt-20 bg-muted/20">
             {children}

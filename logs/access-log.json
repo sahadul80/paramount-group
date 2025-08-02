@@ -1,0 +1,160 @@
+[
+  {
+    "ip": {},
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "page": "login",
+    "timestamp": "2025-07-23T16:47:25.711Z"
+  },
+  {
+    "ip": {},
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "page": "login",
+    "timestamp": "2025-07-23T16:47:25.723Z"
+  },
+  {
+    "ip": {},
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+    "page": "login",
+    "timestamp": "2025-07-23T16:52:38.319Z"
+  },
+  {
+    "ip": {},
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+    "page": "login",
+    "timestamp": "2025-07-23T16:52:38.340Z"
+  },
+  {
+    "ip": {},
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "page": "login",
+    "referer": "http://localhost:3000/login",
+    "timestamp": "2025-07-23T17:13:14.119Z"
+  },
+  {
+    "ip": {},
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "page": "login",
+    "referer": "http://localhost:3000/login",
+    "timestamp": "2025-07-23T17:13:14.128Z"
+  },
+  {
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "page": "login",
+    "timestamp": "2025-07-23T17:19:24.947Z"
+  },
+  {
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "page": "login",
+    "timestamp": "2025-07-23T17:19:24.956Z"
+  },
+  {
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "referer": "http://localhost:3000/login",
+    "acceptLanguage": "en-GB,en;q=0.9",
+    "deviceType": "Desktop",
+    "page": "login",
+    "timestamp": "2025-07-23T17:24:23.884Z",
+    "method": "GET",
+    "host": "localhost",
+    "path": "/api/log-access",
+    "query": {
+      "page": "login"
+    },
+    "protocol": "http"
+  },
+  {
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "referer": "http://localhost:3000/login",
+    "acceptLanguage": "en-GB,en;q=0.9",
+    "deviceType": "Desktop",
+    "page": "login",
+    "timestamp": "2025-07-23T17:24:23.888Z",
+    "method": "GET",
+    "host": "localhost",
+    "path": "/api/log-access",
+    "query": {
+      "page": "login"
+    },
+    "protocol": "http"
+  },
+  {
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "referer": "http://localhost:3000/login",
+    "acceptLanguage": "en-GB,en;q=0.9",
+    "deviceType": "Desktop",
+    "page": "login",
+    "timestamp": "2025-07-23T18:09:40.943Z",
+    "method": "GET",
+    "host": "localhost",
+    "path": "/api/log-access",
+    "query": {
+      "page": "login"
+    },
+    "protocol": "http",
+    "geoLocation": {
+      "error": "Failed to fetch geolocation data"
+    }
+  },
+  {
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "referer": "http://localhost:3000/login",
+    "acceptLanguage": "en-GB,en;q=0.9",
+    "deviceType": "Desktop",
+    "page": "login",
+    "timestamp": "2025-07-23T18:09:40.951Z",
+    "method": "GET",
+    "host": "localhost",
+    "path": "/api/log-access",
+    "query": {
+      "page": "login"
+    },
+    "protocol": "http",
+    "geoLocation": {
+      "error": "Failed to fetch geolocation data"
+    }
+  },
+  {
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "referer": "http://localhost:3000/login",
+    "acceptLanguage": "en-GB,en;q=0.9",
+    "deviceType": "Desktop",
+    "page": "login",
+    "timestamp": "2025-07-23T18:10:08.196Z",
+    "method": "GET",
+    "host": "localhost",
+    "path": "/api/log-access",
+    "query": {
+      "page": "login"
+    },
+    "protocol": "http",
+    "geoLocation": {
+      "error": "Failed to fetch geolocation data"
+    }
+  },
+  {
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15",
+    "referer": "http://localhost:3000/login",
+    "acceptLanguage": "en-GB,en;q=0.9",
+    "deviceType": "Desktop",
+    "page": "login",
+    "timestamp": "2025-07-23T18:10:08.192Z",
+    "method": "GET",
+    "host": "localhost",
+    "path": "/api/log-access",
+    "query": {
+      "page": "login"
+    },
+    "protocol": "http",
+    "geoLocation": {
+      "error": "Failed to fetch geolocation data"
+    }
+  }
+]

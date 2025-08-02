@@ -1,11 +1,12 @@
-import { authenticateUser } from "@/app/lib/session";
+import { authenticateUserdata, getAccessTokenFromServiceAccount } from "@/app/lib/google-auth";
 
 export async function POST(req: Request) {
     const body = await req.json();
 
     try {
+        const accessToken = await getAccessTokenFromServiceAccount();
         // Authenticate user and get token
-        const { user, token } = await authenticateUser(body.username, body.password);
+        const { user, token } = await authenticateUserdata(accessToken, body.username, body.password);
         
         return new Response(
             JSON.stringify({ 

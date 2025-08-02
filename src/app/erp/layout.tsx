@@ -43,12 +43,7 @@ export default function RootLayout({
         
         if (response.ok) {
           setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          localStorage.removeItem("role");
-          router.push("/login");
-        }
+        } 
       } catch (error) {
         console.error("Validation failed", error);
         router.push("/login");
@@ -69,8 +64,10 @@ export default function RootLayout({
   }
 
   if (!isAuthenticated) {
-    router.push('/login');
-    return null;
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    router.push("/login");
   }
 
   return (

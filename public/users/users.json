@@ -25,7 +25,7 @@
     "email": "erp-manager@example.com",
     "role": "erp",
     "password": "$2a$10$V1rD6b8DNWdlaQhkH5xu1uKgF5UzfQRabmqVDF5EFeCkcU8893gVS",
-    "status": 1,
+    "status": 4,
     "createdAt": "2024-02-15T08:30:45.000Z",
     "avatar": "https://i.pravatar.cc/150?img=2",
     "dob": "1992-06-22",
@@ -38,7 +38,7 @@
     "position": "ERP Manager",
     "employeeId": "1313",
     "nationality": "Bangladeshi",
-    "salary": "28000",
+    "salary": "30000",
     "bloodGroup": "B+"
   },
   {
@@ -48,19 +48,20 @@
     "password": "$2b$10$ZaMH9saEqcjHGno76VezIOf7l1CDoqWTDsLP00oS2Wsn09HsAfRZy",
     "status": 4,
     "createdAt": "2024-03-20T14:22:10.000Z",
-    "avatar": "https://i.pravatar.cc/150?img=3",
+    "avatar": "https://www.googleapis.com/drive/v3/files/1XHVTNkI98gHh8ai_Q3EclcfpAlsGdRrz?alt=media",
     "dob": "1997-10-21",
     "address": "135/1, Gulshan Badda Link Road, Middle Badda",
-    "phone": "+8801991000269",
-    "firstName": "Sahadul",
+    "phone": "+8801866820045",
+    "firstName": "Md Sahadul",
     "lastName": "Haque",
     "gender": "Male",
-    "department": "IT Support",
+    "department": "IT",
     "position": "ERP Specialist",
     "employeeId": "ERP003",
     "nationality": "Bangladeshi",
-    "salary": "95000",
-    "bloodGroup": "A+"
+    "salary": "100000",
+    "bloodGroup": "O+",
+    "avatarFile": {}
   },
   {
     "username": "rahman",
@@ -607,5 +608,23 @@
     "nationality": "Bangladeshi",
     "salary": "68000",
     "bloodGroup": "A+"
+  },
+  {
+    "username": "newuser",
+    "email": "anymail@mail.com",
+    "role": "erp",
+    "password": "$2b$10$GFXP7uPn/6xYUST5qRVd/.Ag9xhGnHBj2OffcFdlmJdMidrnksS3S",
+    "status": 2,
+    "createdAt": "2025-07-29T17:24:10.345Z",
+    "avatar": "https://www.googleapis.com/drive/v3/files/19h9H_NGxm6eXx77hkdrpoZmGpiMpa1V1?alt=media",
+    "department": "Solar",
+    "firstName": "First",
+    "lastName": "Last",
+    "dob": "2012-12-12",
+    "bloodGroup": "B+",
+    "phone": "01712345678",
+    "address": "135/1",
+    "gender": "Male",
+    "nationality": "Bdeshi"
   }
 ]

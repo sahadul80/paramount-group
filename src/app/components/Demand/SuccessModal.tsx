@@ -22,7 +22,7 @@ export default function SuccessModal({
             onClick={handleDownloadPDF}
           >
             <Download />
-            <span className="hidden sm:inline">.pdf</span>
+            <span className="text-xs">Download .pdf</span>
           </Button>
         </div>
 

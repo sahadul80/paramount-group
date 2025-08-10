@@ -128,7 +128,7 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
   };
 
   return (
-    <Card className="max-h-[80vh] overflow-auto shadow-sm">
+    <Card className="max-h-[80vh] max-w-[85vw] overflow-auto shadow-sm">
       <CardHeader>
         <div className='flex flex-col sm:flex-row justify-between gap-4'>
           <div className='flex flex-col'>
@@ -272,14 +272,14 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                 className="w-full"
               >
                 {/* Main Tabs */}
-                <TabsList className="flex w-full bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+                <TabsList className="flex bg-gray-100 dark:bg-gray-800 rounded-xl">
                   <TabsTrigger 
                     value="all" 
                     className="flex-1 flex items-center justify-center py-3 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
                   >
-                    <span className="mr-2"><FiUsers /></span> 
+                    <span className="mr-1"><FiUsers /></span> 
                     <span>All</span>
-                    <span className="ml-1 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-2">
+                    <span className="ml-1 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-1">
                       {users.length}
                     </span>
                   </TabsTrigger>
@@ -287,9 +287,9 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                     value="pending" 
                     className="flex-1 flex items-center justify-center py-3 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
                   >
-                    <span className="mr-2"><FiClock /></span> 
+                    <span className="mr-1"><FiClock /></span> 
                     <span>Pending</span>
-                    <span className="ml-1 text-xs bg-amber-100 text-amber-800 rounded-full px-2">
+                    <span className="ml-1 text-xs bg-amber-100 text-amber-800 rounded-full px-1">
                       {pendingCount}
                     </span>
                   </TabsTrigger>
@@ -297,9 +297,9 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                     value="active" 
                     className="flex-1 flex items-center justify-center py-3 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
                   >
-                    <span className="mr-2"><FiActivity /></span> 
+                    <span className="mr-1"><FiActivity /></span> 
                     <span>Active</span>
-                    <span className="ml-1 text-xs bg-green-100 text-green-800 rounded-full px-2">
+                    <span className="ml-1 text-xs bg-green-100 text-green-800 rounded-full px-1">
                       {activeCount}
                     </span>
                   </TabsTrigger>
@@ -512,9 +512,9 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                           value="online" 
                           className="flex w-full items-center px-4 py-2 rounded-md data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-900/50"
                         >
-                          <FiWifi className="mr-2" />
+                          <FiWifi />
                           Online
-                          <span className="ml-1 text-xs rounded-full px-2">
+                          <span className="text-xs rounded-full">
                             {onlineCount}
                           </span>
                         </TabsTrigger>
@@ -522,9 +522,9 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                           value="offline" 
                           className="flex w-full items-center py-2 rounded-md data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700 dark:data-[state=active]:bg-gray-800"
                         >
-                          <FiWifiOff className="mr-2" />
+                          <FiWifiOff />
                           Offline
-                          <span className="ml-1 text-xs rounded-full px-2">
+                          <span className="text-xs rounded-full">
                             {offlineCount}
                           </span>
                         </TabsTrigger>
@@ -532,9 +532,9 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                           value="away" 
                           className="flex w-full items-center px-4 py-2 rounded-md data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700 dark:data-[state=active]:bg-amber-900/50"
                         >
-                          <FiCoffee className="mr-2" />
+                          <FiCoffee />
                           Away
-                          <span className="ml-1 text-xs rounded-full px-2">
+                          <span className="text-xs rounded-full">
                             {awayCount}
                           </span>
                         </TabsTrigger>
@@ -608,7 +608,7 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                                 </div>
                               </CardContent>
                               <CardFooter className="flex justify-between p-2">
-                                <Button size="sm" className="flex items-center">
+                              <Button size="sm" className="flex items-center">
                                   Send <FiMail />
                                 </Button>
                               </CardFooter>

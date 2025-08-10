@@ -92,10 +92,6 @@ export default function LoginPage() {
         localStorage.setItem("user", data.username);
         localStorage.setItem("role", data.role);
         
-        toast({
-          title: "Login Successful!",
-          description: "Redirecting to your dashboard...",
-        });
         fetch('/api/user/update-status', {
           method: 'PUT',
           headers: {
@@ -106,9 +102,7 @@ export default function LoginPage() {
             status: 5
           })
         });
-        // Show success animation first
         setShowSuccess(true);
-        // Set redirect after animation completes
         setTimeout(() => {
           setRedirectPath(data.role);
         }, 500);

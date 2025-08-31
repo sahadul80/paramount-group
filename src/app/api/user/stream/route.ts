@@ -1,6 +1,3 @@
-import { NextResponse } from "next/server";
-
-// Mock data stores
 let users: any[] = [];
 let messages: any[] = [];
 let groups: any[] = [];
@@ -64,17 +61,4 @@ export async function GET() {
       'Access-Control-Allow-Headers': 'Cache-Control',
     },
   });
-}
-
-// Helper functions to update the mock data
-export function updateUsers(newUsers: any[]) {
-  users = newUsers;
-}
-
-export function updateMessages(newMessages: any[]) {
-  messages = newMessages;
-}
-
-export function updateGroups(newGroups: any[]) {
-  groups = newGroups;
 }

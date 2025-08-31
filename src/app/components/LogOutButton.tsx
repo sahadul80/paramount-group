@@ -40,7 +40,7 @@ export function LogOutButton({ username }: LogoutButtonProps) {
     <>
       {/* Floating Logout Button */}
       <motion.div
-        className="fixed top-2 md:top-4 right-4 z-50"
+        className="fixed top-2 md:top-4 right-4 z-10"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -62,7 +62,7 @@ export function LogOutButton({ username }: LogoutButtonProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.9 }}

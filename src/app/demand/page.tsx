@@ -2,7 +2,6 @@
 import { Loader, Plus } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { useToast } from "../components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import axios from 'axios';
@@ -19,10 +18,10 @@ import {
     DemandSummary,
     formatDateTime 
   } from "./types";
+import { toast } from "sonner";
 
-export default function Demand() {
+export default function DemandPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [concerns, setConcerns] = useState<string[]>([]);
   const [products, setProducts] = useState<Products[]>([]);
   const [orderItems, setOrderItems] = useState<{ product: string; quantity: number; uom: string; }[]>([]);
@@ -86,11 +85,7 @@ export default function Demand() {
         setConcerns(res.data.concerns);
         setProducts(res.data.products);
       } catch (error) {
-        toast({
-          title: "Loading Error",
-          description: "Failed to load concerns and products",
-          variant: "destructive"
-        });
+        toast.error("Loading Error! Failed to load concerns and products");
       } finally {
         setLoading(false);
       }
@@ -145,11 +140,7 @@ export default function Demand() {
 
   const handleSubmit = async () => {
     if (!searchConcern) {
-      toast({
-        title: "Missing Concern",
-        description: "Please select a concern",
-        variant: "destructive"
-      });
+      toast.warning("Missing Concern! Please select a concern");
       return;
     }
 
@@ -162,11 +153,7 @@ export default function Demand() {
       }));
 
     if (data.length === 0) {
-      toast({
-        title: "No Products",
-        description: "Please add at least one product with quantity",
-        variant: "destructive"
-      });
+      toast.warning("No Products selected! At least add one product with quantity");
       return;
     }
 
@@ -185,11 +172,7 @@ export default function Demand() {
       setSearchTerm('');
       setSearchConcern('');
     } catch (err) {
-      toast({
-        title: "Submission Failed",
-        description: "Failed to submit demand",
-        variant: "destructive"
-      });
+      toast.error("Failed to submit demand! Try again after sometime.");
     } finally {
       setSubmitting(false);
     }

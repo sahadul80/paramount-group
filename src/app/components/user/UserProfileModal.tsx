@@ -23,10 +23,10 @@ import {
   FiX,
   FiSave
 } from 'react-icons/fi';
-import { useToast } from "../ui/use-toast";
 import { cn } from '@/app/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { toast } from 'sonner';
 
 interface UserProfileModalProps {
   user: User;
@@ -44,6 +44,12 @@ const statusOptions = [
   { value: 5, label: 'Online' },
 ];
 
+const roleOptions = [
+  { value: 'erp', label: 'ERP Manangement' },
+  { value: 'demand', label: 'Demand Entry' },
+  { value: 'admin', label: 'HR&Admin Management' },
+];
+
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ 
   user, 
   onClose, 
@@ -54,7 +60,9 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [formData, setFormData] = useState<Partial<User>>({ ...user });
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
+
+  // case-insensitive admin check
+  const isAdmin = localStorage.getItem('role') === 'admin';
 
   const handleChange = (field: keyof User, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -62,22 +70,20 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // only admins can submit updates
+    if (!isAdmin) {
+      toast.error("You don't have permission to update this user.");
+      return;
+    }
+
     setIsSaving(true);
     
     try {
       await onUpdateUser(user.username, formData);
       setEditMode(false);
-      
-      toast({
-        title: "Profile Updated",
-        description: "User profile has been updated successfully",
-      });
+      toast.success("User profile has been updated successfully");
     } catch (error) {
-      toast({
-        title: "Update Failed",
-        description: "Could not update profile. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Update Failed! Could not update profile. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -99,6 +105,12 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
   };
 
   const handleDeleteUser = async () => {
+    // extra guard: do nothing if not admin
+    if (!isAdmin) {
+      toast.error("You don't have permission to delete this user.");
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete ${user.username}? This action cannot be undone.`)) {
       return;
     }
@@ -114,20 +126,13 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
       if (!response.ok) throw new Error('Failed to delete user');
 
-      toast({
-        title: "User Deleted",
-        description: `User "${user.username}" has been deleted successfully.`,
-      });
+      toast.warning(`User "${user.username}" has been deleted successfully. You can no longer access the system. GOODBYE!!!`);
 
       onUserDeleted(user.username);
       onClose();
     } catch (error) {
       console.error('Delete error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete user. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Error!!! Failed to delete user. Please try again.");
     } finally {
       setIsDeleting(false);
     }
@@ -136,7 +141,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const getAvatarUrl = (url: string | undefined) => {
     if (!url) return '';
     return url.includes("googleapis.com/drive/v3/files/")
-      ? `/api/image-proxy?url=${url}`
+      ? `/api/image-proxy?url=${encodeURIComponent(url)}`
       : url;
   };
 
@@ -204,23 +209,27 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </motion.div>
               
               <div className="mt-3 flex flex-wrap justify-center sm:justify-start gap-2">
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.2, duration: 0.3 }}
-                >
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="bg-background hover:bg-background/80 rounded-full"
-                    onClick={() => setEditMode(!editMode)}
+                {/* Edit button - only visible to admins */}
+                {isAdmin && (
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.3 }}
                   >
-                    <FiEdit/> 
-                    {editMode ? 'View' : 'Edit'}
-                  </Button>
-                </motion.div>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="bg-background hover:bg-background/80 rounded-full"
+                      onClick={() => setEditMode(!editMode)}
+                    >
+                      <FiEdit/> 
+                      {editMode ? 'View' : 'Edit'}
+                    </Button>
+                  </motion.div>
+                )}
                 
-                {!editMode && (
+                {/* Delete button - only visible to admins and when not in edit mode */}
+                {isAdmin && !editMode && (
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -287,7 +296,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     title="Contact Information" 
                     icon={<FiPhone className="text-primary" />}
                   >
-                    <InfoField label="Email" value={user.email} />
+                    <InfoField label="Email" value={user.email || '-'} />
                     <InfoField label="Phone" value={user.phone || '-'} />
                     <InfoField label="Address" value={user.address || '-'} />
                   </InfoCard>
@@ -302,11 +311,11 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     <InfoField label="Salary" value={user.salary || '-'} />
                     <InfoField 
                       label="Joined Date" 
-                      value={new Date(user.createdAt).toLocaleDateString('en-US', {
+                      value={user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
-                      })} 
+                      }) : '-'} 
                     />
                   </InfoCard>
                   
@@ -382,11 +391,21 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     <div className="space-y-3 md:space-y-4">
                       <div>
                         <label className="block text-sm font-medium mb-1 md:mb-2">Role</label>
-                        <Input
-                          value={formData.role || ''}
-                          onChange={(e) => handleChange('role', e.target.value)}
-                          disabled={isSaving}
-                        />
+                        <Select
+                          value={formData.role?.toString() || ''}
+                          onValueChange={(value) => handleChange('role', value)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select Role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roleOptions.map(option => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium mb-1 md:mb-2">Status</label>
@@ -442,8 +461,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </AnimatePresence>
         </div>
         
-        {/* Delete button - Only shown in edit mode */}
-        {editMode && (
+        {/* Delete button - Only shown in edit mode (and only for admins) */}
+        {isAdmin && editMode && (
           <div className="px-4 md:px-6 pb-4 md:pb-6 pt-3 md:pt-4 border-t border-border">
             <Button 
               variant="destructive"

@@ -5,7 +5,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { User } from '@/types/users';
-import { useToast } from "../ui/use-toast";
 import { 
   FiEdit, FiUser, FiMail, FiPhone, FiMapPin, FiPhoneCall, 
   FiBriefcase, FiDollarSign, FiCalendar, FiGlobe, FiSave,
@@ -19,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Label } from '../ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { toast } from 'sonner';
 
 interface ProfileTabProps {
   currentUser: User;
@@ -49,7 +49,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
   const router = useRouter();
 
   // Initialize phone data
@@ -187,21 +186,13 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Invalid File Type",
-          description: "Please select an image file (JPEG, PNG, etc.)",
-          variant: "destructive"
-        });
+        toast.error("Invalid File Type! Please select an image file (JPEG, PNG, etc.)");
         return;
       }
 
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File Too Large",
-          description: "Please select an image smaller than 5MB",
-          variant: "destructive"
-        });
+        toast.error("File Too Large! Please select an image smaller than 5MB");
         return;
       }
 
@@ -256,11 +247,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     e.preventDefault();
     
     if (!validateForm()) {
-      toast({
-        title: "Validation Error",
-        description: "Please fix the errors in the form",
-        variant: "destructive"
-      });
+      toast.error("Validation Error! Please fix the errors in the form");
       return;
     }
     
@@ -287,17 +274,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         setAvatarPreview(null);
         setAvatarFile(null);
         
-        toast({
-          title: "Profile Updated",
-          description: "Your profile has been updated successfully",
-        });
+        toast.success("Your profile has been updated successfully");
       }
     } catch (error) {
-      toast({
-        title: "Update Failed",
-        description: "Could not update profile. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Update Failed! Could not update profile. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -320,10 +300,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         throw new Error('Failed to delete account');
       }
 
-      toast({
-        title: "Account Deleted",
-        description: "Your account has been permanently deleted",
-      });
+      toast.warning("Account Deleted! Your account has been permanently removed and you can no longer access the system!");
 
       // Clear user data and redirect to login
       localStorage.removeItem('token');
@@ -336,11 +313,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       }, 1500);
     } catch (error) {
       console.error('Delete error:', error);
-      toast({
-        title: "Deletion Failed",
-        description: "Could not delete account. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Deletion Failed! Could not delete account. Please try again.");
       setIsDeleting(false);
     }
   };
@@ -366,17 +339,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       
       setCurrentUser(prev => prev ? { ...prev, status } : null);
       
-      toast({
-        title: "Status Updated",
-        description: `Your status is now ${getStatusString(status)}`,
-      });
+      toast.success(`Status Updated to ${getStatusString(status)}`);
     } catch (error) {
       console.error('Status update error:', error);
-      toast({
-        title: "Update Failed",
-        description: "Could not update status. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Could not update status. Please try again.");
     } finally {
       setStatusUpdating(false);
     }

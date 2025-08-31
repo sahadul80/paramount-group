@@ -50,12 +50,12 @@ export function AppSidebar() {
         collapsible="icon"
       >
         <SidebarContent>
-          <div className="p-4 border-b border-sidebar-border">
+          <div className="p-3 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
-              <Boxes className="h-6 w-6 sm:h-10 sm:w-10 text-primary" />
+              <Boxes className="h-6 w-6 sm:h-auto sm:w-auto text-primary" />
               {!isCollapsed && (
                 <div className="transition-all duration-300 ease-out opacity-100 animate-fadeIn">
-                  <h2 className="font-bold text-md sm:text-lg">TextileERP</h2>
+                  <h2 className="font-bold text-lg sm:text-xl">Paramount Agro</h2>
                   <p className="text-xs text-muted-foreground">
                     Management System
                   </p>

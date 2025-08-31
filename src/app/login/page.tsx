@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { useToast } from "../components/ui/use-toast";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [redirectPath, setRedirectPath] = useState<string>("");
   const [showSuccess, setShowSuccess] = useState(false);
-  const { toast } = useToast();
+  const [progress, setProgress] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -54,10 +54,25 @@ export default function LoginPage() {
   // Handle redirect after successful action
   useEffect(() => {
     if (redirectPath) {
+      // Start progress animation
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(progressInterval);
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 150); // Update every 150ms for 1.5s total
+      
       const timer = setTimeout(() => {
         router.push(redirectPath);
       }, 1500);
-      return () => clearTimeout(timer);
+      
+      return () => {
+        clearTimeout(timer);
+        clearInterval(progressInterval);
+      };
     }
   }, [redirectPath, router]);
 
@@ -65,16 +80,13 @@ export default function LoginPage() {
     event.preventDefault();
     if (!username || !password) {
       setError("Please fill in all fields");
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all fields",
-        variant: "destructive"
-      });
+      toast.error("Validation Error! Please fill in all fields");
       return;
     }
 
     setIsLoading(true);
     setError("");
+    setProgress(0); // Reset progress
 
     try {
       const response = await fetch("/api/user/login", {
@@ -92,7 +104,7 @@ export default function LoginPage() {
         localStorage.setItem("user", data.username);
         localStorage.setItem("role", data.role);
         
-        fetch('/api/user/update-status', {
+        await fetch('/api/user/update-status', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -112,11 +124,7 @@ export default function LoginPage() {
     } catch (err: any) {
       const errorMsg = err.message || "An unexpected error occurred";
       setError(errorMsg);
-      toast({
-        title: "Login Failed",
-        description: errorMsg,
-        variant: "destructive"
-      });
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -152,6 +160,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-muted px-4 dark:bg-background relative">
+
       {/* Full Screen Loader - Now non-blocking */}
       <AnimatePresence>
         {isLoading && !showSuccess && (
@@ -241,6 +250,12 @@ export default function LoginPage() {
                 >
                   Redirecting to your dashboard...
                 </motion.p>
+                <div className="mt-4 w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    className="bg-primary h-2.5 rounded-full transition-all duration-150 ease-linear" 
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
               </motion.div>
             ) : !redirectPath ? (
               <motion.form
@@ -313,7 +328,14 @@ export default function LoginPage() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    Sign In
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Signing In...
+                      </div>
+                    ) : (
+                      "Sign In"
+                    )}
                   </motion.button>
                 </motion.div>
 

@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/app/components/ui/toaster";
-import { Toaster as Sonner } from "@/app/components/ui/sonner";
+import { Toaster as Sonner, Toaster } from "@/app/components/ui/sonner";
 import { TooltipProvider } from "@/app/components/ui/tooltip";
 import { Loader2 } from "lucide-react";
 import { ERPLayout } from "../components/ERPLayout";

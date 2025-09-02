@@ -10,7 +10,7 @@ import { ERPLayout } from "../components/ERPLayout";
 
 const queryClient = new QueryClient();
 
-export default function RootLayout({
+export default function erpLayout({
   children,
 }: {
   children: React.ReactNode;

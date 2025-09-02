@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -100,24 +100,30 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", data.username);
-        localStorage.setItem("role", data.role);
         
-        await fetch('/api/user/update-status', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            username: data.username, 
-            status: 5
-          })
-        });
-        setShowSuccess(true);
-        setTimeout(() => {
-          setRedirectPath(data.role);
-        }, 500);
+        if (data.status !== 1) {
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("user", data.username);
+          localStorage.setItem("role", data.role);
+
+          await fetch('/api/user/update-status', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+              username: data.username, 
+              status: 5
+            })
+          });
+          setShowSuccess(true);
+          setTimeout(() => {
+            setRedirectPath(data.role);
+          }, 500);
+        } else {
+          setError("Your Registration is pending, You can login once an admin authorize you.");
+          toast.error("Your Registration is pending, You can login once an admin authorize you.");
+        }
       } else {
         throw new Error(data.message || "Login failed");
       }
@@ -160,7 +166,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-muted px-4 dark:bg-background relative">
-
+      <Toaster/>
       {/* Full Screen Loader - Now non-blocking */}
       <AnimatePresence>
         {isLoading && !showSuccess && (

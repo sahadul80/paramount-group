@@ -12,7 +12,8 @@ export async function POST(req: Request) {
             JSON.stringify({ 
                 message: "Login successful", 
                 username: user.username,
-                role: user.role,  // Add role to response
+                role: user.role,
+                status: user.status,
                 token
             }),
             {

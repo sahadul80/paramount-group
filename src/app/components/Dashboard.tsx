@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Package, ShoppingCart, Receipt, Truck, Users, Box, Layers } from "lucide-react";
+import { Package, ShoppingCart, Receipt, Truck, Users, Box } from "lucide-react";
 import { Badge } from "./ui/badge"
 
 const statsData = [
@@ -8,28 +8,28 @@ const statsData = [
     value: "1,247",
     change: "+12.5%",
     icon: Package,
-    color: "text-primary"
+    color: "text-blue-500"
   },
   {
     title: "Purchase Orders",
     value: "89",
     change: "+8.2%",
     icon: ShoppingCart,
-    color: "text-info"
+    color: "text-amber-500"
   },
   {
     title: "Sales Orders",
     value: "156",
     change: "+15.3%",
     icon: Receipt,
-    color: "text-success"
+    color: "text-green-500"
   },
   {
     title: "Manufacturing Orders",
     value: "23",
     change: "+5.1%",
     icon: Truck,
-    color: "text-warning"
+    color: "text-orange-500"
   },
   {
     title: "Active Customers",
@@ -43,7 +43,7 @@ const statsData = [
     value: "28",
     change: "+3.4%",
     icon: Box,
-    color: "text-orange-500"
+    color: "text-cyan-500"
   }
 ];
 
@@ -68,11 +68,17 @@ const recentSales = [
 
 export default function Dashboard() {
   const totalInventory = inventoryByType.reduce((sum, item) => sum + item.value, 0);
+  
+  // Calculate percentages for the pie chart
+  const fabricPercentage = (inventoryByType[0].value / totalInventory) * 100;
+  const finishedPercentage = (inventoryByType[1].value / totalInventory) * 100;
+  const accessoriesPercentage = (inventoryByType[2].value / totalInventory) * 100;
 
   const getBadgeVariant = (status: string) => {
     if (status === "Delivered") return "secondary";
     if (status === "Processing") return "outline";
-    return "default"; // Use "default" for other statuses
+    if (status === "Shipped") return "default";
+    return "default";
   };
 
   return (
@@ -93,7 +99,7 @@ export default function Dashboard() {
             <CardContent className="p-3 sm:p-4 pt-0">
               <div className="text-lg sm:text-xl md:text-2xl font-bold">{stat.value}</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-success">{stat.change}</span> from last month
+                <span className="text-green-500">{stat.change}</span> from last month
               </p>
             </CardContent>
           </Card>
@@ -119,7 +125,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-center">
                       <div className="font-medium">{location.finished}</div>
-                      <div className="text-muted-foreground">Finished Goods</div>
+                      <div className="text-muted-foreground">Finished</div>
                     </div>
                     <div className="text-center">
                       <div className="font-medium">{location.accessories}</div>
@@ -141,13 +147,39 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row items-center gap-6">
               {/* Pie Chart Visualization */}
               <div className="relative w-32 h-32 sm:w-40 sm:h-40">
-                <div className="absolute inset-0 rounded-full border-8 border-blue-500" 
-                     style={{ clipPath: `inset(0 0 0 50%)` }}></div>
-                <div className="absolute inset-0 rounded-full border-8 border-green-500" 
-                     style={{ clipPath: `inset(0 0 ${100 - (inventoryByType[1].value / totalInventory * 100)}% 50%)` }}></div>
-                <div className="absolute inset-0 rounded-full border-8 border-purple-500" 
-                     style={{ clipPath: `inset(${inventoryByType[0].value / totalInventory * 100}% 50% 0 0)` }}></div>
-                <div className="absolute inset-4 rounded-full bg-muted flex items-center justify-center">
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  {/* Fabric segment */}
+                  <circle 
+                    cx="50" cy="50" r="40" 
+                    fill="transparent" 
+                    stroke="rgb(59 130 246)" 
+                    strokeWidth="20" 
+                    strokeDasharray={`${fabricPercentage} ${100 - fabricPercentage}`}
+                    strokeDashoffset="25"
+                    transform="rotate(-90 50 50)"
+                  />
+                  {/* Finished Goods segment */}
+                  <circle 
+                    cx="50" cy="50" r="40" 
+                    fill="transparent" 
+                    stroke="rgb(34 197 94)" 
+                    strokeWidth="20" 
+                    strokeDasharray={`${finishedPercentage} ${100 - finishedPercentage}`}
+                    strokeDashoffset={25 - fabricPercentage}
+                    transform="rotate(-90 50 50)"
+                  />
+                  {/* Accessories segment */}
+                  <circle 
+                    cx="50" cy="50" r="40" 
+                    fill="transparent" 
+                    stroke="rgb(168 85 247)" 
+                    strokeWidth="20" 
+                    strokeDasharray={`${accessoriesPercentage} ${100 - accessoriesPercentage}`}
+                    strokeDashoffset={25 - fabricPercentage - finishedPercentage}
+                    transform="rotate(-90 50 50)"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-xs sm:text-sm font-bold">{totalInventory}</span>
                 </div>
               </div>
@@ -160,7 +192,7 @@ export default function Dashboard() {
                     <div className="text-xs sm:text-sm">
                       <span className="font-medium">{item.type}</span>
                       <span className="text-muted-foreground ml-2">
-                        ({Math.round(item.value / totalInventory * 100)}%)
+                        ({Math.round((item.value / totalInventory) * 100)}%)
                       </span>
                     </div>
                   </div>
@@ -181,28 +213,28 @@ export default function Dashboard() {
           <CardContent className="flex-1 p-3 sm:p-4 pt-0">
             <div className="space-y-3">
               <div className="flex items-center gap-3 p-2 bg-muted/30 rounded">
-                <div className="w-2 h-2 bg-success rounded-full"></div>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <div className="flex-1 text-xs sm:text-sm">
                   <div className="font-medium">New purchase order PO-2024-001</div>
                   <div className="text-muted-foreground">2 hours ago</div>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-2 bg-muted/30 rounded">
-                <div className="w-2 h-2 bg-primary rounded-full"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 <div className="flex-1 text-xs sm:text-sm">
                   <div className="font-medium">Manufacturing order completed</div>
                   <div className="text-muted-foreground">4 hours ago</div>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-2 bg-muted/30 rounded">
-                <div className="w-2 h-2 bg-warning rounded-full"></div>
+                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
                 <div className="flex-1 text-xs sm:text-sm">
                   <div className="font-medium">Low stock alert: Cotton Blend</div>
                   <div className="text-muted-foreground">6 hours ago</div>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-2 bg-muted/30 rounded">
-                <div className="w-2 h-2 bg-info rounded-full"></div>
+                <div className="w-2 h-2 bg-cyan-500 rounded-full"></div>
                 <div className="flex-1 text-xs sm:text-sm">
                   <div className="font-medium">New customer registered: Urban Trends</div>
                   <div className="text-muted-foreground">1 day ago</div>
@@ -250,22 +282,23 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="flex-1 p-3 sm:p-4 pt-0">
             <div className="space-y-4">
-              {["Cutting", "Sewing", "Finishing", "Packaging"].map((stage) => (
-                <div key={stage} className="space-y-1">
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span>{stage}</span>
-                    <span className="font-medium">{
-                      Math.floor(Math.random() * 30) + 70
-                    }%</span>
+              {["Cutting", "Sewing", "Finishing", "Packaging"].map((stage) => {
+                const efficiency = Math.floor(Math.random() * 30) + 70;
+                return (
+                  <div key={stage} className="space-y-1">
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span>{stage}</span>
+                      <span className="font-medium">{efficiency}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-500" 
+                        style={{ width: `${efficiency}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full" 
-                      style={{ width: `${Math.floor(Math.random() * 30) + 70}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -278,9 +311,9 @@ export default function Dashboard() {
           <CardContent className="flex-1 p-3 sm:p-4 pt-0">
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-success">5.2x</div>
+                <div className="text-2xl sm:text-3xl font-bold text-green-500">5.2x</div>
                 <p className="text-muted-foreground text-xs sm:text-sm">Annual Inventory Turnover</p>
-                <p className="text-success text-xs sm:text-sm mt-1">+1.2x vs last year</p>
+                <p className="text-green-500 text-xs sm:text-sm mt-1">+1.2x vs last year</p>
               </div>
             </div>
           </CardContent>

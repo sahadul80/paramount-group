@@ -2,98 +2,112 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
-  Package,
-  ShoppingCart,
-  Receipt,
-  Truck,
-  Boxes,
-  Archive,
-  X,
-  PanelLeft,
-  Users,
-} from "lucide-react";
-
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  useSidebar,
-  SidebarMobileToggle,
-} from "@/app/components/ui/sidebar";
+  FiPackage,
+  FiShoppingCart,
+  FiFileText,
+  FiTruck,
+  FiArchive,
+  FiUsers,
+  FiHome,
+} from "react-icons/fi";
+import { motion, AnimatePresence } from "framer-motion";
 
 const menuItems = [
-  { title: "Dashboard", url: "/erp", icon: Archive },
-  { title: "Inventory", url: "/erp/inventory", icon: Package },
-  { title: "Purchase", url: "/erp/purchase", icon: ShoppingCart },
-  { title: "Sales", url: "/erp/sales", icon: Receipt },
-  { title: "Manufacturing", url: "/erp/manufacturing", icon: Truck },
-  { title: "Users", url: "/erp/users", icon: Users },
+  { title: "Dashboard", url: "/erp", icon: FiArchive },
+  { title: "Inventory", url: "/erp/inventory", icon: FiPackage },
+  { title: "Purchase", url: "/erp/purchase", icon: FiShoppingCart },
+  { title: "Sales", url: "/erp/sales", icon: FiFileText },
+  { title: "Manufacturing", url: "/erp/manufacturing", icon: FiTruck },
+  { title: "Users", url: "/erp/users", icon: FiUsers },
 ];
 
 export function AppSidebar() {
-  const { state, openMobile } = useSidebar();
   const pathname = usePathname();
-  const isCollapsed = state === "collapsed";
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
 
   return (
     <>
-      <Sidebar
-        className={`transition-all duration-300 border-r shrink-0 ${
-          isCollapsed
-            ? "w-16 bg-sidebar"
-            : "w-64 bg-sidebar border border-sidebar-border"
+      {/* Sidebar */}
+      <motion.div
+        initial={{ width: isCollapsed ? 64 : 256 }}
+        animate={{ width: isCollapsed ? 64 : 256 }}
+        transition={{ duration: 0.3 }}
+        className={`fixed inset-y-0 left-0 z-40 bg-background overflow-hidden ${
+          isCollapsed ? "w-16" : "w-64"
         }`}
-        collapsible="icon"
       >
-        <SidebarContent>
-          <div className="p-3 border-b border-sidebar-border">
-            <div className="flex items-center gap-2">
-              <Boxes className="h-6 w-6 sm:h-auto sm:w-auto text-primary" />
+        {/* Header with toggle button */}
+        <div 
+          className="p-3 cursor-pointer hover:bg-black/5 transition-colors"
+          onClick={toggleSidebar}
+        >
+          <div className="flex items-center gap-2">
+            <FiHome className="h-6 w-6 text-primary flex-shrink-0" />
+            <AnimatePresence mode="wait">
               {!isCollapsed && (
-                <div className="transition-all duration-300 ease-out opacity-100 animate-fadeIn">
-                  <h2 className="font-bold text-lg sm:text-xl">Paramount Agro</h2>
-                  <p className="text-xs text-muted-foreground">
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <h2 className="font-bold text-lg whitespace-nowrap">Paramount Agro</h2>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
                     Management System
                   </p>
-                </div>
+                </motion.div>
               )}
-              {isCollapsed && (
-                <div className="transition-all duration-300 ease-in opacity-0 animate-fadeOut" />
-              )}
-            </div>
+            </AnimatePresence>
           </div>
+        </div>
 
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {menuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <Link
-                      href={item.url}
-                      className={`flex items-center w-full px-3 py-2 rounded-md transition-all duration-200 ${
-                        pathname === item.url
-                          ? "border-l-4 border-primary bg-black/20 text-primary dark:bg-white/20"
-                          : "text-sidebar-foreground hover:bg-black/10 dark:hover:bg-white/10"
-                      }`}
-                    >
-                      <item.icon className="h-5 w-5 transition-transform duration-200" />
-                      {!isCollapsed && (
-                        <span className="ml-3 transition-all duration-300 ease-out opacity-100 animate-fadeIn">
-                          {item.title}
-                        </span>
-                      )}
-                    </Link>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-      </Sidebar>
+        <nav className="">
+          <ul className="space-y-2">
+            {menuItems.map((item) => (
+              <li key={item.title}>
+                <Link
+                  href={item.url}
+                  className={`flex items-center w-full px-3 py-3 rounded-md transition-all duration-200 ${
+                    pathname === item.url
+                      ? "border-l-4 border-primary bg-black/20 dark:bg-white/20"
+                      : "text-sidebar-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                  }`}
+                >
+                  <item.icon className="h-6 w-6 flex-shrink-0" />
+                  <AnimatePresence mode="wait">
+                    {!isCollapsed && (
+                      <motion.span
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: "auto" }}
+                        exit={{ opacity: 0, width: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="ml-3 whitespace-nowrap overflow-hidden"
+                      >
+                        {item.title}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </motion.div>
+
+      {/* Main content area padding adjustment */}
+      <motion.div
+        initial={{ paddingLeft: isCollapsed ? 64 : 256 }}
+        animate={{ paddingLeft: isCollapsed ? 64 : 256 }}
+        transition={{ duration: 0.3 }}
+        className="min-h-screen transition-all duration-300"
+      />
     </>
   );
 }

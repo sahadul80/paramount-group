@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SidebarProvider, SidebarTrigger } from "./ui/sidebar";
+import { SidebarProvider } from "./ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { useRouter } from "next/navigation";
 import { LogOutButton } from "./LogOutButton";
@@ -12,7 +12,7 @@ interface ERPLayoutProps {
 }
 
 export function ERPLayout({ children }: ERPLayoutProps) {
-  const [username, setUsername] = useState<string>('');
+  const [username, setUsername] = useState<string>("");
   const router = useRouter();
 
   useEffect(() => {
@@ -25,16 +25,23 @@ export function ERPLayout({ children }: ERPLayoutProps) {
   }, [router]);
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen">
+      <SidebarProvider>
         <AppSidebar />
-        <div className="flex-1 flex flex-col md:ml-[var(--sidebar-width)] transition-all duration-300">
-          <UserTopBar />
-          <main className="flex-1 p-4 bg-muted/20">
+
+        <div className="flex flex-col flex-1 transition-all duration-200">
+          {/* Sticky Top bar with logout */}
+          <header className="sticky top-0 z-50 flex items-center justify-between px-2 py-1 bg-background shadow-sm">
+            <UserTopBar />
+            <LogOutButton username={username} />
+          </header>
+
+          {/* Main content */}
+          <main className="flex flex-col p-4 bg-muted/20 flex-1">
             {children}
           </main>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </div>
   );
 }

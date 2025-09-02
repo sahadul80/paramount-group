@@ -467,15 +467,15 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="">
+    <div className="p-1">
 
       <Tabs
         value={activeTab}
         onValueChange={(value: string) => setActiveTab(value as TabValue)}
-        className="space-y-4 relative"
+        className="space-y-2 relative"
       >
         {/* Make DesktopTabs sticky */}
-        <div className="sticky top-20 z-10 bg-background pt-2 pb-2">
+        <div className="sticky top-20 z-10 bg-transparent pt-2 pb-2">
           <DesktopTabs
             activeTab={activeTab}
             setActiveTab={setActiveTab}

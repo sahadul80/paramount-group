@@ -102,9 +102,9 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
     <motion.div key={user.username} variants={cardVariants} initial="hidden" animate="visible" custom={index}>
       <Card 
         onClick={() => setSelectedUser(user)} 
-        className="flex flex-col justify-between hover:shadow-md transition-shadow h-full border border-gray-200 dark:border-gray-700"
+        className="flex flex-col justify-between hover:shadow-md transition-shadow h-full cursor-pointer"
       >
-        <CardHeader className="flex flex-row items-center space-x-3">
+        <CardHeader className="flex flex-row items-center space-x-3 p-4">
           <Avatar className="border-2 border-indigo-500">
             <AvatarImage src={user.avatar || ""} alt={user.username}/>
             <AvatarFallback className="bg-indigo-100 text-indigo-800">
@@ -129,16 +129,16 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
             <p className="text-gray-500">Joined: {new Date(user.createdAt).toLocaleDateString()}</p>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between p-2">
-          <Button size="sm" className="flex items-center"><FiMail/> Send</Button>
-          {showApprove && user.status === 1 && (
+        <CardFooter className="flex justify-between p-3">
+          <Button size="sm" className="flex items-center text-xs"><FiMail className="mr-1" /> Message</Button>
+          {user.status === 1 && (
             <Button 
               size="sm" 
               variant="default" 
-              className="bg-green-100 hover:bg-green-200 text-green-800" 
+              className="bg-green-100 hover:bg-green-200 text-green-800 text-xs" 
               onClick={e => { e.stopPropagation(); onApprove(user.username); }}
             >
-              <FiBookmark/> Approve
+              <FiBookmark className="mr-1" /> Approve
             </Button>
           )}
         </CardFooter>
@@ -147,34 +147,57 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
   );
 
   return (
-    <Card className="overflow-auto shadow-sm">
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <div className="flex flex-col">
-            <CardTitle className="text-md sm:text-xl">User Directory</CardTitle>
-            <CardDescription>Manage all users in the system</CardDescription>
+    <Card className="h-full flex flex-col overflow-hidden">
+      {/* Fixed Header */}
+      <div className="sticky top-0 z-20 bg-background">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row justify-between gap-4">
+            <div className="flex flex-col">
+              <CardTitle className="text-md sm:text-xl">User Directory</CardTitle>
+              <CardDescription>Manage all users in the system</CardDescription>
+            </div>
+            <div className="relative">
+              <FiSearch className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"/>
+              <Input 
+                placeholder="Search users..." 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full sm:w-64 pl-10"
+              />
+            </div>
           </div>
-          <div className="relative">
-            <FiSearch className="absolute left-2 top-5 transform -translate-y-1/2 text-gray-400"/>
-            <Input 
-              placeholder="Search users..." 
-              value={searchTerm} 
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full sm:w-64 pl-10"
-            />
-          </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent>
+        {/* Tabs Navigation - Only show when not searching */}
+        {!searchTerm && (
+          <div className="px-6 pb-4">
+            <Tabs value={activeMainTab} onValueChange={v => setActiveMainTab(v as StatusTabValue)}>
+              <TabsList className="flex bg-gray-100 dark:bg-gray-800 rounded-xl">
+                <TabsTrigger value="all" className="flex-1 flex justify-center py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <FiUsers className="mr-1"/> All <span className="ml-1 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-1">{users.length}</span>
+                </TabsTrigger>
+                <TabsTrigger value="pending" className="flex-1 flex justify-center py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <FiClock className="mr-1"/> Pending <span className="ml-1 text-xs bg-amber-100 text-amber-800 rounded-full px-1">{pendingCount}</span>
+                </TabsTrigger>
+                <TabsTrigger value="active" className="flex-1 flex justify-center py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <FiActivity className="mr-1"/> Active <span className="ml-1 text-xs bg-green-100 text-green-800 rounded-full px-1">{activeCount}</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
+      </div>
+
+      {/* Scrollable Content */}
+      <CardContent className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
           </div>
         ) : (
-          <>
+          <Tabs value={activeMainTab} className="h-full">
             {searchTerm ? (
-              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentUsers.length > 0 ? (
                   currentUsers.map((user, i) => (
                     <UserCard key={user.username} user={user} index={i} showApprove={true} />
@@ -184,21 +207,8 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                 )}
               </div>
             ) : (
-              <Tabs value={activeMainTab} onValueChange={v => setActiveMainTab(v as StatusTabValue)}>
-                <div className="sticky top-20 z-20 bg-transparent pt-2 pb-2">
-                  <TabsList className="flex bg-gray-100 dark:bg-gray-800 rounded-xl">
-                    <TabsTrigger value="all" className="flex-1 flex justify-center py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                      <FiUsers className="mr-1"/> All <span className="ml-1 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-1">{users.length}</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="pending" className="flex-1 flex justify-center py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                      <FiClock className="mr-1"/> Pending <span className="ml-1 text-xs bg-amber-100 text-amber-800 rounded-full px-1">{pendingCount}</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="active" className="flex-1 flex justify-center py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                      <FiActivity className="mr-1"/> Active <span className="ml-1 text-xs bg-green-100 text-green-800 rounded-full px-1">{activeCount}</span>
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-                <TabsContent value="all" className="mt-4">
+              <>
+                <TabsContent value="all" className="m-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {users.length > 0 ? (
                       users.map((user, i) => (
@@ -210,7 +220,7 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                   </div>
                 </TabsContent>
 
-                <TabsContent value="pending" className="mt-4">
+                <TabsContent value="pending" className="m-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {users.filter(u => u.status === 1).length > 0 ? (
                       users.filter(u => u.status === 1).map((user, i) => (
@@ -222,20 +232,23 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                   </div>
                 </TabsContent>
 
-                <TabsContent value="active" className="mt-4">
-                  <Tabs value={activePresenceTab} onValueChange={v => setActivePresenceTab(v as PresenceTabValue)} className="mb-4">
-                    <TabsList className="flex justify-between bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-1">
-                      <TabsTrigger value="online" className="flex-1 flex items-center justify-center data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-900/50">
-                        <FiWifi className="mr-1"/> Online <span className="ml-1 text-xs rounded-full">{onlineCount}</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="offline" className="flex-1 flex items-center justify-center data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700 dark:data-[state=active]:bg-gray-800">
-                        <FiWifiOff className="mr-1"/> Offline <span className="ml-1 text-xs rounded-full">{offlineCount}</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="away" className="flex-1 flex items-center justify-center data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700 dark:data-[state=active]:bg-amber-900/50">
-                        <FiCoffee className="mr-1"/> Away <span className="ml-1 text-xs rounded-full">{awayCount}</span>
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                <TabsContent value="active" className="m-0">
+                  {/* Presence Tabs - Sticky within content */}
+                  <div className="sticky top-0 z-10 bg-background py-2 mb-4">
+                    <Tabs value={activePresenceTab} onValueChange={v => setActivePresenceTab(v as PresenceTabValue)}>
+                      <TabsList className="bg-white dark:bg-gray-900 rounded-lg p-1">
+                        <TabsTrigger value="online" className="flex-1 flex items-center justify-center data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-900/50">
+                          <FiWifi className="mr-1"/> Online <span className="ml-1 text-xs rounded-full">{onlineCount}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="offline" className="flex-1 flex items-center justify-center data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700 dark:data-[state=active]:bg-gray-800">
+                          <FiWifiOff className="mr-1"/> Offline <span className="ml-1 text-xs rounded-full">{offlineCount}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="away" className="flex-1 flex items-center justify-center data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700 dark:data-[state=active]:bg-amber-900/50">
+                          <FiCoffee className="mr-1"/> Away <span className="ml-1 text-xs rounded-full">{awayCount}</span>
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {currentUsers.length > 0 ? (
@@ -247,9 +260,9 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
                     )}
                   </div>
                 </TabsContent>
-              </Tabs>
+              </>
             )}
-          </>
+          </Tabs>
         )}
       </CardContent>
 

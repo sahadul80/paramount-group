@@ -5,7 +5,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Button } from "../components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiEye, FiEyeOff, FiUser, FiMail, FiKey, FiCheckCircle, FiArrowLeft } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiUser, FiMail, FiKey, FiCheckCircle, FiArrowLeft, FiBriefcase } from "react-icons/fi";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -16,7 +16,7 @@ export default function RegisterPage() {
     confirmPassword: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status] = useState(2);
+  const [status] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -276,7 +276,8 @@ export default function RegisterPage() {
 
               <div>
                 <div className="relative">
-                  <select
+                  <FiBriefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <select 
                     name="role"
                     value={formData.role}
                     onChange={handleChange}

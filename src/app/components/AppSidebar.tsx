@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import {
   FiPackage,
   FiShoppingCart,
@@ -13,6 +12,7 @@ import {
   FiHome,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSidebar } from "./ui/sidebar"; // ✅ use context
 
 const menuItems = [
   { title: "Dashboard", url: "/erp", icon: FiArchive },
@@ -25,15 +25,11 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
+  const { state, toggleSidebar, isMobile } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   return (
     <>
-      {/* Sidebar */}
       <motion.div
         initial={{ width: isCollapsed ? 64 : 256 }}
         animate={{ width: isCollapsed ? 64 : 256 }}
@@ -43,12 +39,12 @@ export function AppSidebar() {
         }`}
       >
         {/* Header with toggle button */}
-        <div 
-          className="p-3 cursor-pointer hover:bg-black/5 transition-colors"
-          onClick={toggleSidebar}
+        <div
+          className="p-2 cursor-pointer hover:bg-black/5 transition-colors"
+          onClick={() => toggleSidebar()}
         >
-          <div className="flex items-center gap-2">
-            <FiHome className="h-6 w-6 text-primary flex-shrink-0" />
+          <div className="hidden md:flex items-center gap-2">
+            <FiHome className="h-10 w-10 text-primary flex-shrink-0" />
             <AnimatePresence mode="wait">
               {!isCollapsed && (
                 <motion.div
@@ -58,7 +54,9 @@ export function AppSidebar() {
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <h2 className="font-bold text-lg whitespace-nowrap">Paramount Agro</h2>
+                  <h2 className="font-bold text-lg whitespace-nowrap">
+                    Paramount Agro
+                  </h2>
                   <p className="text-xs text-muted-foreground whitespace-nowrap">
                     Management System
                   </p>
@@ -68,10 +66,11 @@ export function AppSidebar() {
           </div>
         </div>
 
-        <nav className="">
+        {/* Nav links */}
+        <nav>
           <ul className="space-y-2">
             {menuItems.map((item) => (
-              <li key={item.title}>
+              <li key={item.title} data-sidebar-item>
                 <Link
                   href={item.url}
                   className={`flex items-center w-full px-3 py-3 rounded-md transition-all duration-200 ${
@@ -79,6 +78,9 @@ export function AppSidebar() {
                       ? "border-l-4 border-primary bg-black/20 dark:bg-white/20"
                       : "text-sidebar-foreground hover:bg-black/10 dark:hover:bg-white/10"
                   }`}
+                  onClick={() => {
+                    if (isMobile) toggleSidebar();
+                  }}
                 >
                   <item.icon className="h-6 w-6 flex-shrink-0" />
                   <AnimatePresence mode="wait">
@@ -101,7 +103,7 @@ export function AppSidebar() {
         </nav>
       </motion.div>
 
-      {/* Main content area padding adjustment */}
+      {/* Main content padding (shifts when collapsed/expanded) */}
       <motion.div
         initial={{ paddingLeft: isCollapsed ? 64 : 256 }}
         animate={{ paddingLeft: isCollapsed ? 64 : 256 }}

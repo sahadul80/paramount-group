@@ -1,63 +1,102 @@
 // components/user/UsersTab.tsx
-"use client"
-import React, { useState } from 'react';
-import { 
-  FiUser, FiUsers, FiClock, FiActivity, 
-  FiWifi, FiWifiOff, FiCoffee, FiSearch, 
-  FiMail, FiBookmark
-} from 'react-icons/fi';
+"use client";
+import React, { useState } from "react";
+import {
+  FiUsers,
+  FiClock,
+  FiActivity,
+  FiWifi,
+  FiWifiOff,
+  FiCoffee,
+  FiSearch,
+  FiMail,
+  FiBookmark,
+  FiUser,
+} from "react-icons/fi";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
-import UserProfileModal from './UserProfileModal';
-import { User } from '@/types/users';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "../ui/card";
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import UserProfileModal from "./UserProfileModal";
+import { User } from "@/types/users";
+import { motion, AnimatePresence } from "framer-motion";
 
-type StatusTabValue = 'all' | 'pending' | 'active';
-type PresenceTabValue = 'online' | 'offline' | 'away';
+type StatusTabValue = "all" | "pending" | "active";
+type PresenceTabValue = "online" | "offline" | "away";
 
 interface UsersTabProps {
   users: User[];
   loading: boolean;
   onApprove: (username: string) => void;
-  onUpdateUser: (username: string, updateData: Partial<User>) => Promise<User[]>;
+  onUpdateUser: (
+    username: string,
+    updateData: Partial<User>
+  ) => Promise<User[]>;
   onUserDeleted: (username: string) => void;
 }
 
-const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdateUser, onUserDeleted }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+const UsersTab: React.FC<UsersTabProps> = ({
+  users,
+  loading,
+  onApprove,
+  onUpdateUser,
+  onUserDeleted,
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<StatusTabValue>('all');
-  const [activePresenceTab, setActivePresenceTab] = useState<PresenceTabValue>('online');
+  const [activeMainTab, setActiveMainTab] =
+    useState<StatusTabValue>("all");
+  const [activePresenceTab, setActivePresenceTab] =
+    useState<PresenceTabValue>("online");
 
   const getStatusString = (status: number) => {
-    switch(status){
-      case 0: return 'inactive';
-      case 1: return 'pending';
-      case 2: return 'active';
-      case 3: return 'away';
-      case 4: return 'offline';
-      case 5: return 'online';
-      default: return 'unknown';
+    switch (status) {
+      case 0:
+        return "inactive";
+      case 1:
+        return "pending";
+      case 2:
+        return "active";
+      case 3:
+        return "away";
+      case 4:
+        return "offline";
+      case 5:
+        return "online";
+      default:
+        return "unknown";
     }
-  }
+  };
 
   const getBadgeVariant = (status: number) => {
-    switch(status){
-      case 0: return 'destructive';
-      case 1: return 'warning';
-      case 2: return 'success';
-      case 3: return 'secondary';
-      case 4: return 'outline';
-      case 5: return 'success';
-      default: return 'default';
+    switch (status) {
+      case 0:
+        return "destructive";
+      case 1:
+        return "warning";
+      case 2:
+        return "success";
+      case 3:
+        return "secondary";
+      case 4:
+        return "outline";
+      case 5:
+        return "success";
+      default:
+        return "default";
     }
-  }
+  };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter((user) => {
     const term = searchTerm.toLowerCase();
     return (
       user.username?.toLowerCase().includes(term) ||
@@ -69,76 +108,136 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
   });
 
   const getUsersForTab = () => {
+    // Search overrides tabs
     if (searchTerm) return filteredUsers;
 
-    switch(activeMainTab){
-      case 'pending': 
-        return users.filter(u => u.status === 1);
-      case 'active':
-        switch(activePresenceTab){
-          case 'online': return users.filter(u => u.status === 5);
-          case 'offline': return users.filter(u => u.status === 4);
-          case 'away': return users.filter(u => u.status === 3);
-          default: return users.filter(u => u.status === 2 || u.status === 3 || u.status === 4 || u.status === 5);
+    switch (activeMainTab) {
+      case "pending":
+        return users.filter((u) => u.status === 1);
+      case "active":
+        switch (activePresenceTab) {
+          case "online":
+            return users.filter((u) => u.status === 5);
+          case "offline":
+            return users.filter((u) => u.status === 4);
+          case "away":
+            return users.filter((u) => u.status === 3);
+          default:
+            return users.filter((u) => [2, 3, 4, 5].includes(u.status));
         }
-      default: 
+      default:
         return users;
     }
-  }
+  };
 
   const currentUsers = getUsersForTab();
-  const pendingCount = users.filter(u => u.status === 1).length;
-  const onlineCount = users.filter(u => u.status === 5).length;
-  const offlineCount = users.filter(u => u.status === 4).length;
-  const awayCount = users.filter(u => u.status === 3).length;
-  const activeCount = users.filter(u => u.status === 2 || u.status === 3 || u.status === 4 || u.status === 5).length;
+  const pendingCount = users.filter((u) => u.status === 1).length;
+  const onlineCount = users.filter((u) => u.status === 5).length;
+  const offlineCount = users.filter((u) => u.status === 4).length;
+  const awayCount = users.filter((u) => u.status === 3).length;
+  const activeCount = users.filter((u) =>
+    [2, 3, 4, 5].includes(u.status)
+  ).length;
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: (i:number) => ({ opacity: 1, y:0, transition: { delay: i*0.05, duration:0.3 } })
-  }
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: { delay: i * 0.05, duration: 0.28 },
+    }),
+  };
 
-  const UserCard = ({ user, index, showApprove = false }: { user: User, index: number, showApprove?: boolean }) => (
-    <motion.div key={user.username} variants={cardVariants} initial="hidden" animate="visible" custom={index}>
-      <Card 
-        onClick={() => setSelectedUser(user)} 
-        className="flex flex-col justify-between hover:shadow-md transition-shadow h-full cursor-pointer"
+  const UserCard = ({
+    user,
+    index,
+    showApprove = false,
+  }: {
+    user: User;
+    index: number;
+    showApprove?: boolean;
+  }) => (
+    <motion.div
+      key={user.username}
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      custom={index}
+    >
+      <Card
+        onClick={() => setSelectedUser(user)}
+        className="flex flex-col justify-between hover:shadow-2xl transition-shadow h-full cursor-pointer bg-background border border-border"
       >
-        <CardHeader className="flex flex-row items-center space-x-3 p-4">
-          <Avatar className="border-2 border-indigo-500">
-            <AvatarImage src={user.avatar || ""} alt={user.username}/>
-            <AvatarFallback className="bg-indigo-100 text-indigo-800">
-              {user.firstName?.charAt(0) || user.username.charAt(0)}
-              {user.lastName?.charAt(0)}
+        <CardHeader className="flex flex-row items-center space-x-2 p-4">
+          <Avatar className="border-2 border-primary">
+            <AvatarImage src={user.avatar || ""} alt={user.username} />
+            <AvatarFallback className="bg-primary/20 text-primary">
+              {(user.firstName?.charAt(0) || user.username.charAt(0)) ||
+                ""}
+              {user.lastName?.charAt(0) || ""}
             </AvatarFallback>
           </Avatar>
           <div>
-            <CardTitle className="text-base">{user.firstName} {user.lastName}</CardTitle>
-            <CardDescription className="text-xs">@{user.username}</CardDescription>
+            <CardTitle className="text-base">
+              {user.firstName} {user.lastName}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              @{user.username}
+            </CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="px-4 pb-4">
+
+        <CardContent className="px-3 pb-3">
           <div className="flex flex-wrap gap-1">
-            <Badge variant="secondary" className="text-xs">{user.role}</Badge>
-            <Badge variant={getBadgeVariant(user.status)} className="text-xs">{getStatusString(user.status)}</Badge>
-            {user.department && <Badge variant="outline" className="text-xs">{user.department}</Badge>}
+            <Badge variant="secondary" className="text-xs">
+              {user.role}
+            </Badge>
+            <Badge
+              variant={getBadgeVariant(user.status)}
+              className="text-xs"
+            >
+              {getStatusString(user.status)}
+            </Badge>
+            {user.department && (
+              <Badge variant="outline" className="text-xs">
+                {user.department}
+              </Badge>
+            )}
           </div>
+
           <div className="mt-3 space-y-1 text-xs">
-            {user.position && <p className="text-gray-600 dark:text-gray-400">Position: {user.position}</p>}
-            {user.employeeId && <p className="text-gray-600 dark:text-gray-400">ID: {user.employeeId}</p>}
-            <p className="text-gray-500">Joined: {new Date(user.createdAt).toLocaleDateString()}</p>
+            {user.position && (
+              <p className="text-muted-foreground">
+                Position: {user.position}
+              </p>
+            )}
+            {user.employeeId && (
+              <p className="text-muted-foreground">ID: {user.employeeId}</p>
+            )}
+            <p className="text-muted-foreground">
+              Joined: {new Date(user.createdAt).toLocaleDateString()}
+            </p>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between p-3">
-          <Button size="sm" className="flex items-center text-xs"><FiMail className="mr-1" /> Message</Button>
+
+        <CardFooter className="flex justify-between p-2">
+          <Button size="sm" variant="outline" className="flex items-center text-xs">
+            <FiMail />
+            <span className="hidden md:inline text-xs ml-1">Message</span>
+          </Button>
+
           {user.status === 1 && (
-            <Button 
-              size="sm" 
-              variant="default" 
-              className="bg-green-100 hover:bg-green-200 text-green-800 text-xs" 
-              onClick={e => { e.stopPropagation(); onApprove(user.username); }}
+            <Button
+              size="sm"
+              variant="default"
+              className="text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                onApprove(user.username);
+              }}
             >
-              <FiBookmark className="mr-1" /> Approve
+              <FiBookmark className="mr-1" />
+              <span className="hidden md:inline text-xs">Approve</span>
             </Button>
           )}
         </CardFooter>
@@ -147,137 +246,163 @@ const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onApprove, onUpdate
   );
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden">
-      {/* Fixed Header */}
-      <div className="sticky top-0 z-20 bg-background">
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
-            <div className="flex flex-col">
-              <CardTitle className="text-md sm:text-xl">User Directory</CardTitle>
-              <CardDescription>Manage all users in the system</CardDescription>
-            </div>
-            <div className="relative">
-              <FiSearch className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"/>
-              <Input 
-                placeholder="Search users..." 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full sm:w-64 pl-10"
-              />
-            </div>
+    <Card className="w-full h-full flex flex-col border-0 bg-card min-h-0">
+      <CardContent className="flex-1 p-2 md:p-4 lg:p-4 min-h-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col">
+            <CardTitle className="text-xl">User Directory</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Manage all users in the system
+            </CardDescription>
           </div>
-        </CardHeader>
 
-        {/* Tabs Navigation - Only show when not searching */}
-        {!searchTerm && (
-          <div className="px-6 pb-4">
-            <Tabs value={activeMainTab} onValueChange={v => setActiveMainTab(v as StatusTabValue)}>
-              <TabsList className="flex bg-gray-100 dark:bg-gray-800 rounded-xl">
-                <TabsTrigger value="all" className="flex-1 flex justify-center py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <FiUsers className="mr-1"/> All <span className="ml-1 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-1">{users.length}</span>
-                </TabsTrigger>
-                <TabsTrigger value="pending" className="flex-1 flex justify-center py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <FiClock className="mr-1"/> Pending <span className="ml-1 text-xs bg-amber-100 text-amber-800 rounded-full px-1">{pendingCount}</span>
-                </TabsTrigger>
-                <TabsTrigger value="active" className="flex-1 flex justify-center py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <FiActivity className="mr-1"/> Active <span className="ml-1 text-xs bg-green-100 text-green-800 rounded-full px-1">{activeCount}</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="relative w-full sm:w-64">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Scrollable Content */}
-      <CardContent className="flex-1 overflow-auto p-6">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-          </div>
-        ) : (
-          <Tabs value={activeMainTab} className="h-full">
-            {searchTerm ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentUsers.length > 0 ? (
-                  currentUsers.map((user, i) => (
-                    <UserCard key={user.username} user={user} index={i} showApprove={true} />
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8 text-gray-500">No users found</div>
-                )}
-              </div>
-            ) : (
-              <>
-                <TabsContent value="all" className="m-0">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {users.length > 0 ? (
-                      users.map((user, i) => (
-                        <UserCard key={user.username} user={user} index={i} />
-                      ))
-                    ) : (
-                      <div className="col-span-full text-center py-8 text-gray-500">No users found</div>
-                    )}
-                  </div>
-                </TabsContent>
+        {/* Main status tabs (remain in the sticky block) */}
+        <div className="mt-2">
+          <Tabs
+            value={activeMainTab}
+            onValueChange={(v) => setActiveMainTab(v as StatusTabValue)}
+            className="border border-border rounded-lg"
+          >
+            <TabsList className="flex bg-muted rounded-lg text-text">
+              <TabsTrigger
+                value="all"
+                className="flex-1 flex justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <FiUsers className="mr-1 h-4 w-4" /> All
+                <span className="text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
+                  {users.length}
+                </span>
+              </TabsTrigger>
 
-                <TabsContent value="pending" className="m-0">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {users.filter(u => u.status === 1).length > 0 ? (
-                      users.filter(u => u.status === 1).map((user, i) => (
-                        <UserCard key={user.username} user={user} index={i} showApprove={true} />
-                      ))
-                    ) : (
-                      <div className="col-span-full text-center py-8 text-gray-500">No pending users</div>
-                    )}
-                  </div>
-                </TabsContent>
+              <TabsTrigger
+                value="pending"
+                className="flex-1 flex justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <FiClock className="mr-1 h-4 w-4" /> Pending
+                <span className="text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">
+                  {pendingCount}
+                </span>
+              </TabsTrigger>
 
-                <TabsContent value="active" className="m-0">
-                  {/* Presence Tabs - Sticky within content */}
-                  <div className="sticky top-0 z-10 bg-background py-2 mb-4">
-                    <Tabs value={activePresenceTab} onValueChange={v => setActivePresenceTab(v as PresenceTabValue)}>
-                      <TabsList className="bg-white dark:bg-gray-900 rounded-lg p-1">
-                        <TabsTrigger value="online" className="flex-1 flex items-center justify-center data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-900/50">
-                          <FiWifi className="mr-1"/> Online <span className="ml-1 text-xs rounded-full">{onlineCount}</span>
-                        </TabsTrigger>
-                        <TabsTrigger value="offline" className="flex-1 flex items-center justify-center data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700 dark:data-[state=active]:bg-gray-800">
-                          <FiWifiOff className="mr-1"/> Offline <span className="ml-1 text-xs rounded-full">{offlineCount}</span>
-                        </TabsTrigger>
-                        <TabsTrigger value="away" className="flex-1 flex items-center justify-center data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700 dark:data-[state=active]:bg-amber-900/50">
-                          <FiCoffee className="mr-1"/> Away <span className="ml-1 text-xs rounded-full">{awayCount}</span>
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {currentUsers.length > 0 ? (
-                      currentUsers.map((user, i) => (
-                        <UserCard key={user.username} user={user} index={i} />
-                      ))
-                    ) : (
-                      <div className="col-span-full text-center py-8 text-gray-500">No {activePresenceTab} users found</div>
-                    )}
-                  </div>
-                </TabsContent>
-              </>
-            )}
+              <TabsTrigger
+                value="active"
+                className="flex-1 flex justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <FiActivity className="mr-1 h-4 w-4" /> Active
+                <span className="text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
+                  {activeCount}
+                </span>
+              </TabsTrigger>
+            </TabsList>
           </Tabs>
+        </div>
+
+        {/* Presence submenu tabs (also inside the same sticky block) */}
+        {activeMainTab === "active" && !searchTerm && (
+        <div className="mt-1 border border-border rounded-lg">
+          <Tabs
+            value={activePresenceTab}
+            onValueChange={(v) =>
+              setActivePresenceTab(v as PresenceTabValue)
+            }
+          >
+            <TabsList className="flex justify-between bg-muted rounded-lg text-text">
+              <TabsTrigger
+                value="online"
+                className="flex-1 flex items-center justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <FiWifi className="mr-1 h-4 w-4" /> Online
+                <span className="ml-1 text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
+                  {onlineCount}
+                </span>
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="offline"
+                className="flex-1 flex items-center justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <FiWifiOff className="mr-1 h-4 w-4" /> Offline
+                <span className="ml-1 text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
+                  {offlineCount}
+                </span>
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="away"
+                className="flex-1 flex items-center justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <FiCoffee className="mr-1 h-4 w-4" /> Away
+                <span className="ml-1 text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">
+                  {awayCount}
+                </span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        )}
+        {loading ? (
+          <motion.div
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed top-0 left-0 w-full h-1 bg-secondary/30 z-50 origin-left backdrop-blur-sm"
+            >
+              <motion.div
+                className="h-full bg-primary"
+                initial={{ width: "0%" }}
+                animate={{ width: `${loading}%` }}
+                transition={{ duration: 0.15, ease: "linear" }}
+              />
+            </motion.div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 mb-12 md:mb-0 lg:mb-0">
+            {currentUsers.length > 0 ? (
+              currentUsers.map((user, i) => (
+                <UserCard
+                  key={user.username}
+                  user={user}
+                  index={i}
+                  showApprove={activeMainTab === "pending"}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8 text-muted-foreground">
+                {searchTerm
+                  ? "No users found"
+                  : activeMainTab === "pending"
+                  ? "No pending users"
+                  : activeMainTab === "active"
+                  ? `No ${activePresenceTab} users found`
+                  : "No users found"}
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
 
       <AnimatePresence>
         {selectedUser && (
-          <UserProfileModal 
-            user={selectedUser} 
-            onClose={() => setSelectedUser(null)} 
-            onUpdateUser={onUpdateUser} 
+          <UserProfileModal
+            user={selectedUser}
+            onClose={() => setSelectedUser(null)}
+            onUpdateUser={onUpdateUser}
             onUserDeleted={onUserDeleted}
           />
         )}
       </AnimatePresence>
     </Card>
   );
-}
+};
 
 export default UsersTab;

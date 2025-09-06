@@ -272,7 +272,7 @@ const SidebarMobileToggle = React.forwardRef<
       data-sidebar="mobile-trigger"
       variant="ghost"
       size="icon"
-      className={cn("fixed top-4 left-4 z-50 md:hidden", className)}
+      className={cn("md:hidden", className)}
       onClick={toggleSidebar}
       {...props}
     >

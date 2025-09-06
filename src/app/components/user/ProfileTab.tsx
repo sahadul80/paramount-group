@@ -1,24 +1,16 @@
+// components/user/ProfileTab.tsx (main component)
+'use client'
 import React, { useState, useRef, useEffect } from 'react';
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Badge } from "../ui/badge";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "../ui/card";
 import { User } from '@/types/users';
-import { 
-  FiEdit, FiUser, FiMail, FiPhone, FiMapPin, FiPhoneCall, 
-  FiBriefcase, FiDollarSign, FiCalendar, FiGlobe, FiSave,
-  FiTrash2, FiCircle, FiWifi, FiWifiOff, FiAlertCircle, FiX,
-  FiDroplet,
-  FiXSquare
-} from 'react-icons/fi';
+import { FiEdit, FiSave, FiX, FiTrash2 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/app/lib/utils';
 import { useRouter } from 'next/navigation';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
-import { Label } from '../ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { toast } from 'sonner';
+import { Button } from '../ui/button';
+import ViewMode from './ViewMode';
+import EditMode from './EditMode';
 
 interface ProfileTabProps {
   currentUser: User;
@@ -28,10 +20,6 @@ interface ProfileTabProps {
 
 // Fixed Bangladesh country code
 const BANGLADESH_CODE = '+880';
-
-const bloodGroups = [
-  'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
-];
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ 
   currentUser, 
@@ -48,17 +36,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   // Initialize phone data
   useEffect(() => {
     if (currentUser.phone) {
-      // Always use Bangladesh code
       if (currentUser.phone.startsWith(BANGLADESH_CODE)) {
         setPhoneNumber(currentUser.phone.slice(BANGLADESH_CODE.length));
       } else {
-        // If phone doesn't start with +880, use the full number
         setPhoneNumber(currentUser.phone);
       }
     }
@@ -72,14 +57,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     }));
   }, [phoneNumber]);
 
-  // Helper function to get avatar URL
-  const getAvatarUrl = (url: string | undefined) => {
-    if (!url) return '';
-    return url.includes("googleapis.com/drive/v3/files/")
-      ? `/api/image-proxy?url=${url}`
-      : url;
-  };
-
   // Clean up object URLs to prevent memory leaks
   useEffect(() => {
     return () => {
@@ -89,50 +66,20 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     };
   }, [avatarPreview]);
 
-  const getStatusString = (status: number) => {
-    switch (status) {
-      case 0: return 'Inactive';
-      case 1: return 'Pending';
-      case 2: return 'Onboarded';
-      case 3: return 'Away';
-      case 4: return 'Offline';
-      case 5: return 'Online';
-      default: return 'Unknown';
-    }
+  const handleEditClick = () => {
+    setProfileData({ ...currentUser });
+    setAvatarPreview(currentUser.avatar || null);
+    setAvatarFile(null);
+    setErrors({});
+    setEditMode(true);
   };
 
-  const getStatusColor = (status: number) => {
-    switch (status) {
-      case 0: return 'bg-destructive/10 text-destructive';
-      case 1: return 'bg-warning/10 text-warning';
-      case 2: return 'bg-success/10 text-success';
-      case 3: return 'bg-secondary/10 text-secondary';
-      case 4: return 'bg-muted text-muted-foreground';
-      case 5: return 'bg-primary/10 text-primary';
-      default: return 'bg-secondary/10 text-secondary';
-    }
-  };
-
-  const getStatusIcon = (status: number) => {
-    switch (status) {
-      case 5: return <FiWifi className="w-4 h-4" />;
-      case 3: return <FiWifiOff className="w-4 h-4" />;
-      case 4: return <FiWifiOff className="w-4 h-4" />;
-      default: return <FiCircle className="w-4 h-4" />;
-    }
-  };
-
-  const handleChange = (field: keyof User, value: string) => {
-    setProfileData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear error when field changes
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
+  const handleCancel = () => {
+    setProfileData({ ...currentUser });
+    setAvatarPreview(null);
+    setAvatarFile(null);
+    setErrors({});
+    setEditMode(false);
   };
 
   const validateForm = () => {
@@ -164,10 +111,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    if (value.length <= 10) {
-      setPhoneNumber(value);
+  const handlePhoneNumberChange = (value: string) => {
+    const numericValue = value.replace(/\D/g, '');
+    if (numericValue.length <= 10) {
+      setPhoneNumber(numericValue);
       
       // Clear phone error if any
       if (errors.phone) {
@@ -180,44 +127,23 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     }
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error("Invalid File Type! Please select an image file (JPEG, PNG, etc.)");
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File Too Large! Please select an image smaller than 5MB");
-        return;
-      }
-
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setAvatarPreview(previewUrl);
-      setAvatarFile(file);
+  const handleAvatarChange = (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Invalid File Type! Please select an image file (JPEG, PNG, etc.)");
+      return;
     }
-  };
 
-  const handleEditClick = () => {
-    setProfileData({ ...currentUser });
-    // Set initial preview to current avatar
-    setAvatarPreview(getAvatarUrl(currentUser.avatar));
-    setAvatarFile(null);
-    setErrors({});
-    setEditMode(true);
-  };
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File Too Large! Please select an image smaller than 5MB");
+      return;
+    }
 
-  const handleCancel = () => {
-    setProfileData({ ...currentUser });
-    setAvatarPreview(null);
-    setAvatarFile(null);
-    setErrors({});
-    setEditMode(false);
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+    setAvatarFile(file);
   };
 
   const uploadAvatar = async (file: File, username: string): Promise<string> => {
@@ -236,7 +162,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       }
   
       const data = await response.json();
-      return data.avatarUrl; // Return new avatar URL
+      return data.avatarUrl;
     } catch (error) {
       console.error('Avatar upload error:', error);
       throw error;
@@ -348,6 +274,22 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     }
   };
 
+  const getStatusString = (status: number) => {
+    switch (status) {
+      case 0: return 'Inactive';
+      case 1: return 'Pending';
+      case 2: return 'Onboarded';
+      case 3: return 'Away';
+      case 4: return 'Offline';
+      case 5: return 'Online';
+      default: return 'Unknown';
+    }
+  };
+
+  const handleFieldChange = (field: keyof User, value: string) => {
+    setProfileData(prev => ({ ...prev, [field]: value }));
+  };
+
   return (
     <>
       {/* Full Screen Loader */}
@@ -361,438 +303,109 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         </div>
       )}
 
-      <Card className="w-full overflow-hidden shadow-lg border-0">
-        <div className="bg-gradient-to-r from-primary to-primary-dark p-6">
-          <div className="flex justify-between items-start">
+      <Card className="w-full overflow-hidden shadow-lg border-0 h-full flex flex-col">
+        <div className="bg-gradient-to-r from-primary to-primary-dark px-4">
+          <div className="flex flex-row justify-between items-start sm:items-center gap-4">
             <CardHeader className="p-0">
-              <CardTitle className='text-xl md:text-2xl'>My Profile</CardTitle>
+              <CardTitle className='text-xl md:text-2xl text-white'>My Profile</CardTitle>
             </CardHeader>
             {!editMode ? (
               <Button 
-                variant="outline"
+                variant="secondary"
                 onClick={handleEditClick}
+                className="bg-white/20 hover:bg-white/30 text-white border-0"
               >
-                <FiEdit/><span>Edit</span>
+                <FiEdit className="mr-1"/><span>Edit Profile</span>
               </Button>
             ) : (
               <div className="flex gap-2">
-              <Button 
-                variant="outline"
-                form="profile-form"
-                disabled={isUploading}
-                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-              >
-                {isUploading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                    Saving...
-                  </div>
-                ) : (
-                  <>
-                    <FiSave/><span>Save</span>
-                  </>
-                )}
-              </Button>
+                <Button 
+                  variant="secondary"
+                  form="profile-form"
+                  disabled={isUploading}
+                  className="bg-white text-primary hover:bg-white/90"
+                >
+                  {isUploading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                      Saving...
+                    </div>
+                  ) : (
+                    <>
+                      <FiSave className="mr-1"/><span>Save Changes</span>
+                    </>
+                  )}
+                </Button>
                 <Button 
                   variant="ghost" 
                   onClick={handleCancel}
+                  className="text-white hover:bg-white/20"
                 >
-                  <FiX/>
+                  <FiX className="w-5 h-5"/>
                 </Button>
               </div>
             )}
           </div>
         </div>
         
-        <CardContent className="p-2">
+        <CardContent className="p-2 md:p-4 flex-1 overflow-auto">
           <AnimatePresence mode="wait">
             {!editMode ? (
-              <motion.div
-                key="view"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-8"
-              >
-                {/* User Info with Avatar */}
-                <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-6">
-                  <div className="relative">
-                    <Avatar className="w-32 h-32 md:w-40 md:h-40 border-4 border-background shadow-lg">
-                      <AvatarImage 
-                        src={getAvatarUrl(currentUser.avatar)}
-                        alt={currentUser.username} 
-                        className="object-cover"
-                      />
-                      <AvatarFallback className="text-3xl bg-muted">
-                        {currentUser.firstName?.charAt(0) || currentUser.username.charAt(0)}
-                        {currentUser.lastName?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  
-                  <div className="text-center md:text-left">
-                    <h2 className="text-2xl font-bold text-foreground">{currentUser.username}</h2>
-                    <p className="text-muted-foreground">{currentUser.email}</p>
-                    
-                    <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-                      <Badge variant="default" className="bg-primary">
-                        {currentUser.role}
-                      </Badge>
-                      {currentUser.department && (
-                        <Badge variant="outline" className="bg-foreground border-primary text-secondary">
-                          {currentUser.department}
-                        </Badge>
-                      )}
-                      {currentUser.position && (
-                        <Badge variant="outline" className="border-primary text-primary">
-                          {currentUser.position}
-                        </Badge>
-                      )}
-                    </div>
-                    {/* Status Selector */}
-                    <div className="mt-6 flex flex-wrap gap-2 justify-center md:justify-start">
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant={currentUser.status === 5 ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => updateUserStatus(5)}
-                          disabled={statusUpdating}
-                          className={`flex items-center gap-2 ${currentUser.status === 5 ? "bg-success" : ""}`}
-                        >
-                          <FiWifi className="w-4 h-4" />
-                          Online
-                        </Button>
-                        <Button 
-                          variant={currentUser.status === 3 ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => updateUserStatus(3)}
-                          disabled={statusUpdating}
-                          className={`flex items-center gap-2 ${currentUser.status === 3 ? "bg-warning" : ""}`}
-                        >
-                          <FiWifiOff className="w-4 h-4" />
-                          Away
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* User Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-card p-5 rounded-xl">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-primary">
-                      <FiUser /> Personal Information
-                    </h3>
-                    <div className="space-y-4">
-                      <InfoField label="First Name" value={currentUser.firstName || '-'} />
-                      <InfoField label="Last Name" value={currentUser.lastName || '-'} />
-                      <InfoField label="Date of Birth" value={currentUser.dob || '-'} />
-                      <InfoField label="Gender" value={currentUser.gender || '-'} />
-                      <InfoField label="Blood Group" value={currentUser.bloodGroup || '-'} />
-                      <InfoField label="Nationality" value={currentUser.nationality || '-'} />
-                    </div>
-                  </div>
-                  
-                  <div className="bg-card p-5 rounded-xl">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-primary">
-                      <FiMail /> Contact Information
-                    </h3>
-                    <div className="space-y-4">
-                      <InfoField label="Email" value={currentUser.email} />
-                      <InfoField label="Phone" value={currentUser.phone || '-'} />
-                      <InfoField label="Address" value={currentUser.address || '-'} />
-                    </div>
-                  </div>
-                  
-                  <div className="bg-card p-5 rounded-xl">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-primary">
-                      <FiBriefcase /> Employment Details
-                    </h3>
-                    <div className="space-y-4">
-                      <InfoField label="Employee ID" value={currentUser.employeeId || '-'} />
-                      <InfoField label="Position" value={currentUser.position || '-'} />
-                      <InfoField label="Department" value={currentUser.department || '-'} />
-                      <InfoField label="Salary" value={currentUser.salary || '-'} />
-                      <InfoField 
-                        label="Joined Date" 
-                        value={currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : '-'} 
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="bg-card p-5 rounded-xl">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-primary">
-                      <FiDollarSign /> Account Information
-                    </h3>
-                    <div className="space-y-4">
-                      <InfoField label="Username" value={currentUser.username} />
-                      <InfoField label="Status" value={getStatusString(currentUser.status)} />
-                      <InfoField label="Role" value={currentUser.role} />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+              <ViewMode 
+                currentUser={currentUser}
+                updateUserStatus={updateUserStatus}
+                statusUpdating={statusUpdating}
+                getStatusString={getStatusString}
+              />
             ) : (
-              <motion.form
-                key="edit"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                onSubmit={handleSubmit}
-                id="profile-form"
-                className="space-y-8"
-              >
-                {/* Avatar Update Section */}
-                <div className="flex flex-col items-center">
-                  <div className="relative group">
-                    <Avatar 
-                      className="w-32 h-32 md:w-40 md:h-40 border-4 border-background shadow-lg cursor-pointer"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <AvatarImage 
-                        src={avatarPreview || getAvatarUrl(currentUser.avatar)} 
-                        alt={profileData.username} 
-                        className="object-cover"
-                      />
-                      <AvatarFallback className="text-3xl bg-muted">
-                        {profileData.firstName?.charAt(0) || profileData.username.charAt(0)}
-                        {profileData.lastName?.charAt(0)}
-                      </AvatarFallback>
-                      <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                        <div className="bg-background p-2 rounded-full">
-                          <FiEdit className="text-foreground text-xl" />
-                        </div>
-                      </div>
-                    </Avatar>
-                    <Input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleAvatarChange}
-                      disabled={isUploading}
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground text-center">
-                    Click the avatar to change your profile photo
-                  </p>
-                </div>
-
-                {/* Editable Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-card p-5 rounded-xl">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-primary">
-                      <FiUser /> Personal Information
-                    </h3>
-                    <div className="space-y-4">
-                      <FormField 
-                        label="First Name"
-                        icon={<FiUser className="text-muted-foreground" />}
-                        value={profileData.firstName || ''}
-                        onChange={(e) => handleChange('firstName', e.target.value)}
-                        disabled={isUploading}
-                        error={errors.firstName}
-                        required
-                      />
-                      <FormField 
-                        label="Last Name"
-                        icon={<FiUser className="text-muted-foreground" />}
-                        value={profileData.lastName || ''}
-                        onChange={(e) => handleChange('lastName', e.target.value)}
-                        disabled={isUploading}
-                        error={errors.lastName}
-                        required
-                      />
-                      <FormField 
-                        label="Date of Birth"
-                        icon={<FiCalendar className="text-muted-foreground" />}
-                        type="date"
-                        value={profileData.dob || ''}
-                        onChange={(e) => handleChange('dob', e.target.value)}
-                        disabled={isUploading}
-                        error={errors.dob}
-                        tip="Format: YYYY-MM-DD"
-                      />
-                      <div className="space-y-1">
-                        <label className="block text-sm font-medium text-foreground flex items-center gap-2">
-                          <FiDroplet className="text-muted-foreground" /> Blood Group
-                        </label>
-                        <Select
-                          value={profileData.bloodGroup || ''}
-                          onValueChange={(value) => handleChange('bloodGroup', value)}
-                          disabled={isUploading}
-                        >
-                          <SelectTrigger className="bg-input border-border focus:border-primary focus:ring-primary">
-                            <SelectValue placeholder="Select blood group" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {bloodGroups.map(group => (
-                              <SelectItem key={group} value={group}>
-                                {group}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <FormField 
-                        label="Gender"
-                        icon={<FiUser className="text-muted-foreground" />}
-                        value={profileData.gender || ''}
-                        onChange={(e) => handleChange('gender', e.target.value)}
-                        disabled={isUploading}
-                      />
-                      <FormField 
-                        label="Nationality"
-                        icon={<FiGlobe className="text-muted-foreground" />}
-                        value={profileData.nationality || ''}
-                        onChange={(e) => handleChange('nationality', e.target.value)}
-                        disabled={isUploading}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="bg-card p-5 rounded-xl">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-primary">
-                      <FiMail /> Contact Information
-                    </h3>
-                    <div className="space-y-4">
-                      <FormField 
-                        label="Email"
-                        icon={<FiMail className="text-muted-foreground" />}
-                        type="email"
-                        value={profileData.email}
-                        onChange={(e) => handleChange('email', e.target.value)}
-                        disabled={isUploading}
-                        error={errors.email}
-                        required
-                        tip="Must be a valid email address"
-                      />
-                      <div className="space-y-1">
-                        <label className="block text-sm font-medium text-foreground flex items-center gap-2">
-                          <FiPhone className="text-muted-foreground" /> Phone Number
-                        </label>
-                        <div className="flex">
-                          <div className="flex items-center px-3 bg-input border border-r-0 rounded-l-md text-foreground">
-                            {BANGLADESH_CODE}
-                          </div>
-                          <Input
-                            value={phoneNumber}
-                            onChange={handlePhoneNumberChange}
-                            placeholder="1234567890"
-                            disabled={isUploading}
-                            className={cn(
-                              "bg-input border-l-0 rounded-l-none",
-                              errors.phone && "border-destructive"
-                            )}
-                          />
-                        </div>
-                        {errors.phone && (
-                          <p className="text-destructive text-sm flex items-center gap-1">
-                            <FiAlertCircle className="w-4 h-4" /> {errors.phone}
-                          </p>
-                        )}
-                        <p className="text-muted-foreground text-xs">
-                          Format: {BANGLADESH_CODE} followed by 10 digits
-                        </p>
-                      </div>
-                      <FormField 
-                        label="Address"
-                        icon={<FiMapPin className="text-muted-foreground" />}
-                        value={profileData.address || ''}
-                        onChange={(e) => handleChange('address', e.target.value)}
-                        disabled={isUploading}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="bg-card p-5 rounded-xl">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-primary">
-                      <FiBriefcase /> Employment Details
-                    </h3>
-                    <div className="space-y-4">
-                      <FormField 
-                        label="Employee ID"
-                        icon={<FiBriefcase className="text-muted-foreground" />}
-                        value={profileData.employeeId || ''}
-                        onChange={(e) => handleChange('employeeId', e.target.value)}
-                        disabled={true}
-                        tip="Contact admin to change"
-                      />
-                      <FormField 
-                        label="Position"
-                        icon={<FiBriefcase className="text-muted-foreground" />}
-                        value={profileData.position || ''}
-                        onChange={(e) => handleChange('position', e.target.value)}
-                        disabled={true}
-                        tip="Contact admin to change"
-                      />
-                      <FormField 
-                        label="Department"
-                        icon={<FiBriefcase className="text-muted-foreground" />}
-                        value={profileData.department || ''}
-                        onChange={(e) => handleChange('department', e.target.value)}
-                        disabled={true}
-                        tip="Contact admin to change"
-                      />
-                      <FormField 
-                        label="Salary"
-                        icon={<FiDollarSign className="text-muted-foreground" />}
-                        value={profileData.salary || ''}
-                        onChange={(e) => handleChange('salary', e.target.value)}
-                        disabled={true}
-                        tip="Contact admin to change"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="bg-card p-5 rounded-xl">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-primary">
-                      <FiDollarSign /> Account Information
-                    </h3>
-                    <div className="space-y-4">
-                      <FormField 
-                        label="Username"
-                        icon={<FiUser className="text-muted-foreground" />}
-                        value={profileData.username}
-                        disabled={true}
-                      />
-                      <FormField 
-                        label="Role"
-                        icon={<FiBriefcase className="text-muted-foreground" />}
-                        value={profileData.role}
-                        disabled={true}
-                      />
-                      <FormField 
-                        label="Status"
-                        icon={<FiUser className="text-muted-foreground" />}
-                        value={getStatusString(profileData.status)}
-                        disabled={true}
-                      />
-                      
-                      {/* Delete Account Button */}
-                      <div className="pt-4 mt-6 border-t border-border">
-                        <Button 
-                          variant="destructive" 
-                          className="w-full"
-                          onClick={() => setShowDeleteModal(true)}
-                          disabled={isDeleting}
-                          type="button"
-                        >
-                          <FiTrash2 className="mr-2" /> Delete My Account
-                        </Button>
-                        <p className="mt-2 text-xs text-destructive text-center">
-                          Warning: This action is irreversible and will permanently delete your account
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.form>
+              <EditMode
+                profileData={profileData}
+                currentUser={currentUser}
+                avatarPreview={avatarPreview}
+                avatarFile={avatarFile}
+                phoneNumber={phoneNumber}
+                errors={errors}
+                isUploading={isUploading}
+                handleChange={handleFieldChange} // Use the new function instead of setProfileData
+                handlePhoneNumberChange={handlePhoneNumberChange}
+                handleAvatarChange={handleAvatarChange}
+                handleSubmit={handleSubmit}
+                setShowDeleteModal={setShowDeleteModal}
+                BANGLADESH_CODE={BANGLADESH_CODE}
+              />
             )}
           </AnimatePresence>
         </CardContent>
+
+        {/* Fixed buttons for mobile edit mode */}
+        {editMode && (
+          <CardFooter className="sticky border border-none bottom-0 bg-background border-t p-4">
+            <div className="flex gap-2 w-full">
+              <Button 
+                type="submit"
+                form="profile-form"
+                className="flex-1"
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background mr-2"></div>
+                    Saving...
+                  </div>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleCancel}
+                disabled={isUploading}
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardFooter>
+        )}
       </Card>
 
       {/* Delete Confirmation Modal */}
@@ -834,51 +447,5 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     </>
   );
 };
-
-// Info Field Component
-const InfoField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-    <div className="w-40 text-sm font-medium text-muted-foreground">{label}</div>
-    <div className="flex-1 text-foreground font-medium">{value}</div>
-  </div>
-);
-
-// Form Field Component
-const FormField: React.FC<{
-  label: string;
-  icon?: React.ReactNode;
-  value: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  disabled?: boolean;
-  type?: string;
-  error?: string;
-  tip?: string;
-  required?: boolean;
-}> = ({ label, icon, value, onChange, disabled = false, type = 'text', error, tip, required }) => (
-  <div className="space-y-1">
-    <label className="block text-sm font-medium text-foreground flex items-center gap-2">
-      {icon} {label} {required && <span className="text-destructive">*</span>}
-    </label>
-    <Input
-      type={type}
-      value={value}
-      onChange={onChange}
-      disabled={disabled}
-      className={cn(
-        "bg-input border-border focus:border-primary focus:ring-primary",
-        disabled && "bg-muted",
-        error && "border-destructive"
-      )}
-    />
-    {error && (
-      <p className="text-destructive text-sm flex items-center gap-1">
-        <FiAlertCircle className="w-4 h-4" /> {error}
-      </p>
-    )}
-    {tip && !error && (
-      <p className="text-muted-foreground text-xs">{tip}</p>
-    )}
-  </div>
-);
 
 export default ProfileTab;

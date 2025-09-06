@@ -25,10 +25,11 @@ export function ERPLayout({ children }: ERPLayoutProps) {
   }, [router]);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex max-h-screen">
       <SidebarProvider>
-        <AppSidebar />
-
+        <div className="hidden md:flex">
+          <AppSidebar />
+        </div>
         <div className="flex flex-col flex-1 transition-all duration-200">
           {/* Sticky Top bar with logout */}
           <header className="sticky top-0 z-50 flex items-center justify-between px-2 py-1 bg-background shadow-sm">
@@ -37,7 +38,7 @@ export function ERPLayout({ children }: ERPLayoutProps) {
           </header>
 
           {/* Main content */}
-          <main className="flex flex-col p-4 bg-muted/20 flex-1">
+          <main className="flex flex-col bg-muted/20 flex-1">
             {children}
           </main>
         </div>

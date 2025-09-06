@@ -15,39 +15,39 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   unreadCount
 }) => {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 z-40 shadow-lg">
-      <div className="grid grid-cols-4 gap-1 p-1">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background z-40 shadow-lg">
+      <div className="grid grid-cols-4">
         <button 
           className={`flex flex-col items-center justify-center p-3 rounded-xl ${
             activeTab === 'profile' 
-              ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30' 
-              : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+              ? 'bg-secondary' 
+              : ''
           }`}
           onClick={() => setActiveTab('profile')}
         >
-          <FiUser className="text-lg mb-1" />
+          <FiUser className="text-lg" />
           <span className="text-xs">Profile</span>
         </button>
         <button 
           className={`flex flex-col items-center justify-center p-3 rounded-xl ${
             activeTab === 'users' 
-              ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30' 
-              : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+              ? 'bg-secondary' 
+              : ''
           }`}
           onClick={() => setActiveTab('users')}
         >
-          <FiUsers className="text-lg mb-1" />
+          <FiUsers className="text-lg" />
           <span className="text-xs">Users</span>
         </button>
         <button 
           className={`flex flex-col items-center justify-center p-3 rounded-xl relative ${
             activeTab === 'inbox' 
-              ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30' 
-              : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+              ? 'bg-secondary' 
+              : ''
           }`}
           onClick={() => setActiveTab('inbox')}
         >
-          <FiMail className="text-lg mb-1" />
+          <FiMail className="text-lg" />
           <span className="text-xs">Inbox</span>
           {unreadCount > 0 && (
             <span className="absolute top-2 right-4 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -58,12 +58,12 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button 
           className={`flex flex-col items-center justify-center p-3 rounded-xl ${
             activeTab === 'groups' 
-              ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30' 
-              : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+              ? 'bg-secondary' 
+              : ''
           }`}
           onClick={() => setActiveTab('groups')}
         >
-          <FiMessageSquare className="text-lg mb-1" />
+          <FiMessageSquare className="text-lg" />
           <span className="text-xs">Groups</span>
         </button>
       </div>

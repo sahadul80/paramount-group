@@ -1,46 +1,52 @@
-// components/user/UserDashboard.tsx
-"use client"
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Tabs } from './ui/tabs';
-import { User, Message, Group } from '@/types/users';
-import DesktopTabs from './user/DesktopTabs';
-import MobileBottomNav from './user/MobileBottomNav';
-import TabContent from './user/TabContent';
-import { toast } from 'sonner';
-import { AnimatePresence, motion } from 'framer-motion';
+"use client";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import { User, Message, Group } from "@/types/users";
+import MobileBottomNav from "./user/MobileBottomNav";
+import TabContent from "./user/TabContent";
+import { toast } from "sonner";
+import { AnimatePresence, motion } from "framer-motion";
+import { 
+  FiUser, 
+  FiUsers, 
+  FiInbox, 
+  FiFolder,
+  FiMenu 
+} from "react-icons/fi";
 
-export type TabValue = 'profile' | 'users' | 'inbox' | 'groups';
+export type TabValue = "profile" | "users" | "inbox" | "groups";
+type EventType = "user" | "message" | "group" | "initial" | "heartbeat";
 
-type EventType = 'user' | 'message' | 'group' | 'initial' | 'heartbeat';
 interface SSEEvent {
   type: EventType;
   data: any;
 }
 
 export default function UserDashboard() {
-  const [activeTab, setActiveTab] = useState<TabValue>('profile');
+  const [activeTab, setActiveTab] = useState<TabValue>("profile");
   const [isMobile, setIsMobile] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+
   const [tabData, setTabData] = useState({
     profile: { loaded: true, loading: false },
     users: { loaded: false, loading: false },
     inbox: { loaded: false, loading: false },
-    groups: { loaded: false, loading: false }
+    groups: { loaded: false, loading: false },
   });
+
   const [retryCount, setRetryCount] = useState(0);
   const [tabLoadingProgress, setTabLoadingProgress] = useState(0);
-  
-  // Use refs to store the latest state and handlers
+
+  // Refs to keep state fresh inside callbacks
   const usersRef = useRef(users);
   const messagesRef = useRef(messages);
   const groupsRef = useRef(groups);
   const activeTabRef = useRef(activeTab);
   const currentUserRef = useRef(currentUser);
 
-  // Update refs when state changes
   useEffect(() => {
     usersRef.current = users;
     messagesRef.current = messages;
@@ -49,118 +55,106 @@ export default function UserDashboard() {
     currentUserRef.current = currentUser;
   }, [users, messages, groups, activeTab, currentUser]);
 
-  // SSE connection
+  /** ----------------------------- SSE HANDLER ----------------------------- **/
   useEffect(() => {
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout;
 
     const connect = () => {
-      eventSource = new EventSource('/api/user/stream');
+      eventSource = new EventSource("/api/user/stream");
+
+      eventSource.onopen = () => {
+        console.log("SSE connection established");
+        setRetryCount(0);
+      };
 
       eventSource.onmessage = (event) => {
         try {
-          const parsedData: SSEEvent = JSON.parse(event.data);
-          
-          switch (parsedData.type) {
-            case 'user':
-              handleUserEvent(parsedData.data);
+          const parsed: SSEEvent = JSON.parse(event.data);
+          switch (parsed.type) {
+            case "user":
+              handleUserEvent(parsed.data);
               break;
-            case 'message':
-              handleMessageEvent(parsedData.data);
+            case "message":
+              handleMessageEvent(parsed.data);
               break;
-            case 'group':
-              handleGroupEvent(parsedData.data);
+            case "group":
+              handleGroupEvent(parsed.data);
               break;
-            case 'initial':
-              handleInitialData(parsedData.data);
+            case "initial":
+              handleInitialData(parsed.data);
               break;
-            case 'heartbeat':
-              // Just keep the connection alive, no action needed
-              break;
-            default:
-              console.warn('Unknown SSE event type:', parsedData.type);
           }
-        } catch (error) {
-          console.error('Error parsing SSE data:', error);
+        } catch (err) {
+          console.error("SSE parse error:", err);
         }
       };
 
-      eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error);
-        
-        // Close the current connection
-        if (eventSource) {
-          eventSource.close();
-          eventSource = null;
-        }
-        
-        // Try to reconnect with exponential backoff
-        const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-        setRetryCount(prev => prev + 1);
-        
-        reconnectTimeout = setTimeout(() => {
-          connect();
-        }, delay);
-        
-        toast.error("Connection Error! Real-time updates disconnected. Trying to reconnect...");
-      };
+      eventSource.onerror = () => {
+        console.error("SSE error, reconnecting...");
+        eventSource?.close();
+        eventSource = null;
 
-      eventSource.onopen = () => {
-        console.log('SSE connection established');
-        setRetryCount(0); // Reset retry count on successful connection
+        const delay = Math.min(1000 * 2 ** retryCount, 30000);
+        setRetryCount((prev) => prev + 1);
+
+        reconnectTimeout = setTimeout(connect, delay);
+        toast.error("Connection lost! Reconnecting...");
       };
     };
 
     connect();
-
     return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
+      eventSource?.close();
       clearTimeout(reconnectTimeout);
     };
   }, [retryCount]);
 
-  // Event handlers that use refs to access latest state
+  /** ----------------------------- EVENT HANDLERS ----------------------------- **/
   const handleUserEvent = useCallback((data: any) => {
-    if (data.action === 'created' || data.action === 'updated') {
-      setUsers(prev => {
-        const existing = prev.find(u => u.username === data.user.username);
-        if (existing) {
-          return prev.map(u => u.username === data.user.username ? data.user : u);
-        }
-        return [...prev, data.user];
-      });
-      
-      // Update current user if the updated user is the current user
-      if (currentUserRef.current && data.user.username === currentUserRef.current.username) {
+    if (["created", "updated"].includes(data.action)) {
+      setUsers((prev) =>
+        prev.some((u) => u.username === data.user.username)
+          ? prev.map((u) =>
+              u.username === data.user.username ? data.user : u
+            )
+          : [...prev, data.user]
+      );
+      if (
+        currentUserRef.current &&
+        data.user.username === currentUserRef.current.username
+      ) {
         setCurrentUser(data.user);
       }
-    } else if (data.action === 'deleted') {
-      setUsers(prev => prev.filter(u => u.username !== data.username));
+    } else if (data.action === "deleted") {
+      setUsers((prev) => prev.filter((u) => u.username !== data.username));
     }
   }, []);
 
   const handleMessageEvent = useCallback((data: any) => {
-    if (data.action === 'created') {
-      setMessages(prev => [data.message, ...prev]);
-      if (activeTabRef.current !== 'inbox') {
+    if (data.action === "created") {
+      setMessages((prev) => [data.message, ...prev]);
+      if (activeTabRef.current !== "inbox") {
         toast.message(`New Message From: ${data.message.from}`);
       }
-    } else if (data.action === 'updated') {
-      setMessages(prev => prev.map(m => m.id === data.message.id ? data.message : m));
-    } else if (data.action === 'deleted') {
-      setMessages(prev => prev.filter(m => m.id !== data.messageId));
+    } else if (data.action === "updated") {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === data.message.id ? data.message : m))
+      );
+    } else if (data.action === "deleted") {
+      setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
     }
   }, []);
 
   const handleGroupEvent = useCallback((data: any) => {
-    if (data.action === 'created') {
-      setGroups(prev => [...prev, data.group]);
-    } else if (data.action === 'updated') {
-      setGroups(prev => prev.map(g => g.id === data.group.id ? data.group : g));
-    } else if (data.action === 'deleted') {
-      setGroups(prev => prev.filter(g => g.id !== data.groupId));
+    if (data.action === "created") {
+      setGroups((prev) => [...prev, data.group]);
+    } else if (data.action === "updated") {
+      setGroups((prev) =>
+        prev.map((g) => (g.id === data.group.id ? data.group : g))
+      );
+    } else if (data.action === "deleted") {
+      setGroups((prev) => prev.filter((g) => g.id !== data.groupId));
     }
   }, []);
 
@@ -170,372 +164,323 @@ export default function UserDashboard() {
     if (data.groups) setGroups(data.groups);
   }, []);
 
-  // Check if mobile on mount and resize
+  /** ----------------------------- RESPONSIVENESS ----------------------------- **/
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Fetch current user
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const username = localStorage.getItem("user");
-        if (!username) throw new Error('No user found in local storage');
-        const response = await fetch('/api/user/get', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username })
-        });
-        if (!response.ok) throw new Error('Failed to fetch current user');
-        const userData = await response.json();
-        setCurrentUser(userData);
-      } catch (error) {
-        console.error('Error fetching current user:', error);
-        toast.error("Failed to load user data");
-      }
-    };
-    fetchCurrentUser();
-  }, []);
-
-  // Tab loading progress animation
-  useEffect(() => {
-    let progressInterval: NodeJS.Timeout;
-    
-    if (Object.values(tabData).some(tab => tab.loading)) {
-      // Start progress animation when any tab is loading
-      progressInterval = setInterval(() => {
-        setTabLoadingProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(progressInterval);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 100);
-    } else {
-      // Reset progress when loading is complete
-      setTabLoadingProgress(0);
-    }
-    
-    return () => {
-      if (progressInterval) clearInterval(progressInterval);
-    };
-  }, [tabData]);
-
-  // Refresh data when tab changes
-  useEffect(() => {
-    const refreshTabData = async () => {
-      setTabData(prev => ({ ...prev, [activeTab]: { ...prev[activeTab], loading: true } }));
-      
-      try {
-        switch (activeTab) {
-          case 'users':
-            await fetchUsers();
-            break;
-          case 'inbox':
-            await fetchMessages();
-            break;
-          case 'groups':
-            await fetchGroups();
-            break;
-          case 'profile':
-            // For profile tab, refresh the current user data
-            await fetchCurrentUser();
-            break;
-        }
-        setTabData(prev => ({ ...prev, [activeTab]: { loaded: true, loading: false } }));
-      } catch (error) {
-        setTabData(prev => ({ ...prev, [activeTab]: { ...prev[activeTab], loading: false } }));
-      }
-    };
-    
-    refreshTabData();
-  }, [activeTab]);
-
-  // Fetch current user function
-  const fetchCurrentUser = async () => {
+  /** ----------------------------- FETCH HELPERS ----------------------------- **/
+  const fetchCurrentUser = useCallback(async () => {
     try {
       const username = localStorage.getItem("user");
-      if (!username) throw new Error('No user found in local storage');
-      const response = await fetch('/api/user/get', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
+      if (!username) throw new Error("No user in local storage");
+
+      const res = await fetch("/api/user/get", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
       });
-      if (!response.ok) throw new Error('Failed to fetch current user');
-      const userData = await response.json();
-      setCurrentUser(userData);
-    } catch (error) {
-      console.error('Error fetching current user:', error);
+      if (!res.ok) throw new Error("Failed to fetch current user");
+
+      const data = await res.json();
+      setCurrentUser(data);
+    } catch (err) {
+      console.error("Fetch current user error:", err);
       toast.error("Failed to load user data");
     }
-  };
+  }, []);
 
-  // Fetch all users
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch('/api/user/all');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-      
-      const usersData = await response.json();
-      setUsers(usersData);
-    } catch (error) {
-      console.error('Error fetching users:', error);
+      const res = await fetch("/api/user/all");
+      if (!res.ok) throw new Error("Failed to fetch users");
+      setUsers(await res.json());
+    } catch (err) {
+      console.error("Fetch users error:", err);
       toast.error("Failed to load users");
     }
-  };
+  }, []);
 
-  // Fetch messages
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
-      const response = await fetch('/api/user/messages');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch messages');
-      }
-      
-      const messagesData = await response.json();
-      setMessages(messagesData);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
+      const res = await fetch("/api/user/messages");
+      if (!res.ok) throw new Error("Failed to fetch messages");
+      setMessages(await res.json());
+    } catch (err) {
+      console.error("Fetch messages error:", err);
       toast.error("Failed to load messages");
     }
-  };
+  }, []);
 
-  // Fetch groups
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     try {
-      const response = await fetch('/api/user/groups');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch groups');
-      }
-      
-      const groupsData = await response.json();
-      setGroups(groupsData);
-    } catch (error) {
-      console.error('Error fetching groups:', error);
+      const res = await fetch("/api/user/groups");
+      if (!res.ok) throw new Error("Failed to fetch groups");
+      setGroups(await res.json());
+    } catch (err) {
+      console.error("Fetch groups error:", err);
       toast.error("Failed to load groups");
     }
-  };
+  }, []);
 
-  // Approve user function
+  /** ----------------------------- TAB REFRESH ----------------------------- **/
+  useEffect(() => {
+    const refresh = async () => {
+      setTabData((prev) => ({
+        ...prev,
+        [activeTab]: { ...prev[activeTab], loading: true },
+      }));
+
+      try {
+        if (activeTab === "users") await fetchUsers();
+        else if (activeTab === "inbox") await fetchMessages();
+        else if (activeTab === "groups") await fetchGroups();
+        else if (activeTab === "profile") await fetchCurrentUser();
+
+        setTabData((prev) => ({
+          ...prev,
+          [activeTab]: { loaded: true, loading: false },
+        }));
+      } catch {
+        setTabData((prev) => ({
+          ...prev,
+          [activeTab]: { ...prev[activeTab], loading: false },
+        }));
+      }
+    };
+    refresh();
+  }, [activeTab, fetchUsers, fetchMessages, fetchGroups, fetchCurrentUser]);
+
+  /** ----------------------------- PROGRESS BAR ----------------------------- **/
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (Object.values(tabData).some((t) => t.loading)) {
+      interval = setInterval(
+        () =>
+          setTabLoadingProgress((prev) =>
+            prev >= 100 ? 100 : prev + 10
+          ),
+        100
+      );
+    } else {
+      setTabLoadingProgress(0);
+    }
+    return () => clearInterval(interval);
+  }, [tabData]);
+
+  /** ----------------------------- OTHER ACTIONS ----------------------------- **/
   const approveUser = async (username: string) => {
     try {
-      const response = await fetch('/api/user/update-status', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          username, 
-          status: 2 // Set to active
-        })
+      const res = await fetch("/api/user/update-status", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, status: 2 }),
       });
+      if (!res.ok) throw new Error("Approval failed");
 
-      if (!response.ok) {
-        throw new Error('Failed to approve user');
-      }
-
-      // Update local state
-      setUsers(users.map(user => 
-        user.username === username ? { ...user, status: 2 } : user
-      ));
-      
-      toast.success("User has been activated successfully!");
-    } catch (error) {
-      console.error('Error approving user:', error);
-      toast.error("Approval Failed! Please try again later");
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.username === username ? { ...u, status: 2 } : u
+        )
+      );
+      toast.success("User activated successfully!");
+    } catch {
+      toast.error("Approval failed, try again later");
     }
   };
 
-  // Update user
-  const updateUser = async (username: string, updateData: Partial<User>): Promise<User[]> => {
+  const updateUser = async (
+    username: string,
+    updateData: Partial<User>
+  ): Promise<User[]> => {
     try {
-      if (!username) {
-        throw new Error("Username is required for update");
-      }
-      
-      const response = await fetch('/api/user/update', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          username,
-          ...updateData
-        })
+      if (!username) throw new Error("Username is required");
+      const res = await fetch("/api/user/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, ...updateData }),
       });
-  
-      if (!response.ok) {
-        throw new Error('Failed to update user');
-      }
+      if (!res.ok) throw new Error("Update failed");
 
-      // Fetch updated users list
       await fetchUsers();
-      
-      toast.success("User information has been updated");
-
+      toast.success("User updated successfully!");
       return users;
-    } catch (error) {
-      console.error('Error updating user:', error);
+    } catch (err) {
       toast.error("Error updating user!");
-      throw error;
+      throw err;
     }
   };
 
-  // Update user profile
   const handleProfileUpdate = async (updatedUser: User) => {
     try {
-      // Ensure username exists
-      if (!updatedUser.username) {
-        throw new Error("User does not have a username");
-      }
-      
-      const updatedUsers = await updateUser(updatedUser.username, updatedUser);
-      
-      // Find the updated user in the returned array
-      const latestUser = updatedUsers.find(u => u.username === updatedUser.username);
-      
-      if (latestUser) {
-        setCurrentUser(latestUser);
-      }
-
+      if (!updatedUser.username) throw new Error("Invalid user");
+      const updated = await updateUser(
+        updatedUser.username,
+        updatedUser
+      );
+      const latest = updated.find(
+        (u) => u.username === updatedUser.username
+      );
+      if (latest) setCurrentUser(latest);
       return true;
-    } catch (error) {
-      console.error("Update failed:", error);
-      toast.error("Update Failed! Could not update profile");
+    } catch {
+      toast.error("Profile update failed");
       return false;
     }
-  };  
-
-  // Handle user deletion
-  const handleUserDeleted = (username: string) => {
-    setUsers(prevUsers => prevUsers.filter(user => user.username !== username));
-    toast(`User ${username} has been removed`);
   };
 
-  // Send message function
-  const sendMessage = async (toUsername: string, content: string) => {
+  const handleUserDeleted = (username: string) => {
+    setUsers((prev) => prev.filter((u) => u.username !== username));
+    toast(`User ${username} removed`);
+  };
+
+  const sendMessage = async (to: string, content: string) => {
     try {
-      const response = await fetch('/api/user/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          to: toUsername,
-          content
-        })
+      const res = await fetch("/api/user/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to, content }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
-
-      const newMessage = await response.json();
-      setMessages(prev => [newMessage, ...prev]);
-      
-      toast.success("Message sent successfully!");
-    } catch (error) {
-      console.error('Error sending message:', error);
+      if (!res.ok) throw new Error("Send failed");
+      const newMsg = await res.json();
+      setMessages((prev) => [newMsg, ...prev]);
+      toast.success("Message sent!");
+    } catch {
       toast.error("Failed to send message");
     }
   };
 
-  // Mobile bottom navigation unread badge count
-  const unreadMessages = messages.filter(msg => !msg.read);
+  /** ----------------------------- UNREAD + LOADING ----------------------------- **/
+  const unreadMessages = messages.filter((m) => !m.read);
+  const isTabLoading = Object.values(tabData).some((t) => t.loading);
 
-  // Check if any tab is currently loading
-  const isTabLoading = Object.values(tabData).some(tab => tab.loading);
-
-  // Loading state for initial user
+  /** ----------------------------- RENDER ----------------------------- **/
   if (!currentUser) {
     return (
-      <div className="container mx-auto px-4 py-6 flex justify-center items-center h-screen">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-        </div>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, scaleX: 0 }}
+        animate={{ opacity: 1, scaleX: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed top-0 left-0 w-full h-1 bg-secondary/30 z-50 origin-left backdrop-blur-sm"
+      >
+        <motion.div
+          className="h-full bg-primary"
+          initial={{ width: "0%" }}
+          animate={{ width: `${100}%` }}
+          transition={{ duration: 0.15, ease: "linear" }}
+        />
+      </motion.div>
     );
   }
 
   return (
-    <div className="p-1">
+    <div className="flex flex-col max-h-screen overflow-hidden bg-background">
+      <AnimatePresence>
+        {isTabLoading && (
+          <motion.div
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed top-0 left-0 w-full h-1 bg-secondary/30 z-50 origin-left backdrop-blur-sm"
+          >
+            <motion.div
+              className="h-full bg-primary"
+              initial={{ width: "0%" }}
+              animate={{ width: `${tabLoadingProgress}%` }}
+              transition={{ duration: 0.15, ease: "linear" }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Tabs
         value={activeTab}
-        onValueChange={(value: string) => setActiveTab(value as TabValue)}
-        className="space-y-2 relative"
+        onValueChange={(val) => setActiveTab(val as TabValue)}
+        className="flex flex-col max-h-[90vh]"
       >
-        {/* Make DesktopTabs sticky */}
-        <div className="sticky top-20 z-10 bg-transparent pt-2 pb-2">
-          <DesktopTabs
+        {/* Desktop Tabs Header - Fixed at the top with backdrop blur */}
+        <div className="sticky top-0 z-30 hidden md:block">
+          <TabsList className="grid w-full grid-cols-4 bg-transparent p-2 gap-1 text-text">
+            <TabsTrigger 
+              value="profile" 
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200"
+            >
+              <FiUser className="w-4 h-4" />
+              <span>Profile</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="users" 
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200"
+            >
+              <FiUsers className="w-4 h-4" />
+              <span>Users</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="inbox" 
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200"
+            >
+              <div className="relative">
+                <FiInbox className="w-4 h-4" />
+                {unreadMessages.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadMessages.length}
+                  </span>
+                )}
+              </div>
+              <span>Inbox</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="groups" 
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200"
+            >
+              <FiFolder className="w-4 h-4" />
+              <span>Groups</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-hidden p-2 mt-2">
+          <motion.div 
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="bg-card rounded-xl shadow-lg h-full flex flex-col overflow-hidden border border-border"
+          >
+            <div className="flex-1 overflow-auto">
+              <TabContent
+                activeTab={activeTab}
+                tabData={tabData}
+                users={users}
+                messages={messages}
+                groups={groups}
+                currentUser={currentUser}
+                onApproveUser={approveUser}
+                onUpdateUser={updateUser}
+                onUserDeleted={handleUserDeleted}
+                setMessages={setMessages}
+                setGroups={setGroups}
+                setCurrentUser={setCurrentUser}
+                handleProfileUpdate={handleProfileUpdate}
+              />
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Mobile Bottom Navigation with backdrop blur */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/80 backdrop-blur-md border-t border-border">
+          <MobileBottomNav
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             unreadCount={unreadMessages.length}
           />
         </div>
-
-        <AnimatePresence>
-          {isTabLoading && (
-            <motion.div
-              initial={{ opacity: 0, scaleX: 0 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed top-0 left-0 w-full h-1 bg-gray-200 z-50 origin-left"
-            >
-              <motion.div
-                className="h-full bg-primary"
-                initial={{ width: "0%" }}
-                animate={{ width: `${tabLoadingProgress}%` }}
-                transition={{ duration: 0.15, ease: "linear" }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Always render content, but show overlay when loading */}
-        <div className="relative">
-          <TabContent
-            key={activeTab}
-            activeTab={activeTab}
-            tabData={tabData}
-            users={users}
-            messages={messages}
-            groups={groups}
-            currentUser={currentUser}
-            onApproveUser={approveUser}
-            onUpdateUser={updateUser}
-            onUserDeleted={handleUserDeleted}
-            setMessages={setMessages}
-            setGroups={setGroups}
-            setCurrentUser={setCurrentUser}
-            handleProfileUpdate={handleProfileUpdate}
-          />
-
-          {tabData[activeTab].loading && (
-            <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/60 dark:bg-black/50 backdrop-blur-sm">
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 animate-spin border-4 border-t-transparent rounded-full"></div>
-              </div>
-            </div>
-          )}
-        </div>
       </Tabs>
-
-      {/* Mobile Bottom Navigation */}
-      <MobileBottomNav 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        unreadCount={unreadMessages.length} 
-      />
     </div>
   );
 }

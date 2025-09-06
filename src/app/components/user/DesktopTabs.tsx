@@ -17,7 +17,7 @@ const DesktopTabs: React.FC<DesktopTabsProps> = ({
   unreadCount
 }) => {
   return (
-    <TabsList className="hidden md:flex w-full gap-1 rounded-xl p-1">
+    <TabsList className="hidden md:flex w-full gap-1 rounded-xl">
       <TabsTrigger 
         value="profile" 
         className="flex-1 flex items-center justify-center py-3 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"

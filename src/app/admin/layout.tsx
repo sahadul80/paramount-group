@@ -24,13 +24,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <Toaster />
       
       {/* Sticky top bar */}
-      <header className="sticky top-0 z-50 flex items-center justify-between px-2 py-1 bg-background shadow-sm">
+      <header className="sticky top-0 z-50 flex items-center justify-between bg-background shadow-sm">
         <UserTopBar />
         <LogOutButton username={username} />
       </header>
 
       {/* Main content */}
-      <main className="flex-1 w-auto p-4 rounded-lg shadow-sm bg-muted/20">
+      <main className="flex-1 w-auto p-2 md:p-4 lg:p-4 rounded-lg shadow-sm">
         {children}
       </main>
     </div>

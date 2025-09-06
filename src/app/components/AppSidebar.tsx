@@ -12,7 +12,7 @@ import {
   FiHome,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSidebar } from "./ui/sidebar"; // ✅ use context
+import { useSidebar } from "./ui/sidebar";
 
 const menuItems = [
   { title: "Dashboard", url: "/erp", icon: FiArchive },

@@ -1,4 +1,3 @@
-'use client'
 import { motion } from "framer-motion";
 import { useState, useEffect } from 'react';
 import { FiMenu } from "react-icons/fi";
@@ -6,25 +5,24 @@ import { AppSidebar } from "../AppSidebar";
 import { Sidebar, SidebarMobileToggle, SidebarProvider } from "../ui/sidebar";
 
 export default function UserTopBar() {
-  const [user, setUser] = useState<string | null>(null); // Initialize state
+  const [user, setUser] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   useEffect(() => {
-    // This effect runs only on the client side
     setUser(localStorage.getItem('user'));
     setRole(localStorage.getItem('role'));
   }, []);
 
   return (
     <div className="sticky top-0 z-10 bg-secondary/20 backdrop-blur-lg py-2 md:py-3 sm:px-10 flex justify-between items-center gap-4">
-      <div className="md:hidden bg-secondary rounded-md">
-        <Sidebar>
-          <SidebarProvider>
+      <div className="md:hidden bg-secondary rounded-md max-h-10">
+        <SidebarProvider>
+          <Sidebar>
             <AppSidebar />
-          </SidebarProvider>
-        </Sidebar>
-        <SidebarMobileToggle className="md:hidden">
-          <FiMenu className="w-6 h-6" />
-        </SidebarMobileToggle>
+          </Sidebar>
+          <SidebarMobileToggle className="md:hidden">
+            <FiMenu />
+          </SidebarMobileToggle>
+        </SidebarProvider>
       </div>
       <motion.h2 
           initial={{ opacity: 0, y: -10 }}

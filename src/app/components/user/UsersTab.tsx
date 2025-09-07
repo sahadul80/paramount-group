@@ -276,10 +276,10 @@ const UsersTab: React.FC<UsersTabProps> = ({
             onValueChange={(v) => setActiveMainTab(v as StatusTabValue)}
             className="border border-border rounded-lg"
           >
-            <TabsList className="flex bg-muted rounded-lg text-text">
+            <TabsList className="flex rounded-lg text-text">
               <TabsTrigger
                 value="all"
-                className="flex-1 flex justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="flex-1 flex justify-center data-[state=active]:bg-black/25 data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
               >
                 <FiUsers className="mr-1 h-4 w-4" /> All
                 <span className="text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
@@ -289,7 +289,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
 
               <TabsTrigger
                 value="pending"
-                className="flex-1 flex justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="flex-1 flex justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
               >
                 <FiClock className="mr-1 h-4 w-4" /> Pending
                 <span className="text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">
@@ -299,7 +299,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
 
               <TabsTrigger
                 value="active"
-                className="flex-1 flex justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="flex-1 flex justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
               >
                 <FiActivity className="mr-1 h-4 w-4" /> Active
                 <span className="text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
@@ -321,7 +321,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
             <TabsList className="flex justify-between bg-muted rounded-lg text-text">
               <TabsTrigger
                 value="online"
-                className="flex-1 flex items-center justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
               >
                 <FiWifi className="mr-1 h-4 w-4" /> Online
                 <span className="ml-1 text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
@@ -331,7 +331,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
 
               <TabsTrigger
                 value="offline"
-                className="flex-1 flex items-center justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
               >
                 <FiWifiOff className="mr-1 h-4 w-4" /> Offline
                 <span className="ml-1 text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
@@ -341,7 +341,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
 
               <TabsTrigger
                 value="away"
-                className="flex-1 flex items-center justify-center data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
               >
                 <FiCoffee className="mr-1 h-4 w-4" /> Away
                 <span className="ml-1 text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">

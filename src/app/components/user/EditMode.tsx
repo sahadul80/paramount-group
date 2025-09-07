@@ -48,7 +48,6 @@ const EditMode: React.FC<EditModeProps> = ({
   BANGLADESH_CODE
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeInfoTab, setActiveInfoTab] = React.useState('personal');
 
   return (
     <motion.form

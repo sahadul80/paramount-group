@@ -471,16 +471,15 @@ export default function UserDashboard() {
             </div>
           </motion.div>
         </div>
-
-        {/* Mobile Bottom Navigation with backdrop blur */}
-        <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/80 backdrop-blur-md border-t border-border">
-          <MobileBottomNav
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            unreadCount={unreadMessages.length}
-          />
-        </div>
       </Tabs>
+      {/* Mobile Bottom Navigation with backdrop blur */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
+        <MobileBottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          unreadCount={unreadMessages.length}
+        />
+      </div>
     </div>
   );
 }

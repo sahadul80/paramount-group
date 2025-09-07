@@ -313,7 +313,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               <Button 
                 variant="secondary"
                 onClick={handleEditClick}
-                className="bg-white/20 hover:bg-white/30 text-text border border-border"
+                className="bg-secondary hover:curser-pointer font-bold text-text border border-border"
               >
                 <FiEdit/><span>Edit</span>
               </Button>
@@ -379,17 +379,17 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
 
         {/* Fixed buttons for mobile edit mode */}
         {editMode && (
-          <CardFooter className="sticky border border-none bottom-0 bg-background border-t p-4">
+          <CardFooter className='-mt-6'>
             <div className="flex gap-2 w-full">
               <Button 
                 type="submit"
                 form="profile-form"
-                className="flex-1"
+                className="flex-1 bg-secondary text-text"
                 disabled={isUploading}
               >
                 {isUploading ? (
                   <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4"></div>
                     Saving...
                   </div>
                 ) : (

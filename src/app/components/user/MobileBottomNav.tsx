@@ -15,12 +15,12 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   unreadCount
 }) => {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background z-40 shadow-lg">
-      <div className="grid grid-cols-4">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-secondary z-40 shadow-2xl">
+      <div className="grid grid-cols-4 text-text font-bold">
         <button 
-          className={`flex flex-col items-center justify-center p-3 rounded-xl ${
+          className={`flex flex-col items-center justify-center p-3 ${
             activeTab === 'profile' 
-              ? 'bg-secondary' 
+              ? 'bg-white/30 backdrop-blur-2xl' 
               : ''
           }`}
           onClick={() => setActiveTab('profile')}
@@ -29,9 +29,9 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span className="text-xs">Profile</span>
         </button>
         <button 
-          className={`flex flex-col items-center justify-center p-3 rounded-xl ${
+          className={`flex flex-col items-center justify-center p-3 ${
             activeTab === 'users' 
-              ? 'bg-secondary' 
+              ? 'bg-white/30 backdrop-blur-2xl' 
               : ''
           }`}
           onClick={() => setActiveTab('users')}
@@ -40,9 +40,9 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span className="text-xs">Users</span>
         </button>
         <button 
-          className={`flex flex-col items-center justify-center p-3 rounded-xl relative ${
+          className={`flex flex-col items-center justify-center p-3 ${
             activeTab === 'inbox' 
-              ? 'bg-secondary' 
+              ? 'bg-white/30 backdrop-blur-2xl' 
               : ''
           }`}
           onClick={() => setActiveTab('inbox')}
@@ -56,9 +56,9 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           )}
         </button>
         <button 
-          className={`flex flex-col items-center justify-center p-3 rounded-xl ${
+          className={`flex flex-col items-center justify-center p-3 ${
             activeTab === 'groups' 
-              ? 'bg-secondary' 
+              ? 'bg-white/30 backdrop-blur-2xl' 
               : ''
           }`}
           onClick={() => setActiveTab('groups')}

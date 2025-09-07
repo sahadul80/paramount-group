@@ -44,7 +44,7 @@ export function ERPLayout({ children }: ERPLayoutProps) {
     </div>
     <div className="md:hidden flex min-h-screen">
       <SidebarProvider className="flex flex-col flex-1 transition-all duration-200">
-        <div className="sticky top-0 z-20 flex items-center justify-start px-2 bg-background shadow-sm gap-4">
+        <div className="sticky top-0 z-20 flex items-center justify-between p-2 bg-background shadow-sm gap-4">
           <AppSidebar />
           <UserTopBar />
           <LogOutButton username={username} />

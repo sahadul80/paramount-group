@@ -142,14 +142,14 @@ const ViewMode: React.FC<ViewModeProps> = ({
       {/* Info Tabs for Mobile */}
       <div className="md:hidden">
         <Tabs value={activeInfoTab} onValueChange={setActiveInfoTab}>
-          <TabsList className="grid grid-cols-4 w-full border border-border rounded-lg text-text">
+          <TabsList className="grid grid-cols-4 w-full border border-border rounded-lg text-text text-xs">
             <TabsTrigger value="personal">Personal</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
             <TabsTrigger value="employment">Employment</TabsTrigger>
             <TabsTrigger value="account">Account</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="personal" className="mt-2">
+          <TabsContent value="personal" className="mt-1">
             <InfoSection 
               title="Personal Information"
               icon={<FiUser />}

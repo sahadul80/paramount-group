@@ -57,7 +57,7 @@ export function AppSidebar() {
           className="flex z-50 bg-secondary md:hidden"
           onClick={handleToggleSidebar}
         >
-          {openMobile ? <FiX className="h-6 w-6 bg-background" /> : <FiMenu className="h-6 w-6" />}
+          {openMobile ? <FiX/> : <FiMenu/>}
         </Button>
       )}
 
@@ -76,7 +76,7 @@ export function AppSidebar() {
           onClick={toggleSidebar}
         >
           <div className="flex justify-start items-center gap-2">
-            <FiHome className="h-10 w-10 text-primary flex-shrink-0" />
+            <FiHome className="h-8 w-8 text-primary flex-shrink-0" />
             <AnimatePresence mode="wait">
               {!isCollapsed && (
                 <motion.div
@@ -152,7 +152,7 @@ export function AppSidebar() {
               animate={{ x: 0 }}
               exit={{ x: -300 }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed inset-y-0 left-0 z-40 w-64 bg-black/20 backdrop-blur-lg overflow-y-auto md:hidden"
+              className="fixed inset-y-0 left-0 z-40 w-64 bg-background overflow-y-auto md:hidden"
             >
               {/* Header with toggle button */}
               <div
@@ -176,7 +176,7 @@ export function AppSidebar() {
                     <li key={item.title} data-sidebar-item>
                       <Link
                         href={item.url}
-                        className={`flex items-center w-full px-3 py-3 rounded-md transition-all duration-200 ${
+                        className={`flex items-center w-full p-2 mt-2 rounded-md transition-all duration-200 ${
                           pathname === item.url
                             ? "border-l-4 border-primary bg-black/20 dark:bg-white/20"
                             : "text-sidebar-foreground hover:bg-black/10 dark:hover:bg-white/10"

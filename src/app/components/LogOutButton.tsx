@@ -40,7 +40,7 @@ export function LogOutButton({ username }: LogoutButtonProps) {
     <>
       {/* Floating Logout Button */}
       <motion.div
-        className="fixed top-0 md:top-2 right-2 z-10"
+        className="flex"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -48,10 +48,10 @@ export function LogOutButton({ username }: LogoutButtonProps) {
           variant="destructive"
           size="icon"
           onClick={() => setShowConfirmation(true)}
-          className="shadow-lg rounded-lg w-auto px-2"
+          className="shadow-lg rounded-lg w-auto px-3"
           aria-label="Logout"
         >
-          <LogOut className="h-6 w-6" /><span className="hidden md:flex">Log Out</span>
+          <LogOut/><span className="hidden md:flex">Log Out</span>
         </Button>
       </motion.div>
 

@@ -22,9 +22,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex max-h-screen">
       <Toaster />
-      <div className="flex flex-col flex-1 transition-all duration-200">
+      <div className="flex flex-col flex-1 transition-all duration-300">
         {/* Sticky Top bar with logout */}
-        <header className="sticky top-0 z-50 flex items-center justify-between px-2 bg-background shadow-sm">
+        <header className="sticky top-0 z-50 flex items-center justify-between p-2 md:p-3 bg-background shadow-sm">
           <UserTopBar />
           <LogOutButton username={username} />
         </header>

@@ -307,15 +307,15 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         <div className="bg-gradient-to-r from-primary to-primary-dark px-4">
           <div className="flex flex-row justify-between items-start sm:items-center gap-4">
             <CardHeader className="p-0">
-              <CardTitle className='text-xl md:text-2xl text-white'>My Profile</CardTitle>
+              <CardTitle className='text-xl md:text-2xl text-text'>My Profile</CardTitle>
             </CardHeader>
             {!editMode ? (
               <Button 
                 variant="secondary"
                 onClick={handleEditClick}
-                className="bg-white/20 hover:bg-white/30 text-white border-0"
+                className="bg-white/20 hover:bg-white/30 text-text border border-border"
               >
-                <FiEdit className="mr-1"/><span>Edit Profile</span>
+                <FiEdit/><span>Edit</span>
               </Button>
             ) : (
               <div className="flex gap-2">
@@ -323,25 +323,25 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                   variant="secondary"
                   form="profile-form"
                   disabled={isUploading}
-                  className="bg-white text-primary hover:bg-white/90"
+                  className="bg-secondary text-text hover:bg-white/50 hover:backdrop-blur-lg"
                 >
                   {isUploading ? (
                     <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                      <div className="animate-spin rounded-full border-b-2 border-primary mr-2"></div>
                       Saving...
                     </div>
                   ) : (
                     <>
-                      <FiSave className="mr-1"/><span>Save Changes</span>
+                      <FiSave/><span>Save Changes</span>
                     </>
                   )}
                 </Button>
                 <Button 
                   variant="ghost" 
                   onClick={handleCancel}
-                  className="text-white hover:bg-white/20"
+                  className="bg-black/10 backdrop-blur-lg text-text hover:shadow-2xl"
                 >
-                  <FiX className="w-5 h-5"/>
+                  <FiX/>
                 </Button>
               </div>
             )}

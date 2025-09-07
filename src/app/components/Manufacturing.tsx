@@ -138,7 +138,7 @@ export default function Manufacturing() {
   );
 
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-6 p-4">
       {/* Header */}
       <div>
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Manufacturing</h2>

@@ -248,10 +248,12 @@ const UsersTab: React.FC<UsersTabProps> = ({
   return (
     <Card className="w-full h-full flex flex-col border-0 bg-card min-h-0">
       <CardContent className="flex-1 p-2 md:p-4 lg:p-4 min-h-0">
+        <div className="sticky top-0 z-10 bg-secondary rounded-lg -mr-2 md:-mr-4 -ml-2 md:-ml-4 -mt-4 md:-mt-6">
+        <div className="p-2">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex flex-col">
-            <CardTitle className="text-xl">User Directory</CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardTitle className="text-lg md:text-xl">User Directory</CardTitle>
+            <CardDescription className="hidden md:flex text-muted-foreground">
               Manage all users in the system
             </CardDescription>
           </div>
@@ -307,7 +309,6 @@ const UsersTab: React.FC<UsersTabProps> = ({
             </TabsList>
           </Tabs>
         </div>
-
         {/* Presence submenu tabs (also inside the same sticky block) */}
         {activeMainTab === "active" && !searchTerm && (
         <div className="mt-1 border border-border rounded-lg">
@@ -351,6 +352,8 @@ const UsersTab: React.FC<UsersTabProps> = ({
           </Tabs>
         </div>
         )}
+        </div>
+        </div>
         {loading ? (
           <motion.div
               initial={{ opacity: 0, scaleX: 0 }}

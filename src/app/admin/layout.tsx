@@ -20,19 +20,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex max-h-screen">
       <Toaster />
-      
-      {/* Sticky top bar */}
-      <header className="sticky top-0 z-50 flex items-center justify-between bg-background shadow-sm">
-        <UserTopBar />
-        <LogOutButton username={username} />
-      </header>
-
-      {/* Main content */}
-      <main className="flex-1 w-auto p-2 md:p-4 lg:p-4 rounded-lg shadow-sm">
-        {children}
-      </main>
+      <div className="flex flex-col flex-1 transition-all duration-200">
+        {/* Sticky Top bar with logout */}
+        <header className="sticky top-0 z-50 flex items-center justify-between px-2 bg-background shadow-sm">
+          <UserTopBar />
+          <LogOutButton username={username} />
+        </header>
+        {/* Main content */}
+        <main className="flex flex-col bg-muted/20 flex-1">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

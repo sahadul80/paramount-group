@@ -399,7 +399,7 @@ export default function UserDashboard() {
       <Tabs
         value={activeTab}
         onValueChange={(val) => setActiveTab(val as TabValue)}
-        className="flex flex-col max-h-[90vh]"
+        className="flex flex-col max-h-[94vh]"
       >
         {/* Desktop Tabs Header - Fixed at the top with backdrop blur */}
         <div className="sticky top-0 z-30 hidden md:block">

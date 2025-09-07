@@ -10,9 +10,12 @@ import {
   FiArchive,
   FiUsers,
   FiHome,
+  FiMenu,
+  FiX,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebar } from "./ui/sidebar";
+import { Button } from "./ui/button";
 
 const menuItems = [
   { title: "Dashboard", url: "/erp", icon: FiArchive },
@@ -25,25 +28,54 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { state, toggleSidebar, isMobile } = useSidebar();
+  const { state, toggleSidebar, isMobile, openMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
+
+  // Toggle sidebar visibility on mobile
+  const handleToggleSidebar = () => {
+    if (isMobile) {
+      setOpenMobile(!openMobile);
+    } else {
+      toggleSidebar();
+    }
+  };
+
+  // Close sidebar when a link is clicked on mobile
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <>
+      {/* Mobile menu button */}
+      {isMobile && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="flex z-50 bg-secondary md:hidden"
+          onClick={handleToggleSidebar}
+        >
+          {openMobile ? <FiX className="h-6 w-6 bg-background" /> : <FiMenu className="h-6 w-6" />}
+        </Button>
+      )}
+
+      {/* Desktop sidebar */}
       <motion.div
         initial={{ width: isCollapsed ? 64 : 256 }}
         animate={{ width: isCollapsed ? 64 : 256 }}
         transition={{ duration: 0.3 }}
         className={`fixed inset-y-0 left-0 z-40 bg-background overflow-hidden ${
           isCollapsed ? "w-16" : "w-64"
-        }`}
+        } hidden md:block`}
       >
         {/* Header with toggle button */}
         <div
           className="p-2 cursor-pointer hover:bg-black/5 transition-colors"
-          onClick={() => toggleSidebar()}
+          onClick={toggleSidebar}
         >
-          <div className="hidden md:flex items-center gap-2">
+          <div className="flex justify-start items-center gap-2">
             <FiHome className="h-10 w-10 text-primary flex-shrink-0" />
             <AnimatePresence mode="wait">
               {!isCollapsed && (
@@ -55,7 +87,7 @@ export function AppSidebar() {
                   className="overflow-hidden"
                 >
                   <h2 className="font-bold text-lg whitespace-nowrap">
-                    Paramount Agro
+                    Paramount
                   </h2>
                   <p className="text-xs text-muted-foreground whitespace-nowrap">
                     Management System
@@ -78,9 +110,7 @@ export function AppSidebar() {
                       ? "border-l-4 border-primary bg-black/20 dark:bg-white/20"
                       : "text-sidebar-foreground hover:bg-black/10 dark:hover:bg-white/10"
                   }`}
-                  onClick={() => {
-                    if (isMobile) toggleSidebar();
-                  }}
+                  onClick={handleLinkClick}
                 >
                   <item.icon className="h-6 w-6 flex-shrink-0" />
                   <AnimatePresence mode="wait">
@@ -103,12 +133,76 @@ export function AppSidebar() {
         </nav>
       </motion.div>
 
-      {/* Main content padding (shifts when collapsed/expanded) */}
+      {/* Mobile sidebar */}
+      <AnimatePresence>
+        {isMobile && openMobile && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex inset-0 z-30 md:hidden"
+              onClick={() => setOpenMobile(false)}
+            />
+            
+            {/* Sidebar content */}
+            <motion.div
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed inset-y-0 left-0 z-40 w-64 bg-black/20 backdrop-blur-lg overflow-y-auto md:hidden"
+            >
+              {/* Header with toggle button */}
+              <div
+                className="px-15 cursor-pointer transition-colors"
+                onClick={() => setOpenMobile(false)}
+              >
+                <div className="overflow-hidden">
+                  <h2 className="font-bold text-lg whitespace-nowrap">
+                    Paramount
+                  </h2>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    Management System
+                  </p>
+                </div>
+              </div>
+
+              {/* Nav links */}
+              <nav>
+                <ul className="space-y-2">
+                  {menuItems.map((item) => (
+                    <li key={item.title} data-sidebar-item>
+                      <Link
+                        href={item.url}
+                        className={`flex items-center w-full px-3 py-3 rounded-md transition-all duration-200 ${
+                          pathname === item.url
+                            ? "border-l-4 border-primary bg-black/20 dark:bg-white/20"
+                            : "text-sidebar-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                        }`}
+                        onClick={handleLinkClick}
+                      >
+                        <item.icon className="h-6 w-6 flex-shrink-0" />
+                        <span className="ml-3 whitespace-nowrap overflow-hidden">
+                          {item.title}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main content padding (shifts when collapsed/expanded) - Desktop only */}
       <motion.div
         initial={{ paddingLeft: isCollapsed ? 64 : 256 }}
         animate={{ paddingLeft: isCollapsed ? 64 : 256 }}
         transition={{ duration: 0.3 }}
-        className="min-h-screen transition-all duration-300"
+        className="min-h-screen transition-all duration-300 hidden md:block"
       />
     </>
   );

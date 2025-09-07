@@ -159,7 +159,6 @@ const ViewMode: React.FC<ViewModeProps> = ({
                 { label: "Date of Birth", value: currentUser.dob || '-' },
                 { label: "Gender", value: currentUser.gender || '-' },
                 { label: "Blood Group", value: currentUser.bloodGroup || '-' },
-                { label: "Nationality", value: currentUser.nationality || '-' },
               ]}
             />
           </TabsContent>
@@ -214,7 +213,6 @@ const ViewMode: React.FC<ViewModeProps> = ({
             { label: "Date of Birth", value: currentUser.dob || '-' },
             { label: "Gender", value: currentUser.gender || '-' },
             { label: "Blood Group", value: currentUser.bloodGroup || '-' },
-            { label: "Nationality", value: currentUser.nationality || '-' },
           ]}
         />
         

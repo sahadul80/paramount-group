@@ -303,7 +303,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         </div>
       )}
 
-      <Card className="w-full overflow-hidden shadow-lg border-0 h-full flex flex-col">
+      <Card className="w-full overflow-hidden shadow-lg border-0 h-full flex flex-col mb-8 md:mb-0">
         <div className="bg-gradient-to-r from-primary to-primary-dark px-4">
           <div className="flex flex-row justify-between items-start sm:items-center gap-4">
             <CardHeader className="p-0">

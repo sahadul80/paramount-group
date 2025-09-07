@@ -40,7 +40,7 @@ export function LogOutButton({ username }: LogoutButtonProps) {
     <>
       {/* Floating Logout Button */}
       <motion.div
-        className="fixed top-2 md:top-4 right-4 z-10"
+        className="fixed top-0 md:top-2 right-2 z-10"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -51,7 +51,7 @@ export function LogOutButton({ username }: LogoutButtonProps) {
           className="shadow-lg rounded-lg w-auto px-2"
           aria-label="Logout"
         >
-          <LogOut className="h-6 w-6" /><span className="hidden md:inline">Log Out</span>
+          <LogOut className="h-6 w-6" /><span className="hidden md:flex">Log Out</span>
         </Button>
       </motion.div>
 

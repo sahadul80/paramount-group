@@ -253,7 +253,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex flex-col">
             <CardTitle className="text-lg md:text-xl">User Directory</CardTitle>
-            <CardDescription className="hidden md:flex text-muted-foreground">
+            <CardDescription className="hidden md:flex text-text">
               Manage all users in the system
             </CardDescription>
           </div>
@@ -369,7 +369,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
               />
             </motion.div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 mb-12 md:mb-0 lg:mb-0">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 mb-12 md:mb-0">
             {currentUsers.length > 0 ? (
               currentUsers.map((user, i) => (
                 <UserCard

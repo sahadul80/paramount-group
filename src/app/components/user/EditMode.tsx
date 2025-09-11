@@ -286,14 +286,14 @@ const EditMode: React.FC<EditModeProps> = ({
                   <div className="pt-4 mt-4 border-t border-border">
                     <Button 
                       variant="destructive" 
-                      className="w-full"
+                      className="w-full text-text hover:shadow-full hover:font-bold"
                       onClick={() => setShowDeleteModal(true)}
                       disabled={isUploading}
                       type="button"
                     >
-                      <FiTrash2 className="mr-2" /> Delete My Account
+                      <FiTrash2 className="mr-1" /> Delete My Account
                     </Button>
-                    <p className="mt-2 text-xs text-destructive text-center">
+                    <p className="mt-2 text-xs text-destructive text-center italic">
                       Warning: This action is irreversible
                     </p>
                   </div>

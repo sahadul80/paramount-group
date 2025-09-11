@@ -57,9 +57,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, onChe
       className="space-y-4"
     >
       {/* Current Day Card */}
-      <Card className="border-border bg-gradient-to-br from-card to-card/80">
+      <Card className="border-border max-w-[94vw]">
         <CardHeader>
-            <div className="flex justify-between gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <div>
                     <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
                         <FiCalendar className="w-5 h-5" />
@@ -71,12 +71,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, onChe
                 </div>
                 <div className="relative">
                     {status === 'not-checked-in' && (
-                        <div className='flex justify-between border border-1 rounded-lg'>
+                        <div className='flex justify-between border border-4 rounded-xl'>
                             <Input 
                                 value={attandanceCode.code} 
                                 onChange={(e) => setAttandanceCode({...attandanceCode, code: e.target.value})} 
                                 placeholder="Enter attandance code"
-                                className='flex w-auto border border-0'
+                                className='flex w-full border border-none '
                             />
                             <Button onClick={onCheckIn} className="flex items-center gap-1">
                                 <FiCheckCircle />
@@ -99,8 +99,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, onChe
             </div>
         </CardHeader>
         
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <CardContent className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
             <div className="text-center p-4 rounded-lg bg-muted">
               <div className="text-sm text-muted-foreground">Check In</div>
               <div className="text-2xl font-bold text-card-foreground">

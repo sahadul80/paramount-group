@@ -692,7 +692,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               <Button
                 onClick={handleCancel}
                 disabled={isUploading}
-                className="w-1/3 bg-foreground border border-border text-text hover:shadow-full hover:bg-gray-200"
+                className="w-1/3 bg-foreground border border-border text-text hover:shadow-full hover:bg-primary"
               >
                 <FiX/>
                 Cancel
@@ -718,7 +718,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               variant="outline" 
               onClick={() => setShowDeleteModal(false)}
               disabled={isDeleting}
-              className="border-border text-foreground hover:bg-accent"
+              className="border-border text-text hover:shadow-full"
             >
               Cancel
             </Button>
@@ -726,11 +726,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               variant="destructive"
               onClick={handleDeleteAccount}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/80"
+              className="bg-destructive text-text hover:shadow-full"
             >
               {isDeleting ? (
                 <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
+                  <div className="animate-spin"><FiLoader/></div>
                   Deleting...
                 </div>
               ) : (

@@ -98,10 +98,10 @@ const ViewMode: React.FC<ViewModeProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
-      className="space-y-2"
+      className="flex flex-col items-center space-y-2 max-w-[92vw]"
     >
       {/* Header Section with Profile and Status */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <div className="rounded-2xl border border-gray-200 shadow-sm p-4 w-full">
         <div className="flex flex-row gap-6">
           {/* Avatar Section */}
           <div className="flex flex-col items-center">
@@ -110,13 +110,13 @@ const ViewMode: React.FC<ViewModeProps> = ({
               whileHover={{ scale: 1.02 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
             >
-              <Avatar className="w-36 h-36 border-4 border-white shadow-lg">
+              <Avatar className="w-24 h-24 sm:w-36 sm:h-36 border-4 border-white shadow-lg">
                 <AvatarImage 
                   src={currentUser.avatar || ''}
                   alt={currentUser.username} 
                   className="object-cover"
                 />
-                <AvatarFallback className="text-xl bg-gradient-to-r from-blue-100 to-purple-100 text-gray-700">
+                <AvatarFallback className="text-xl bg-gradient-to-r from-blue-100 to-purple-100 text-text">
                   {currentUser.firstName?.charAt(0) || currentUser.username.charAt(0)}
                   {currentUser.lastName?.charAt(0)}
                 </AvatarFallback>
@@ -137,10 +137,10 @@ const ViewMode: React.FC<ViewModeProps> = ({
           <div className="flex-1">
             <div className="flex flex-row items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-xl font-bold text-text">
                   {currentUser.firstName} {currentUser.lastName}
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">@{currentUser.username}</p>
+                <p className="text-sm text-text mt-1">@{currentUser.username}</p>
                 
                 <div className="flex flex-wrap gap-2">
                   {currentUser.department && (
@@ -159,7 +159,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
               <Button 
                 variant="outline"
                 onClick={() => editClick()}
-                className="bg-white border-gray-300 text-gray-700 hover:bg-gray-52"
+                className="border-gray-300 text-text hover:bg-secondary"
               >
                 <FiEdit />
                 <span>Edit</span>
@@ -168,22 +168,23 @@ const ViewMode: React.FC<ViewModeProps> = ({
             
             {/* Contact Info */}
             <div className="mt-2 flex flex-col">
-              <a 
-                href={`mailto:${currentUser.email}`} 
-                className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 max-w-50"
-              >
-                <FiMail  />
-                {currentUser.email}
-              </a>
-              {currentUser.phone && (
-                <a
-                  href={`tel:${currentUser.phone}`} 
-                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 max-w-36"
+                <a 
+                    href={`mailto:${currentUser.email}`} 
+                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-1 max-w-[192px] break-all whitespace-normal"
                 >
-                  <FiPhone />
-                  {currentUser.phone}
+                    <FiMail />
+                    {currentUser.email}
                 </a>
-              )}
+                
+                {currentUser.phone && (
+                    <a
+                    href={`tel:${currentUser.phone}`} 
+                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-1 max-w-[192px] break-all whitespace-normal"
+                    >
+                    <FiPhone />
+                    {currentUser.phone}
+                    </a>
+                )}
             </div>
             
             {/* Status Selector */}
@@ -196,7 +197,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
                     size="sm"
                     onClick={() => updateUserStatus(5)}
                     disabled={statusUpdating}
-                    className={`text-xs h-6 w-18 ${currentUser.status === 5 ? "bg-green-600" : "bg-white border-gray-300 hover:bg-green-700"}`}
+                    className={`text-xs h-6 w-18 ${currentUser.status === 5 ? "bg-green-600" : "border-gray-300 hover:bg-green-700"}`}
                     >
                     <FiWifi />
                     Online
@@ -216,7 +217,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
                     size="sm"
                     onClick={() => updateUserStatus(3)}
                     disabled={statusUpdating}
-                    className={`text-xs h-6 w-18 ${currentUser.status === 3 ? "bg-yellow-600" : "bg-white border-gray-300  hover:bg-yellow-700"}`}
+                    className={`text-xs h-6 w-18 ${currentUser.status === 3 ? "bg-yellow-600" : "border-gray-300  hover:bg-yellow-700"}`}
                     >
                     <FiClock />
                     Away
@@ -233,36 +234,36 @@ const ViewMode: React.FC<ViewModeProps> = ({
       </div>
       
       {/* Info Tabs */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-gray-200 shadow-sm overflow-hidden w-full">
         <Tabs value={activeInfoTab} onValueChange={setActiveInfoTab}>
-          <TabsList className="w-full justify-start rounded-none border-b border-gray-200 bg-gray-50 p-0 h-12">
+          <TabsList className="flex justify-between w-full rounded-none border-b border-gray-200 text-text p-0 h-12 ">
             <TabsTrigger 
               value="overview" 
-              className="data-[state=active]:bg-white data-[state=active]:shadow-none rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-blue-600 h-12 px-6 text-sm font-medium"
+              className="flex flex-col rounded-none border-b-6 border-b-transparent data-[state=active]:border-b-blue-600 h-12 text-xs font-xs w-full"
             >
-              <FiUser className="w-4 h-4 mr-2" />
-              Overview
+              <FiUser />
+              <span>Overview</span>
             </TabsTrigger>
             <TabsTrigger 
               value="personal" 
-              className="data-[state=active]:bg-white data-[state=active]:shadow-none rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-blue-600 h-12 px-6 text-sm font-medium"
+              className="flex flex-col rounded-none border-b-6 border-b-transparent data-[state=active]:border-b-blue-600 h-12 text-xs font-xs w-full"
             >
-              <FiUser className="w-4 h-4 mr-2" />
-              Personal
+              <FiUser />
+              <span>Personal</span>
             </TabsTrigger>
             <TabsTrigger 
-              value="work" 
-              className="data-[state=active]:bg-white data-[state=active]:shadow-none rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-blue-600 h-12 px-6 text-sm font-medium"
+              value="work"
+              className="flex flex-col rounded-none border-b-6 border-b-transparent data-[state=active]:border-b-blue-600 h-12 text-xs font-xs w-full"
             >
-              <FiBriefcase className="w-4 h-4 mr-2" />
-              Work
+              <FiBriefcase />
+              <span>Work</span>
             </TabsTrigger>
             <TabsTrigger 
               value="account" 
-              className="data-[state=active]:bg-white data-[state=active]:shadow-none rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-blue-600 h-12 px-6 text-sm font-medium"
+              className="flex flex-col rounded-none border-b-6 border-b-transparent data-[state=active]:border-b-blue-600 h-12 text-xs font-xs w-full"
             >
-              <FiShield className="w-4 h-4 mr-2" />
-              Account
+              <FiShield />
+              <span>Account</span>
             </TabsTrigger>
           </TabsList>
           

@@ -14,7 +14,7 @@ const InfoSection: React.FC<InfoSectionProps> = ({
   fields 
 }) => (
   <motion.div 
-    className="bg-card p-4 rounded-lg border-t border-b"
+    className="bg-card p-4 rounded-lg border-t border-b border-border"
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.3 }}

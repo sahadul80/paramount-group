@@ -98,10 +98,10 @@ const ViewMode: React.FC<ViewModeProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col items-center space-y-2 max-w-[92vw]"
+      className="flex flex-col items-center space-y-2 max-w-[100vw]"
     >
       {/* Header Section with Profile and Status */}
-      <div className="rounded-2xl border border-gray-200 shadow-sm p-4 w-full">
+      <div className="rounded-2xl border border-border shadow-sm p-4 w-full">
         <div className="flex flex-row gap-6">
           {/* Avatar Section */}
           <div className="flex flex-col items-center">
@@ -234,9 +234,9 @@ const ViewMode: React.FC<ViewModeProps> = ({
       </div>
       
       {/* Info Tabs */}
-      <div className="rounded-2xl border border-gray-200 shadow-sm overflow-hidden w-full">
+      <div className="rounded-2xl border border-border shadow-sm overflow-hidden w-full">
         <Tabs value={activeInfoTab} onValueChange={setActiveInfoTab}>
-          <TabsList className="flex justify-between w-full rounded-none border-b border-gray-200 text-text p-0 h-12 ">
+          <TabsList className="flex justify-between w-full rounded-none border-b border-border text-text p-0 h-12 ">
             <TabsTrigger 
               value="overview" 
               className="flex flex-col rounded-none border-b-6 border-b-transparent data-[state=active]:border-b-blue-600 h-12 text-xs font-xs w-full"

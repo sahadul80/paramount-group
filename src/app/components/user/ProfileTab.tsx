@@ -510,18 +510,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
 
   return (
     <>
-      <Card className="w-full overflow-hidden shadow-lg border border-border h-full flex flex-col mb-8 md:mb-0 bg-card">
-        <div className="bg-gradient-to-r from-primary to-primary-dark p-3">
-          <div className="flex flex-row justify-between items-start sm:items-center gap-4">
-            <CardHeader className="p-0">
-              <CardTitle className='text-xl md:text-2xl text-primary'>My Profile</CardTitle>
-            </CardHeader>
-          </div>
-        </div>
-        
+      <Card className="w-full h-full flex flex-col bg-card min-h-0 shadow-lg border border-border">        
         {/* Navigation Tabs */}
+        <div className="sticky top-0 z-10 rounded-lg bg-white/20 backdrop-blur-2xl -mt-2">
         <div className="border border-border">
-          <div className="flex justify-between overflow-x-auto px-3 py-1">
+          <div className="flex justify-between overflow-x-auto px-3 py-1 w-full">
             <Button
               variant={activeSection === 'profile' ? 'default' : 'ghost'}
               onClick={() => setActiveSection('profile')}
@@ -585,13 +578,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             </Button>
           </div>
         </div>
+        </div>
         {/* Full Screen Loader */}
         {isUploading ? (
           <div className="flex justify-center items-center h-full py-[30vh]">
             <FiLoader className="animate-spin h-16 w-16"/>
           </div>
         ) : (
-          <CardContent className="p-2 md:p-4 flex-1 overflow-auto">
+          <CardContent className="overflow-auto p-1">
           <AnimatePresence mode="wait">
             {activeSection === 'profile' && !editMode && (
               <ViewMode 

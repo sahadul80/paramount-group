@@ -247,112 +247,112 @@ const UsersTab: React.FC<UsersTabProps> = ({
 
   return (
     <Card className="w-full h-full flex flex-col border-0 bg-card min-h-0">
-      <CardContent className="flex-1 p-2 md:p-4 lg:p-4 min-h-0">
+      <CardContent className="flex-1 p-2 md:p-4 min-h-0">
         <div className="sticky top-0 z-10 bg-secondary rounded-lg -mr-2 md:-mr-4 -ml-2 md:-ml-4 -mt-4 md:-mt-6">
-        <div className="p-2">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex flex-col">
-            <CardTitle className="text-lg md:text-xl">User Directory</CardTitle>
-            <CardDescription className="hidden md:flex text-text">
-              Manage all users in the system
-            </CardDescription>
+          <div className="p-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex flex-col">
+                <CardTitle className="text-lg md:text-xl">User Directory</CardTitle>
+                <CardDescription className="hidden md:flex text-text">
+                  Manage all users in the system
+                </CardDescription>
+              </div>
+
+              <div className="relative w-full sm:w-64">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Main status tabs (remain in the sticky block) */}
+            <div className="mt-2">
+              <Tabs
+                value={activeMainTab}
+                onValueChange={(v) => setActiveMainTab(v as StatusTabValue)}
+                className="border border-border rounded-lg"
+              >
+                <TabsList className="flex rounded-lg text-text">
+                  <TabsTrigger
+                    value="all"
+                    className="flex-1 flex justify-center data-[state=active]:bg-black/25 data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
+                  >
+                    <FiUsers className="mr-1 h-4 w-4" /> All
+                    <span className="text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
+                      {users.length}
+                    </span>
+                  </TabsTrigger>
+
+                  <TabsTrigger
+                    value="pending"
+                    className="flex-1 flex justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
+                  >
+                    <FiClock className="mr-1 h-4 w-4" /> Pending
+                    <span className="text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">
+                      {pendingCount}
+                    </span>
+                  </TabsTrigger>
+
+                  <TabsTrigger
+                    value="active"
+                    className="flex-1 flex justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
+                  >
+                    <FiActivity className="mr-1 h-4 w-4" /> Active
+                    <span className="text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
+                      {activeCount}
+                    </span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            {/* Presence submenu tabs (also inside the same sticky block) */}
+            {activeMainTab === "active" && !searchTerm && (
+            <div className="mt-1 border border-border rounded-lg">
+              <Tabs
+                value={activePresenceTab}
+                onValueChange={(v) =>
+                  setActivePresenceTab(v as PresenceTabValue)
+                }
+              >
+                <TabsList className="flex justify-between bg-muted rounded-lg text-text">
+                  <TabsTrigger
+                    value="online"
+                    className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
+                  >
+                    <FiWifi className="mr-1 h-4 w-4" /> Online
+                    <span className="ml-1 text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
+                      {onlineCount}
+                    </span>
+                  </TabsTrigger>
+
+                  <TabsTrigger
+                    value="offline"
+                    className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
+                  >
+                    <FiWifiOff className="mr-1 h-4 w-4" /> Offline
+                    <span className="ml-1 text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
+                      {offlineCount}
+                    </span>
+                  </TabsTrigger>
+
+                  <TabsTrigger
+                    value="away"
+                    className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
+                  >
+                    <FiCoffee className="mr-1 h-4 w-4" /> Away
+                    <span className="ml-1 text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">
+                      {awayCount}
+                    </span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            )}
           </div>
-
-          <div className="relative w-full sm:w-64">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
-
-        {/* Main status tabs (remain in the sticky block) */}
-        <div className="mt-2">
-          <Tabs
-            value={activeMainTab}
-            onValueChange={(v) => setActiveMainTab(v as StatusTabValue)}
-            className="border border-border rounded-lg"
-          >
-            <TabsList className="flex rounded-lg text-text">
-              <TabsTrigger
-                value="all"
-                className="flex-1 flex justify-center data-[state=active]:bg-black/25 data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
-              >
-                <FiUsers className="mr-1 h-4 w-4" /> All
-                <span className="text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
-                  {users.length}
-                </span>
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="pending"
-                className="flex-1 flex justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
-              >
-                <FiClock className="mr-1 h-4 w-4" /> Pending
-                <span className="text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">
-                  {pendingCount}
-                </span>
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="active"
-                className="flex-1 flex justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
-              >
-                <FiActivity className="mr-1 h-4 w-4" /> Active
-                <span className="text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
-                  {activeCount}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        {/* Presence submenu tabs (also inside the same sticky block) */}
-        {activeMainTab === "active" && !searchTerm && (
-        <div className="mt-1 border border-border rounded-lg">
-          <Tabs
-            value={activePresenceTab}
-            onValueChange={(v) =>
-              setActivePresenceTab(v as PresenceTabValue)
-            }
-          >
-            <TabsList className="flex justify-between bg-muted rounded-lg text-text">
-              <TabsTrigger
-                value="online"
-                className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
-              >
-                <FiWifi className="mr-1 h-4 w-4" /> Online
-                <span className="ml-1 text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
-                  {onlineCount}
-                </span>
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="offline"
-                className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
-              >
-                <FiWifiOff className="mr-1 h-4 w-4" /> Offline
-                <span className="ml-1 text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
-                  {offlineCount}
-                </span>
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="away"
-                className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
-              >
-                <FiCoffee className="mr-1 h-4 w-4" /> Away
-                <span className="ml-1 text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">
-                  {awayCount}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        )}
-        </div>
         </div>
         {loading ? (
           <motion.div

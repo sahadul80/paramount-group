@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { toast, Toaster } from "sonner";
+import { FiLogIn } from "react-icons/fi";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -208,17 +209,19 @@ export default function LoginPage() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+            <div className="flex justify-center gap-2">
               <div className="bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
                 </svg>
               </div>
+              <h1 className="text-2xl font-bold p-2">LogIn</h1>
             </div>
-            <h1 className="text-xl md:text-2xl font-bold">LogIn</h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              Welcome! Sign in to continue
-            </p>
+            <div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Welcome! Sign in to continue
+              </p>
+            </div>
           </motion.div>
 
           <AnimatePresence mode="wait">
@@ -321,26 +324,27 @@ export default function LoginPage() {
                 )}
 
                 <motion.div 
-                  className="flex items-center justify-between text-sm pt-2"
+                  className="flex items-center justify-between text-sm"
                   variants={itemVariants}
                 >
-                  <a href="#" className="text-muted-foreground hover:underline text-sm">
+                  <a href="#" className="w-auto text-muted-foreground hover:cursor-not-allowed text-sm">
                     Forgot Password?
                   </a>
                   <motion.button
                     type="submit"
                     disabled={isLoading}
-                    className="px-4 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex flex-cols-2 items-center px-4 py-2 bg-indigo-800/25 backdrop-blur-2xl border border-1 text-text rounded-lg hover:bg-indigo-300 hover:cursor-pointer"
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
+                    <FiLogIn className="mr-1"/>
                     {isLoading ? (
                       <div className="flex items-center">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Signing In...
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Signing In...</span>
                       </div>
                     ) : (
-                      "Sign In"
+                      <span>Sign In</span>
                     )}
                   </motion.button>
                 </motion.div>
@@ -354,7 +358,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={handleRegister}
                     disabled={isLoading}
-                    className="text-indigo-600 hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="hover:underline font-medium disabled:opacity-50 hover:cursor-pointer"
                   >
                     Register
                   </button>

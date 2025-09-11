@@ -238,7 +238,7 @@ export default function UserDashboard() {
         if (activeTab === "users") await fetchUsers();
         else if (activeTab === "inbox") await fetchMessages();
         else if (activeTab === "groups") await fetchGroups();
-        else if (activeTab === "profile") await fetchCurrentUser();
+        else if (activeTab === "profile") await fetchCurrentUser(), await fetchUsers();
 
         setTabData((prev) => ({
           ...prev,
@@ -377,7 +377,7 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="flex flex-col max-h-screen overflow-hidden bg-background">
+    <div className="flex flex-col max-h-screen overflow-hidden bg-background text-foreground">
       <AnimatePresence>
         {isTabLoading && (
           <motion.div
@@ -402,25 +402,25 @@ export default function UserDashboard() {
         className="flex flex-col max-h-[94vh]"
       >
         {/* Desktop Tabs Header - Fixed at the top with backdrop blur */}
-        <div className="sticky top-0 z-30 hidden md:block">
-          <TabsList className="grid w-full grid-cols-4 bg-transparent p-2 gap-1 text-text">
+        <div className="sticky top-0 z-30 hidden md:block bg-background/80 backdrop-blur-md">
+          <TabsList className="grid w-full grid-cols-4 bg-transparent p-2 gap-1">
             <TabsTrigger 
               value="profile" 
-              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200"
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200 hover:bg-accent"
             >
               <FiUser className="w-4 h-4" />
               <span>Profile</span>
             </TabsTrigger>
             <TabsTrigger 
               value="users" 
-              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200"
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200 hover:bg-accent"
             >
               <FiUsers className="w-4 h-4" />
               <span>Users</span>
             </TabsTrigger>
             <TabsTrigger 
               value="inbox" 
-              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200"
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200 hover:bg-accent"
             >
               <div className="relative">
                 <FiInbox className="w-4 h-4" />
@@ -434,7 +434,7 @@ export default function UserDashboard() {
             </TabsTrigger>
             <TabsTrigger 
               value="groups" 
-              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200"
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200 hover:bg-accent"
             >
               <FiFolder className="w-4 h-4" />
               <span>Groups</span>
@@ -450,7 +450,7 @@ export default function UserDashboard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="bg-card rounded-xl shadow-lg h-full flex flex-col overflow-hidden border border-border"
+            className="bg-card rounded-xl shadow-lg h-full flex flex-col overflow-hidden"
           >
             <div className="flex-1 overflow-auto">
               <TabContent
@@ -473,7 +473,7 @@ export default function UserDashboard() {
         </div>
       </Tabs>
       {/* Mobile Bottom Navigation with backdrop blur */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-card/80 backdrop-blur-md border-t border-border">
         <MobileBottomNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}

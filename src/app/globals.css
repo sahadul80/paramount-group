@@ -1,164 +1,207 @@
 @import "tailwindcss";
 
 :root {
-  /* Primary Colors */
-  --primary: 59 130 246;
+  /* Modern Color Palette - Light Theme */
+  --primary: 79 70 229;    /* Indigo-600 */
   --primary-foreground: 255 255 255;
   
-  /* Secondary Colors */
-  --secondary: 139 92 246;
+  --secondary: 168 85 247; /* Purple-500 */
   --secondary-foreground: 255 255 255;
   
-  /* Background Colors */
-  --background: #ffffff;
-  --foreground: #171717;
-  --card: #ffffff;
-  --card-foreground: #171717;
-  --popover: #ffffff;
-  --popover-foreground: #171717;
+  --accent: 236 72 153;    /* Pink-500 */
+  --accent-foreground: 255 255 255;
   
-  /* Muted Colors */
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
+  --muted: 243 244 246;    /* Gray-100 */
+  --muted-foreground: 107 114 128; /* Gray-500 */
   
-  /* Accent Colors */
-  --accent: #f3f4f6;
-  --accent-foreground: #171717;
+  --background: 249 250 251; /* Gray-50 */
+  --foreground: 17 24 39;   /* Gray-900 */
   
-  /* Destructive Colors */
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
+  --card: 255 255 255;
+  --card-foreground: 17 24 39;
   
-  /* Border Colors */
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: 59 130 246;
+  --popover: 255 255 255;
+  --popover-foreground: 17 24 39;
+  
+  --border: 229 231 235;   /* Gray-200 */
+  --input: 229 231 235;
+  --ring: 99 102 241;      /* Indigo-500 */
   
   /* Status Colors */
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #3b82f6;
+  --success: 16 185 129;   /* Emerald-500 */
+  --warning: 245 158 11;   /* Amber-500 */
+  --danger: 239 68 68;     /* Red-500 */
+  --info: 59 130 246;      /* Blue-500 */
   
   /* Radius */
-  --radius: 0.5rem;
+  --radius: 0.75rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  
+  /* Gradients */
+  --gradient-from: 79 70 229; /* Indigo-600 */
+  --gradient-to: 236 72 153;  /* Pink-500 */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Primary Colors */
-    --primary: 30 64 175;
-    --primary-foreground: 255 255 255;
+    /* Modern Color Palette - Dark Theme */
+    --primary: 129 140 248; /* Indigo-400 */
+    --primary-foreground: 17 24 39;
     
-    /* Secondary Colors */
-    --secondary: 124 58 237;
-    --secondary-foreground: 255 255 255;
+    --secondary: 192 132 252; /* Purple-400 */
+    --secondary-foreground: 17 24 39;
     
-    /* Background Colors */
-    --background: #111827;
-    --foreground: #f3f4f6;
-    --card: #1f2937;
-    --card-foreground: #f3f4f6;
-    --popover: #1f2937;
-    --popover-foreground: #f3f4f6;
+    --accent: 244 114 182;   /* Pink-400 */
+    --accent-foreground: 17 24 39;
     
-    /* Muted Colors */
-    --muted: #1f2937;
-    --muted-foreground: #9ca3af;
+    --muted: 31 41 55;      /* Gray-800 */
+    --muted-foreground: 156 163 175; /* Gray-400 */
     
-    /* Accent Colors */
-    --accent: #1f2937;
-    --accent-foreground: #f3f4f6;
+    --background: 17 24 39; /* Gray-900 */
+    --foreground: 243 244 246; /* Gray-100 */
     
-    /* Destructive Colors */
-    --destructive: #7f1d1d;
-    --destructive-foreground: #ffffff;
+    --card: 31 41 55;
+    --card-foreground: 243 244 246;
     
-    /* Border Colors */
-    --border: #374151;
-    --input: #374151;
-    --ring: 30 64 175;
+    --popover: 31 41 55;
+    --popover-foreground: 243 244 246;
+    
+    --border: 55 65 81;     /* Gray-700 */
+    --input: 55 65 81;
+    --ring: 129 140 248;    /* Indigo-400 */
     
     /* Status Colors */
-    --success: #059669;
-    --warning: #d97706;
-    --danger: #b91c1c;
-    --info: #1e40af;
+    --success: 52 211 153;  /* Emerald-400 */
+    --warning: 251 191 36;  /* Amber-400 */
+    --danger: 248 113 113;  /* Red-400 */
+    --info: 96 165 250;     /* Blue-400 */
+    
+    /* Shadows for dark mode */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   }
 }
 
+/* Optional: Add a class-based dark mode for manual control */
+.dark {
+  color-scheme: dark;
+  
+  --primary: 129 140 248;
+  --primary-foreground: 17 24 39;
+  
+  --secondary: 192 132 252;
+  --secondary-foreground: 17 24 39;
+  
+  --accent: 244 114 182;
+  --accent-foreground: 17 24 39;
+  
+  --muted: 31 41 55;
+  --muted-foreground: 156 163 175;
+  
+  --background: 17 24 39;
+  --foreground: 243 244 246;
+  
+  --card: 31 41 55;
+  --card-foreground: 243 244 246;
+  
+  --popover: 31 41 55;
+  --popover-foreground: 243 244 246;
+  
+  --border: 55 65 81;
+  --input: 55 65 81;
+  --ring: 129 140 248;
+  
+  --success: 52 211 153;
+  --warning: 251 191 36;
+  --danger: 248 113 113;
+  --info: 96 165 250;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
   font-feature-settings: "rlig" 1, "calt" 1;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Utility classes for colors */
 .bg-background {
-  background-color: var(--background);
+  background-color: rgb(var(--background));
 }
 .text-foreground {
-  color: var(--foreground);
+  color: rgb(var(--foreground));
 }
 .bg-card {
-  background-color: var(--card);
+  background-color: rgb(var(--card));
 }
 .text-card-foreground {
-  color: var(--card-foreground);
+  color: rgb(var(--card-foreground));
 }
 .bg-popover {
-  background-color: var(--popover);
+  background-color: rgb(var(--popover));
 }
 .text-popover-foreground {
-  color: var(--popover-foreground);
+  color: rgb(var(--popover-foreground));
 }
 .bg-muted {
-  background-color: var(--muted);
-}
-.text-muted {
-  color: var(--muted);
+  background-color: rgb(var(--muted));
 }
 .text-muted-foreground {
-  color: var(--muted-foreground);
+  color: rgb(var(--muted-foreground));
 }
 .bg-accent {
-  background-color: var(--accent);
+  background-color: rgb(var(--accent));
 }
 .text-accent-foreground {
-  color: var(--accent-foreground);
+  color: rgb(var(--accent-foreground));
 }
 .bg-destructive {
-  background-color: var(--destructive);
+  background-color: rgb(var(--danger));
 }
 .text-destructive {
-  color: var(--destructive);
+  color: rgb(var(--danger));
 }
 .text-destructive-foreground {
-  color: var(--destructive-foreground);
+  color: rgb(var(--danger));
 }
 .bg-success {
-  background-color: var(--success);
+  background-color: rgb(var(--success));
 }
 .text-success {
-  color: var(--success);
+  color: rgb(var(--success));
 }
 .bg-warning {
-  background-color: var(--warning);
+  background-color: rgb(var(--warning));
 }
 .text-warning {
-  color: var(--warning);
+  color: rgb(var(--warning));
 }
 .bg-info {
-  background-color: var(--info);
+  background-color: rgb(var(--info));
 }
 .text-info {
-  color: var(--info);
+  color: rgb(var(--info));
 }
 .bg-input {
-  background-color: var(--input);
+  background-color: rgb(var(--input));
 }
 .border-border {
-  border-color: var(--border);
+  border-color: rgb(var(--border));
 }
 
 /* Primary and Secondary Colors */
@@ -187,23 +230,36 @@ body {
   color: rgb(var(--secondary-foreground));
 }
 
+/* Shadow utilities */
+.shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+.shadow {
+  box-shadow: var(--shadow);
+}
+.shadow-md {
+  box-shadow: var(--shadow-md);
+}
+.shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+.shadow-xl {
+  box-shadow: var(--shadow-xl);
+}
+
 /* Gradient */
-.bg-gradient-to-r.from-primary.to-primary-dark {
-  background-image: linear-gradient(to right, rgb(var(--primary)), rgba(var(--primary), 0.9));
+.gradient-bg {
+  background: linear-gradient(
+    to right bottom,
+    rgb(var(--gradient-from)),
+    rgb(var(--gradient-to))
+  );
 }
 
 /* Animations */
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-.fade-in {
-  animation: fadeIn 300ms ease-in;
 }
 
 @keyframes fadeIn {
@@ -211,36 +267,35 @@ body {
   to { opacity: 1; }
 }
 
-.slide-up {
-  animation: slideUp 300ms ease-out;
-}
-
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-/* Card shadows */
-.shadow-lg {
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-.dark .shadow-lg {
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
-}
-
-/* Ripple effect animation */
-@keyframes ripple {
-  to {
-    transform: scale(4);
-    opacity: 0;
+  from { 
+    transform: translateY(20px); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateY(0); 
+    opacity: 1; 
   }
 }
 
-/* New animations */
+@keyframes slideIn {
+  from { 
+    transform: translateX(-100%); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateX(0); 
+    opacity: 1; 
+  }
+}
+
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%, 100% { 
+    opacity: 1; 
+  }
+  50% { 
+    opacity: 0.5; 
+  }
 }
 
 @keyframes bounce {
@@ -261,7 +316,29 @@ body {
   }
 }
 
-/* Animation utility classes */
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
@@ -278,19 +355,19 @@ body {
 .transition-all {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  transition-duration: 200ms;
 }
 
 .transition-colors {
   transition-property: background-color, border-color, color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  transition-duration: 200ms;
 }
 
 .transition-transform {
   transition-property: transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  transition-duration: 200ms;
 }
 
 /* Scale utilities */
@@ -298,57 +375,51 @@ body {
   transform: scale(0.98);
 }
 
-/* Shadow utilities */
+/* Hover effects */
 .hover\:shadow-lg:hover {
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-lg);
 }
 
 .hover\:shadow-sm:hover {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-/* Animations */
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  box-shadow: var(--shadow-sm);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* Focus states */
+.focus\:ring-2:focus {
+  box-shadow: 0 0 0 2px rgb(var(--ring));
 }
 
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+/* Glassmorphism effect */
+.glass {
+  backdrop-filter: blur(16px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.125);
 }
 
-.animate-spin {
-  animation: spin 1s linear infinite;
+.dark .glass {
+  background-color: rgba(17, 24, 39, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.125);
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-in;
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-.animate-slideUp {
-  animation: slideUp 0.3s ease-out;
+::-webkit-scrollbar-track {
+  background: rgb(var(--muted));
 }
 
-/* Add these to your existing animations */
-@keyframes fadeIn {
-  0% { opacity: 0; transform: translateY(-5px); }
-  100% { opacity: 1; transform: translateY(0); }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted-foreground) / 0.5);
+  border-radius: var(--radius);
 }
 
-@keyframes slideIn {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(0); }
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--muted-foreground) / 0.7);
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slideIn {
-  animation: slideIn 0.3s ease-out;
+/* Selection color */
+::selection {
+  background-color: rgb(var(--accent) / 0.3);
 }

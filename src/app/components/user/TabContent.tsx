@@ -8,6 +8,7 @@ import ProfileTab from './ProfileTab';
 import UsersTab from './UsersTab';
 import { TabValue } from '../UserDashboard';
 import { User, Group, Message } from '@/types/users';
+import { FiLoader } from 'react-icons/fi';
 
 interface TabContentProps {
   activeTab: TabValue;
@@ -16,13 +17,13 @@ interface TabContentProps {
   users: User[];
   messages: Message[];
   groups: Group[];
-  currentUser: User | null;
+  currentUser: User;
   onApproveUser: (username: string) => void;
   onUpdateUser: (username: string, updateData: Partial<User>) => Promise<User[]>;
   onUserDeleted: (username: string) => void;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   setGroups: React.Dispatch<React.SetStateAction<Group[]>>;
-  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
+  setCurrentUser: React.Dispatch<React.SetStateAction<User|null>>;
   handleProfileUpdate: (updatedUser: User) => Promise<boolean>;
 }
 
@@ -42,7 +43,7 @@ const TabContent: React.FC<TabContentProps> = ({
   handleProfileUpdate
 }) => {
   return (
-    <div className="min-h-[60vh]">
+    <div className="min-h-[94vh]">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -52,20 +53,27 @@ const TabContent: React.FC<TabContentProps> = ({
           transition={{ duration: 0.3 }}
         >
           {activeTab === 'profile' && (
-            <TabsContent value="profile">
-              <ProfileTab 
-                currentUser={currentUser!} 
-                setCurrentUser={setCurrentUser} 
-                handleProfileUpdate={handleProfileUpdate} 
-              />
+            <TabsContent value="profile">{
+              tabData.currentUser?.loading ? (
+                <div className="flex justify-center items-center h-full">
+                  <FiLoader className="animate-spin h-16 w-16"/>
+                </div>
+              ) : (
+                <ProfileTab 
+                  currentUser={currentUser}
+                  setCurrentUser={setCurrentUser} 
+                  handleProfileUpdate={handleProfileUpdate}
+                />
+              )
+            }
             </TabsContent>
           )}
           
           {activeTab === 'users' && (
             <TabsContent value="users">
               {tabData.users.loading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                <div className="flex justify-center items-center h-full py-[30vh]">
+                  <FiLoader className="animate-spin h-16 w-16"/>
                 </div>
               ) : (
                 <UsersTab 
@@ -82,8 +90,10 @@ const TabContent: React.FC<TabContentProps> = ({
           {activeTab === 'inbox' && (
             <TabsContent value="inbox">
               {tabData.inbox.loading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                <div className="flex justify-center items-center h-full">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2">
+                    <FiLoader/>
+                  </div>
                 </div>
               ) : (
                 <InboxTab 
@@ -100,8 +110,10 @@ const TabContent: React.FC<TabContentProps> = ({
           {activeTab === 'groups' && (
             <TabsContent value="groups">
               {tabData.groups.loading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                <div className="flex justify-center items-center h-full">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2">
+                    <FiLoader/>
+                  </div>
                 </div>
               ) : (
                 <GroupsTab 
@@ -109,7 +121,7 @@ const TabContent: React.FC<TabContentProps> = ({
                   setGroups={setGroups} 
                   loading={tabData.groups.loading} 
                   users={users} 
-                  currentUser={currentUser!} // Add non-null assertion here
+                  currentUser={currentUser} // Add non-null assertion here
                 />
               )}
             </TabsContent>

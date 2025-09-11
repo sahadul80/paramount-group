@@ -37,4 +37,34 @@ export interface Group {
   createdBy: string;
 }
 
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  assignedTo: string[]; // User's username
+  assignedBy: string; // Manager's username
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high';
+  dueDate: string; // ISO string
+  startTime?: string; // ISO string, when the task was started
+  completedAt?: string; // ISO string, when the task was completed
+  createdAt: string; // ISO string
+  timeSpent?: number;
+}
+
+export interface AttendanceRecord {
+  date: string; // ISO string (YYYY-MM-DD)
+  checkIn?: string; // Time string (HH:MM)
+  checkOut?: string; // Time string (HH:MM)
+  status: 'present' | 'absent' | 'late' | 'half-day' | 'holiday';
+  code: string;
+}
+
+export interface MealRecord {
+  date: string; // ISO string (YYYY-MM-DD)
+  type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  time: string; // Time string (HH:MM)
+  calories: number;
+}
+
 export type TabValue = 'profile' | 'users' | 'inbox' | 'groups';

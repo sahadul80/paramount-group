@@ -499,7 +499,7 @@ const EditMode: React.FC<EditModeProps> = ({
               <div className="pt-4 mt-4 border-t border-border">
                 <Button 
                   variant="destructive" 
-                  className="w-full"
+                  className="w-full text-text"
                   onClick={() => setShowDeleteModal(true)}
                   disabled={isUploading}
                   type="button"

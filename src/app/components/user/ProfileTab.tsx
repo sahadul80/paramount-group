@@ -1,9 +1,14 @@
-// components/user/ProfileTab.tsx (main component)
 'use client'
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "../ui/card";
-import { User } from '@/types/users';
-import { FiEdit, FiSave, FiX, FiTrash2 } from 'react-icons/fi';
+import { User, Task, AttendanceRecord, MealRecord } from '@/types/users';
+import { 
+  FiEdit, FiSave, FiX, FiTrash2, FiClock, FiCheckCircle, 
+  FiActivity, FiTrendingUp, FiCalendar, FiCoffee, FiDollarSign,
+  FiPlus, FiFilter, FiSearch, FiBarChart2, FiUserCheck, FiPieChart,
+  FiUser, FiBell,
+  FiLoader
+} from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -11,21 +16,85 @@ import { toast } from 'sonner';
 import { Button } from '../ui/button';
 import ViewMode from './ViewMode';
 import EditMode from './EditMode';
+import TaskManagement from './TaskManagement';
+import AttendanceTracker from './AttendanceTracker';
+import MealTracker from './MealTracker';
+import SalaryAdjustment from './SalaryAdjustment';
+import { PerformanceMetrics } from './PerformanceMetrics';
 
 interface ProfileTabProps {
   currentUser: User;
-  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
+  setCurrentUser: React.Dispatch<React.SetStateAction<User|null>>;
   handleProfileUpdate: (updatedUser: User) => Promise<boolean>;
 }
 
 // Fixed Bangladesh country code
 const BANGLADESH_CODE = '+880';
 
+// Mock data for demonstration
+const mockTasks: Task[] = [
+  {
+    id: '1',
+    title: 'Complete Q3 Financial Report',
+    description: 'Prepare and submit the quarterly financial report',
+    assignedTo: ['johndoe'],
+    assignedBy: 'manager',
+    status: 'in-progress',
+    priority: 'high',
+    dueDate: '2025-09-30',
+    startTime: '2025-09-25T09:00:00Z',
+    completedAt: '2025-09-15T16:30:00Z',
+    createdAt: '2025-09-02T10:30:00Z'
+  },
+  {
+    id: '2',
+    title: 'Client Meeting Preparation',
+    description: 'Prepare materials for upcoming client presentation',
+    assignedTo: ['johndoe'],
+    assignedBy: 'manager',
+    status: 'pending',
+    priority: 'medium',
+    dueDate: '2025-10-05',
+    startTime: '2025-09-10T13:00:00Z',
+    completedAt: '2025-09-15T16:30:00Z',
+    createdAt: '2025-09-03T14:15:00Z'
+  },
+  {
+    id: '3',
+    title: 'Team Training Session',
+    description: 'Conduct training for new team members',
+    assignedTo: ['johndoe'],
+    assignedBy: 'manager',
+    status: 'completed',
+    priority: 'medium',
+    dueDate: '2025-09-15',
+    startTime: '2025-09-10T13:00:00Z',
+    completedAt: '2025-09-15T16:30:00Z',
+    createdAt: '2025-09-05T11:20:00Z'
+  }
+];
+
+// Updated mock attendance data to use undefined instead of null
+const mockAttendance: AttendanceRecord[] = [
+  { date: '2025-09-25', checkIn: '09:05', checkOut: '17:30', status: 'present', code:'code1'},
+  { date: '2025-09-24', checkIn: '08:45', checkOut: '17:15', status: 'present', code:'code1' },
+  { date: '2025-09-23', checkIn: '09:15', checkOut: '17:45', status: 'present', code:'code1' },
+  { date: '2025-09-22', checkIn: undefined, checkOut: undefined, status: 'absent', code:'code1' },
+];
+
+const mockMealRecords: MealRecord[] = [
+  { date: '2025-09-25', type: 'lunch', time: '12:30', calories: 650 },
+  { date: '2025-09-25', type: 'snack', time: '15:15', calories: 250 },
+  { date: '2025-09-24', type: 'lunch', time: '13:00', calories: 720 },
+  { date: '2025-09-24', type: 'snack', time: '15:45', calories: 180 },
+];
+
 const ProfileTab: React.FC<ProfileTabProps> = ({ 
   currentUser, 
   setCurrentUser, 
   handleProfileUpdate 
 }) => {
+  const [activeSection, setActiveSection] = useState<'profile' | 'tasks' | 'attendance' | 'meals' | 'salary' | 'performance'>('profile');
   const [editMode, setEditMode] = useState<boolean>(false);
   const [profileData, setProfileData] = useState<User>({ ...currentUser });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -36,7 +105,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [users, setUsers] = useState<User[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
+  const [mealRecords, setMealRecords] = useState<MealRecord[]>(mockMealRecords);
+  const [unreadTaskIds, setUnreadTaskIds] = useState<Set<string>>(new Set());
+  const [taskNotificationCount, setTaskNotificationCount] = useState(0);
   const router = useRouter();
+  const prevTasksRef = useRef<Task[]>([]);
 
   // Initialize phone data
   useEffect(() => {
@@ -65,6 +141,54 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       }
     };
   }, [avatarPreview]);
+
+  // Fetch users data
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch("/api/user/all");
+        if (!res.ok) throw new Error("Failed to fetch users");
+        const usersData = await res.json();
+        setUsers(usersData);
+      } catch (err) {
+        console.error("Fetch users error:", err);
+        toast.error("Failed to load users");
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // Track new tasks and update notification count
+  useEffect(() => {
+    // Skip initial render
+    if (prevTasksRef.current.length === 0) {
+      prevTasksRef.current = tasks;
+      return;
+    }
+
+    const newTasks = tasks.filter(task => 
+      !prevTasksRef.current.some(prevTask => prevTask.id === task.id)
+    );
+
+    if (newTasks.length > 0) {
+      // Add new tasks to unread set
+      const newUnreadTasks = new Set(unreadTaskIds);
+      newTasks.forEach(task => newUnreadTasks.add(task.id));
+      setUnreadTaskIds(newUnreadTasks);
+      
+      // Update notification count for tasks assigned to current user
+      const assignedToMe = newTasks.filter(task => 
+        task.assignedTo && task.assignedTo.includes(currentUser.username)
+      );
+      
+      if (assignedToMe.length > 0) {
+        setTaskNotificationCount(prev => prev + assignedToMe.length);
+      }
+    }
+
+    prevTasksRef.current = tasks;
+  }, [tasks, currentUser.username]);
 
   const handleEditClick = () => {
     setProfileData({ ...currentUser });
@@ -263,7 +387,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         throw new Error('Failed to update status');
       }
       
-      setCurrentUser(prev => prev ? { ...prev, status } : null);
+      setCurrentUser( { ...currentUser, status }  );
       
       toast.success(`Status Updated to ${getStatusString(status)}`);
     } catch (error) {
@@ -290,74 +414,196 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     setProfileData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleTaskUpdate = (taskId: string, updates: Partial<Task>) => {
+    setTasks(prev => prev.map(task => 
+      task.id === taskId ? { ...task, ...updates } : task
+    ));
+    
+    // If task is marked as completed or in progress, remove from unread
+    if (updates.status === 'completed' || updates.status === 'in-progress') {
+      setUnreadTaskIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(taskId);
+        return newSet;
+      });
+    }
+    
+    toast.success("Task updated successfully");
+  };
+
+  const handleNewTask = (task: Task) => {
+    setTasks(prev => [...prev, task]);
+    
+    // Add new task to unread set if assigned to current user
+    if (task.assignedTo && task.assignedTo.includes(currentUser.username)) {
+      setUnreadTaskIds(prev => {
+        const newSet = new Set(prev);
+        newSet.add(task.id);
+        return newSet;
+      });
+      
+      setTaskNotificationCount(prev => prev + 1);
+    }
+    
+    toast.success("New task assigned");
+  };
+
+  const handleCheckIn = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toTimeString().slice(0, 5);
+    
+    setAttendance(prev => {
+      const existingRecord = prev.find(record => record.date === today);
+      
+      if (existingRecord && existingRecord.checkIn) {
+        return prev.map(record => 
+          record.date === today ? { ...record, checkOut: now } : record
+        );
+      } else {
+        return [...prev, { 
+          date: today, 
+          checkIn: now, 
+          checkOut: undefined, 
+          status: 'present', 
+          code: 'code1' // Fixed the code reference
+        }];
+      }
+    });
+    
+    // Check if record exists after setting state
+    const currentRecord = attendance.find(record => record.date === today);
+    toast.success(currentRecord && currentRecord.checkIn ? "Checked out successfully" : "Checked in successfully");
+  };
+
+  const handleMealRecord = (type: string, calories: number) => {
+    // Validate the type
+    const validTypes = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
+    const mealType = validTypes.includes(type as any) ? type as typeof validTypes[number] : 'lunch';
+    
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toTimeString().slice(0, 5);
+    
+    setMealRecords(prev => [...prev, { date: today, type: mealType, time: now, calories }]);
+    toast.success(`${mealType.charAt(0).toUpperCase() + mealType.slice(1)} recorded`);
+  };
+
+  const handleSalaryAdjustment = (newSalary: number) => {
+    setCurrentUser( { ...currentUser, salary: newSalary.toString() });
+    toast.success("Salary adjusted successfully");
+  };
+
+  // Function to mark task notifications as read
+  const markTaskNotificationsAsRead = () => {
+    setTaskNotificationCount(0);
+    setUnreadTaskIds(new Set());
+  };
+
+  // Update notification count when unread tasks change
+  useEffect(() => {
+    const count = Array.from(unreadTaskIds).filter(taskId => {
+      const task = tasks.find(t => t.id === taskId);
+      return task && task.assignedTo && task.assignedTo.includes(currentUser.username);
+    }).length;
+    
+    setTaskNotificationCount(count);
+  }, [unreadTaskIds, tasks, currentUser.username]);
+
   return (
     <>
-      {/* Full Screen Loader */}
-      {isUploading && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-          <div className="bg-background p-8 rounded-xl shadow-2xl flex flex-col items-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-primary mb-4"></div>
-            <h2 className="text-xl font-bold text-foreground">Saving Changes</h2>
-            <p className="text-muted-foreground mt-2">Please wait while we update your profile</p>
-          </div>
-        </div>
-      )}
-
-      <Card className="w-full overflow-hidden shadow-lg border-0 h-full flex flex-col mb-8 md:mb-0">
-        <div className="bg-gradient-to-r from-primary to-primary-dark px-4">
+      <Card className="w-full overflow-hidden shadow-lg border border-border h-full flex flex-col mb-8 md:mb-0 bg-card">
+        <div className="bg-gradient-to-r from-primary to-primary-dark p-3">
           <div className="flex flex-row justify-between items-start sm:items-center gap-4">
             <CardHeader className="p-0">
-              <CardTitle className='text-xl md:text-2xl text-text'>My Profile</CardTitle>
+              <CardTitle className='text-xl md:text-2xl text-primary'>My Profile</CardTitle>
             </CardHeader>
-            {!editMode ? (
-              <Button 
-                variant="secondary"
-                onClick={handleEditClick}
-                className="bg-secondary hover:curser-pointer font-bold text-text border border-border"
-              >
-                <FiEdit/><span>Edit</span>
-              </Button>
-            ) : (
-              <div className="flex gap-2">
-                <Button 
-                  variant="secondary"
-                  form="profile-form"
-                  disabled={isUploading}
-                  className="bg-secondary text-text hover:bg-white/50 hover:backdrop-blur-lg"
-                >
-                  {isUploading ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full border-b-2 border-primary mr-2"></div>
-                      Saving...
-                    </div>
-                  ) : (
-                    <>
-                      <FiSave/><span>Save Changes</span>
-                    </>
-                  )}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={handleCancel}
-                  className="bg-black/10 backdrop-blur-lg text-text hover:shadow-2xl"
-                >
-                  <FiX/>
-                </Button>
-              </div>
-            )}
           </div>
         </div>
         
-        <CardContent className="p-2 md:p-4 flex-1 overflow-auto">
+        {/* Navigation Tabs */}
+        <div className="border border-border">
+          <div className="flex justify-between overflow-x-auto px-3 py-1">
+            <Button
+              variant={activeSection === 'profile' ? 'default' : 'ghost'}
+              onClick={() => setActiveSection('profile')}
+              className="rounded-lg flex items-center gap-1 hover:cursor-pointer"
+            >
+              <FiUser className="w-4 h-4" />
+              <span className="hidden md:inline">Profile</span>
+            </Button>
+            
+            <Button
+              variant={activeSection === 'tasks' ? 'default' : 'ghost'}
+              onClick={() => {
+                setActiveSection('tasks');
+                markTaskNotificationsAsRead();
+              }}
+              className="rounded-lg flex items-center gap-1 hover:cursor-pointer"
+            >
+              <FiCheckCircle className="w-4 h-4" />
+              <span className="hidden md:inline">Tasks</span>
+              {taskNotificationCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  {taskNotificationCount}
+                </span>
+              )}
+            </Button>
+            
+            <Button
+              variant={activeSection === 'attendance' ? 'default' : 'ghost'}
+              onClick={() => setActiveSection('attendance')}
+              className="rounded-lg flex items-center gap-1 hover:cursor-pointer"
+            >
+              <FiClock className="w-4 h-4" />
+              <span className="hidden md:inline">Attendance</span>
+            </Button>
+            
+            <Button
+              variant={activeSection === 'meals' ? 'default' : 'ghost'}
+              onClick={() => setActiveSection('meals')}
+              className="rounded-lg flex items-center gap-1 hover:cursor-pointer"
+            >
+              <FiCoffee className="w-4 h-4" />
+              <span className="hidden md:inline">Meals</span>
+            </Button>
+            
+            <Button
+              variant={activeSection === 'salary' ? 'default' : 'ghost'}
+              onClick={() => setActiveSection('salary')}
+              className="rounded-lg flex items-center gap-1 hover:cursor-pointer"
+            >
+              <FiDollarSign className="w-4 h-4" />
+              <span className="hidden md:inline">Salary</span>
+            </Button>
+            
+            <Button
+              variant={activeSection === 'performance' ? 'default' : 'ghost'}
+              onClick={() => setActiveSection('performance')}
+              className="rounded-lg flex items-center gap-1 hover:cursor-pointer"
+            >
+              <FiTrendingUp className="w-4 h-4" />
+              <span className="hidden md:inline">Performance</span>
+            </Button>
+          </div>
+        </div>
+        {/* Full Screen Loader */}
+        {isUploading ? (
+          <div className="flex justify-center items-center h-full py-[30vh]">
+            <FiLoader className="animate-spin h-16 w-16"/>
+          </div>
+        ) : (
+          <CardContent className="p-2 md:p-4 flex-1 overflow-auto">
           <AnimatePresence mode="wait">
-            {!editMode ? (
+            {activeSection === 'profile' && !editMode && (
               <ViewMode 
                 currentUser={currentUser}
                 updateUserStatus={updateUserStatus}
                 statusUpdating={statusUpdating}
                 getStatusString={getStatusString}
+                editClick={handleEditClick}
               />
-            ) : (
+            )}
+            
+            {activeSection === 'profile' && editMode && (
               <EditMode
                 profileData={profileData}
                 currentUser={currentUser}
@@ -366,7 +612,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                 phoneNumber={phoneNumber}
                 errors={errors}
                 isUploading={isUploading}
-                handleChange={handleFieldChange} // Use the new function instead of setProfileData
+                handleChange={handleFieldChange}
                 handlePhoneNumberChange={handlePhoneNumberChange}
                 handleAvatarChange={handleAvatarChange}
                 handleSubmit={handleSubmit}
@@ -374,33 +620,81 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                 BANGLADESH_CODE={BANGLADESH_CODE}
               />
             )}
+            
+            {activeSection === 'tasks' && (
+              <TaskManagement
+                tasks={tasks}
+                onTaskUpdate={handleTaskUpdate}
+                onNewTask={handleNewTask}
+                currentUser={currentUser}
+                users={users}
+                unreadTaskIds={unreadTaskIds}
+                setUnreadTaskIds={setUnreadTaskIds}
+              />
+            )}
+            
+            {activeSection === 'attendance' && (
+              <AttendanceTracker
+                attendance={attendance}
+                onCheckIn={handleCheckIn}
+                code=''
+              />
+            )}
+            
+            {activeSection === 'meals' && (
+              <MealTracker
+                mealRecords={mealRecords}
+                onRecordMeal={handleMealRecord}
+              />
+            )}
+            
+            {activeSection === 'salary' && (
+              <SalaryAdjustment
+                currentSalary={typeof currentUser.salary === 'string' ? 
+                              parseFloat(currentUser.salary) : 
+                              (currentUser.salary || 0)}
+                onSalaryAdjust={handleSalaryAdjustment}
+              />
+            )}
+            
+            {activeSection === 'performance' && (
+              <PerformanceMetrics
+                tasks={tasks}
+                attendance={attendance}
+                currentUser={currentUser}
+              />
+            )}
           </AnimatePresence>
         </CardContent>
+        )}
+        
 
         {/* Fixed buttons for mobile edit mode */}
-        {editMode && (
-          <CardFooter className='-mt-6'>
+        {editMode && activeSection === 'profile' && (
+          <CardFooter className='-mt-6 md:mt-0'>
             <div className="flex gap-2 w-full">
               <Button 
                 type="submit"
                 form="profile-form"
-                className="flex-1 bg-secondary text-text"
+                className="flex-1 bg-secondary text-text hover:bg-red-500"
                 disabled={isUploading}
               >
+                <FiSave />
                 {isUploading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4"></div>
-                    Saving...
+                  <div className="flex flex-col items-center justify-center">
+                    <FiLoader/>
+                    <span className="ml-1">Saving...</span>
                   </div>
                 ) : (
                   'Save Changes'
                 )}
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
                 onClick={handleCancel}
                 disabled={isUploading}
+                className="w-1/3 bg-foreground border border-border text-text hover:shadow-full hover:bg-gray-200"
               >
+                <FiX/>
                 Cancel
               </Button>
             </div>
@@ -410,9 +704,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
 
       {/* Delete Confirmation Modal */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-        <DialogContent className="max-w-md bg-background rounded-xl">
+        <DialogContent className="max-w-md bg-card rounded-xl border border-border">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-foreground">
+            <DialogTitle className="text-xl font-bold text-card-foreground">
               Confirm Account Deletion
             </DialogTitle>
             <DialogDescription className="mt-2 text-muted-foreground">
@@ -424,6 +718,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               variant="outline" 
               onClick={() => setShowDeleteModal(false)}
               disabled={isDeleting}
+              className="border-border text-foreground hover:bg-accent"
             >
               Cancel
             </Button>
@@ -431,6 +726,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               variant="destructive"
               onClick={handleDeleteAccount}
               disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/80"
             >
               {isDeleting ? (
                 <div className="flex items-center">

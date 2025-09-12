@@ -247,30 +247,24 @@ const UsersTab: React.FC<UsersTabProps> = ({
 
   return (
     <Card className="w-full h-full flex flex-col border-0 bg-card min-h-0">
-      <CardContent className="flex-1 p-2 md:p-4 min-h-0">
-        <div className="sticky top-0 z-10 bg-secondary rounded-lg -mr-2 md:-mr-4 -ml-2 md:-ml-4 -mt-4 md:-mt-6">
-          <div className="p-2">
+      <CardContent className="p-2 md:p-4 min-h-0">
+        <div className="sticky top-0 z-10 bg-black/25 backdrop-blur-2xl rounded-none -mr-2 md:-mr-4 -ml-2 md:-ml-4 -mt-4 md:-mt-6">
+          <div className="p-1">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex flex-col">
-                <CardTitle className="text-lg md:text-xl">User Directory</CardTitle>
-                <CardDescription className="hidden md:flex text-text">
-                  Manage all users in the system
-                </CardDescription>
-              </div>
 
-              <div className="relative w-full sm:w-64">
+              <div className="relative w-full">
                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search users..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 sm"
                 />
               </div>
             </div>
 
             {/* Main status tabs (remain in the sticky block) */}
-            <div className="mt-2">
+            <div className="mt-1">
               <Tabs
                 value={activeMainTab}
                 onValueChange={(v) => setActiveMainTab(v as StatusTabValue)}
@@ -311,7 +305,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
             </div>
             {/* Presence submenu tabs (also inside the same sticky block) */}
             {activeMainTab === "active" && !searchTerm && (
-            <div className="mt-1 border border-border rounded-lg">
+            <div className="mt-0 border border-border rounded-lg">
               <Tabs
                 value={activePresenceTab}
                 onValueChange={(v) =>

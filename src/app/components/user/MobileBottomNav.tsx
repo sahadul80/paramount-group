@@ -1,7 +1,8 @@
 // components/user/MobileBottomNav.tsx
 import React from 'react';
-import { FiUser, FiUsers, FiMail, FiMessageSquare } from "react-icons/fi";
+import { FiUser, FiUsers, FiMail, FiMessageSquare, FiInbox, FiGitMerge } from "react-icons/fi";
 import { TabValue } from '../UserDashboard';
+import { Button } from '../ui/button';
 
 interface MobileBottomNavProps {
   activeTab: TabValue;
@@ -15,57 +16,53 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   unreadCount
 }) => {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-secondary z-40 shadow-2xl">
-      <div className="grid grid-cols-4 text-text font-bold">
-        <button 
-          className={`flex flex-col items-center justify-center p-3 ${
-            activeTab === 'profile' 
-              ? 'bg-white/30 backdrop-blur-2xl' 
-              : ''
-          }`}
+    <div className="md:hidden flex bottom-0 left-0 right-0 z-40 bg-black/25 backdrop-blur-2xl shadow-2xl">
+      <div className="flex justify-between overflow-x-auto w-full border border-border">
+        <Button
+          variant={activeTab === 'profile' ? 'default' : 'ghost'}
           onClick={() => setActiveTab('profile')}
+          className="rounded-lg gap-1 hover:cursor-pointer"
         >
-          <FiUser className="text-lg" />
-          <span className="text-xs">Profile</span>
-        </button>
-        <button 
-          className={`flex flex-col items-center justify-center p-3 ${
-            activeTab === 'users' 
-              ? 'bg-white/30 backdrop-blur-2xl' 
-              : ''
-          }`}
+          <div className='flex flex-col items-center '>
+            <FiUser  />
+            <span className="text-xs">Profile</span>
+          </div>
+        </Button>
+        <Button
+          variant={activeTab === 'users' ? 'default' : 'ghost'}
           onClick={() => setActiveTab('users')}
+          className="rounded-lg gap-1 hover:cursor-pointer"
         >
-          <FiUsers className="text-lg" />
-          <span className="text-xs">Users</span>
-        </button>
-        <button 
-          className={`flex flex-col items-center justify-center p-3 ${
-            activeTab === 'inbox' 
-              ? 'bg-white/30 backdrop-blur-2xl' 
-              : ''
-          }`}
+          <div className='flex flex-col items-center '>
+            <FiUsers  />
+            <span className="text-xs">Users</span>
+          </div>
+        </Button>
+        <Button
+          variant={activeTab === 'inbox' ? 'default' : 'ghost'}
           onClick={() => setActiveTab('inbox')}
+          className="rounded-lg gap-1 hover:cursor-pointer"
         >
-          <FiMail className="text-lg" />
-          <span className="text-xs">Inbox</span>
+          <div className='flex flex-col items-center '>
+            <FiInbox  />
+            <span className="text-xs">Inbox</span>
+          </div>
           {unreadCount > 0 && (
             <span className="absolute top-2 right-4 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
               {unreadCount}
             </span>
           )}
-        </button>
-        <button 
-          className={`flex flex-col items-center justify-center p-3 ${
-            activeTab === 'groups' 
-              ? 'bg-white/30 backdrop-blur-2xl' 
-              : ''
-          }`}
+        </Button>
+        <Button
+          variant={activeTab === 'groups' ? 'default' : 'ghost'}
           onClick={() => setActiveTab('groups')}
+          className="rounded-lg gap-1 hover:cursor-pointer"
         >
-          <FiMessageSquare className="text-lg" />
-          <span className="text-xs">Groups</span>
-        </button>
+          <div className='flex flex-col items-center '>
+            <FiGitMerge  />
+            <span className="text-xs">Groups</span>
+          </div>
+        </Button>
       </div>
     </div>
   );

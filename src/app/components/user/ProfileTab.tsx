@@ -510,11 +510,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
 
   return (
     <>
-      <Card className="w-full h-full flex flex-col bg-card min-h-0 shadow-lg border border-border">        
+      <Card className="w-full flex flex-col bg-card min-h-0 shadow-lg border border-border">        
         {/* Navigation Tabs */}
-        <div className="sticky top-0 z-10 rounded-lg bg-white/20 backdrop-blur-2xl -mt-2">
+        <div className="sticky top-0 z-10 rounded-lg bg-black/25 backdrop-blur-2xl -mt-2">
         <div className="border border-border">
-          <div className="flex justify-between overflow-x-auto px-3 py-1 w-full">
+          <div className="flex justify-between w-full">
             <Button
               variant={activeSection === 'profile' ? 'default' : 'ghost'}
               onClick={() => setActiveSection('profile')}
@@ -585,7 +585,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             <FiLoader className="animate-spin h-16 w-16"/>
           </div>
         ) : (
-          <CardContent className="overflow-auto p-1">
+          <CardContent className="overflow-auto p-1 mb-12 sm:mb-0">
           <AnimatePresence mode="wait">
             {activeSection === 'profile' && !editMode && (
               <ViewMode 

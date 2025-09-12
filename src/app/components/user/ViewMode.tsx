@@ -4,7 +4,8 @@ import {
   FiUser, FiMail, FiBriefcase, FiDollarSign, 
   FiCalendar, FiMapPin, FiDroplet, FiPhone, 
   FiEdit, FiWifi, FiWifiOff, FiClock, FiAward,
-  FiActivity, FiStar, FiTrendingUp, FiShield
+  FiActivity, FiStar, FiTrendingUp, FiShield,
+  FiInfo
 } from 'react-icons/fi';
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -110,7 +111,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
               whileHover={{ scale: 1.02 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
             >
-              <Avatar className="w-24 h-24 sm:w-36 sm:h-36 border-4 border-white shadow-lg">
+              <Avatar className="w-20 h-20 sm:w-36 sm:h-36 border-4 border-white shadow-lg">
                 <AvatarImage 
                   src={currentUser.avatar || ''}
                   alt={currentUser.username} 
@@ -124,7 +125,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
                 <Badge 
                   variant="outline" 
-                  className={`flex items-center gap-1 px-3 py-1 text-xs font-semibold ${getStatusColor(currentUser.status)}`}
+                  className={`flex items-center gap-1 px-1 text-xs font-xs ${getStatusColor(currentUser.status)}`}
                 >
                   {getStatusIcon(currentUser.status)}
                   {getStatusString(currentUser.status)}
@@ -137,19 +138,19 @@ const ViewMode: React.FC<ViewModeProps> = ({
           <div className="flex-1">
             <div className="flex flex-row items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-text">
+                <h2 className="text-md sm:text-xl font-bold text-text">
                   {currentUser.firstName} {currentUser.lastName}
                 </h2>
                 <p className="text-sm text-text mt-1">@{currentUser.username}</p>
                 
                 <div className="flex flex-wrap gap-2">
                   {currentUser.department && (
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs w-auto">
                       {currentUser.department}
                     </Badge>
                   )}
                   {currentUser.position && (
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs w-auto">
                       {currentUser.position}
                     </Badge>
                   )}
@@ -234,35 +235,35 @@ const ViewMode: React.FC<ViewModeProps> = ({
       </div>
       
       {/* Info Tabs */}
-      <div className="rounded-2xl border border-border shadow-sm overflow-hidden w-full">
+      <div className="rounded-2xl border border-border shadow-full overflow-hidden w-full">
         <Tabs value={activeInfoTab} onValueChange={setActiveInfoTab}>
-          <TabsList className="flex justify-between w-full rounded-none border-b border-border text-text p-0 h-12 ">
+          <TabsList className="flex justify-between w-full rounded-none border-b border-border text-text p-0 h-10 ">
             <TabsTrigger 
               value="overview" 
-              className="flex flex-col rounded-none border-b-6 border-b-transparent data-[state=active]:border-b-blue-600 h-12 text-xs font-xs w-full"
+              className="flex flex-col rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
             >
-              <FiUser />
+              <FiInfo className="hidden sm:flex"/>
               <span>Overview</span>
             </TabsTrigger>
             <TabsTrigger 
               value="personal" 
-              className="flex flex-col rounded-none border-b-6 border-b-transparent data-[state=active]:border-b-blue-600 h-12 text-xs font-xs w-full"
+              className="flex flex-col rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
             >
-              <FiUser />
+              <FiUser className="hidden sm:flex"/>
               <span>Personal</span>
             </TabsTrigger>
             <TabsTrigger 
               value="work"
-              className="flex flex-col rounded-none border-b-6 border-b-transparent data-[state=active]:border-b-blue-600 h-12 text-xs font-xs w-full"
+              className="flex flex-col rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
             >
-              <FiBriefcase />
+              <FiBriefcase className="hidden sm:flex"/>
               <span>Work</span>
             </TabsTrigger>
             <TabsTrigger 
               value="account" 
-              className="flex flex-col rounded-none border-b-6 border-b-transparent data-[state=active]:border-b-blue-600 h-12 text-xs font-xs w-full"
+              className="flex flex-col rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
             >
-              <FiShield />
+              <FiShield className="hidden sm:flex"/>
               <span>Account</span>
             </TabsTrigger>
           </TabsList>
@@ -285,8 +286,8 @@ const ViewMode: React.FC<ViewModeProps> = ({
                 title="Contact Information"
                 icon={<FiMail className="w-4 h-4" />}
                 fields={[
-                  { label: "Email", value: safeValue(currentUser.email) },
-                  { label: "Phone", value: safeValue(currentUser.phone) },
+                  { label: "Email", value: safeValue(currentUser.email), ref:`${currentUser.email ? "mailto" : "#"}` },
+                  { label: "Phone", value: safeValue(currentUser.phone), ref:`${currentUser.phone ? "tel" : "#"}` },
                   { label: "Address", value: safeValue(currentUser.address) },
                 ]}
               />
@@ -346,7 +347,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
           
           <TabsContent value="account" className="p-2 sm:p-4">
             <InfoSection 
-              title="Account Settings"
+              title="Account Details"
               icon={<FiShield className="w-4 h-4" />}
               fields={[
                 { label: "Username", value: safeValue(currentUser.username) },

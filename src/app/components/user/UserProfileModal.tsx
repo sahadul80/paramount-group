@@ -25,12 +25,16 @@ import {
   FiWatch,
   FiFramer,
   FiUserX,
-  FiLoader
+  FiLoader,
+  FiEdit2,
+  FiInfo,
+  FiShield
 } from 'react-icons/fi';
 import { cn } from '@/app/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { toast } from 'sonner';
+import InfoSection from './InfoSection';
 
 interface UserProfileModalProps {
   user: User;
@@ -149,6 +153,40 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
       : url;
   };
 
+  // Format date for display - updated to handle undefined values
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  // Helper function to safely convert values to strings
+    const safeValue = (value: any): string => {
+      if (value === null || value === undefined) return '-';
+      if (typeof value === 'string') return value;
+      if (typeof value === 'number') return value.toString();
+      if (React.isValidElement(value)) return '-';
+      return String(value);
+    };
+  
+    // Calculate time at company
+    const getTenure = () => {
+      if (!user.createdAt) return '-';
+      const joinDate = new Date(user.createdAt);
+      const today = new Date();
+      const years = today.getFullYear() - joinDate.getFullYear();
+      const months = today.getMonth() - joinDate.getMonth();
+      
+      if (years > 0) {
+        return `${years} year${years > 1 ? 's' : ''} ${months > 0 ? `${months} month${months > 1 ? 's' : ''}` : ''}`;
+      }
+      return `${months} month${months > 1 ? 's' : ''}`;
+    };
+
   return (
     <motion.div
       key="view"
@@ -169,7 +207,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
             transition={{ duration: 0.3 }}
             className="relative"
           >
-            <Avatar className="w-32 h-32 border-4 border-background shadow-full">
+            <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-4 border-background shadow-full">
               <AvatarImage 
                 src={getAvatarUrl(user.avatar)}
                 alt={user.username}
@@ -181,7 +219,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </AvatarFallback>
             </Avatar>
             
-            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2">
+            <div className="absolute bottom-4 sm:bottom-0 left-1/2 transform -translate-x-1/2">
               <Badge 
                 variant="secondary" 
                 className={cn(
@@ -200,12 +238,12 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.3 }}
             >
-              <h2 className="text-xl md:text-2xl font-bold drop-shadow-md">
+              <h2 className="text-lg sm:text-xl font-bold drop-shadow-md">
                 {user.firstName} {user.lastName}
               </h2>
-              <p className="mt-1 text-sm md:text-base">@{user.username}</p>
+              <p className="mt-1 text-sm sm:text-base">@{user.username}</p>
               
-              <div className="mt-2 flex flex-wrap justify-center sm:justify-start gap-1 md:gap-2">
+              <div className="mt-1 flex flex-wrap justify-center sm:justify-start gap-1 md:gap-2">
                 <Badge variant="secondary" className="bg-background/20 backdrop-blur-sm">
                   {user.role}
                 </Badge>
@@ -217,7 +255,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
             </motion.div>
             
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex justify-start gap-1">
               {/* Edit button - only visible to admins */}
               {isAdmin && (
                 <motion.div
@@ -228,11 +266,15 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <Button 
                     size="sm" 
                     variant="outline" 
-                    className="bg-background hover:bg-background/80 rounded-full"
+                    className="bg-foreground hover:bg-background rounded-lg p-2"
                     onClick={() => setEditMode(!editMode)}
                   >
-                    <FiUserX/> 
-                    {editMode ? 'View' : 'Edit'}
+                     
+                    {editMode ? (
+                      <><FiInfo/><span className='text-xs sm:text-sm'>View</span></>
+                      ) : (
+                      <><FiEdit/><span className='text-xs sm:text-sm'>Edit</span></>
+                      )}
                   </Button>
                 </motion.div>
               )}
@@ -242,17 +284,17 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.25, duration: 0.3 }}
+                  transition={{ duration: 0.1 }}
                 >
                   <Button 
                     size="sm" 
                     variant="destructive"
-                    className="text-text rounded-full"
+                    className="text-text rounded-lg p-2"
                     onClick={handleDeleteUser}
                     disabled={isDeleting}
                   >
                     <FiTrash2/> 
-                    Delete
+                    <span className='sm:text-sm text-xs'>Delete</span>
                   </Button>
                 </motion.div>
               )}
@@ -260,15 +302,17 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.3 }}
+                transition={{ duration: 0.1 }}
               >
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  className="bg-background hover:bg-background/80 rounded-full"
+                  className="bg-sky-400 text-text text-xs hover:bg-sky-600 rounded-lg p-2"
                 >
-                  <FiMail/> 
-                  Message
+                  <>
+                    <FiMail/> 
+                    <span className='text-xs sm:text-sm'>Send</span>
+                  </>
                 </Button>
               </motion.div>
             </div>
@@ -276,172 +320,167 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </div>
       
         {/* Content */}
-        <div className="px-4 pb-4 max-h-[75vh] overflow-y-auto">
+        <div className="px-4 max-h-[55vh] overflow-y-auto">
           <AnimatePresence mode="wait">
             {!editMode ? (
               <motion.div
                 key="view"
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.25, duration: 0.2 }}
+                transition={{ duration: 0.1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-4 md:space-y-6"
+                className="space-y-3 md:space-y-6"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 sm:mb-0">
-                  <InfoCard 
-                    title="Personal Information" 
-                    icon={<FiUser className="text-primary" />}
-                  >
-                    <InfoField label="First Name" value={user.firstName || '-'} />
-                    <InfoField label="Last Name" value={user.lastName || '-'} />
-                    <InfoField label="Date of Birth" value={user.dob || '-'} />
-                    <InfoField label="Gender" value={user.gender || '-'} />
-                    <InfoField label="Blood Group" value={user.bloodGroup || '-'} />
-                  </InfoCard>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InfoSection 
+                    title="Personal Information"
+                    icon={<FiUser className="w-4 h-4" />}
+                    fields={[
+                      { label: "First Name", value: safeValue(user.firstName ? user.firstName : '-') },
+                      { label: "Last Name", value: safeValue(user.lastName ? user.lastName : '-') },
+                      { label: "Date of Birth", value: formatDate(user.dob ? user.dob : '-') },
+                      { label: "Gender", value: safeValue(user.gender ? user.gender : '-') },
+                      { label: "Blood Group", value: user.bloodGroup ? `${user.bloodGroup}` : '-' },
+                    ]}
+                  />
                   
-                  <InfoCard 
-                    title="Contact Information" 
-                    icon={<FiPhone className="text-primary" />}
-                  >
-                    <InfoAncor label="Email" value={user.email || '-'} ref={`${user.email ? "mailto" : "#"}`} />
-                    <InfoAncor label="Phone" value={user.phone || '-'} ref={`${user.phone ? "tel" : "#"}`} />
-                    <InfoField label="Address" value={user.address || '-'} />
-                  </InfoCard>
+                  <InfoSection 
+                    title="Contact Information"
+                    icon={<FiMail className="w-4 h-4" />}
+                    fields={[
+                      { label: "Email", value: safeValue(user.email), ref:`${user.email ? "mailto" : "#"}` },
+                      { label: "Phone", value: safeValue(user.phone ? user.phone : '-'), ref:`${user.phone ? "tel" : "#"}` },
+                      { label: "Address", value: safeValue(user.address ? user.address : '-') },
+                    ]}
+                  />
                   
-                  <InfoCard 
-                    title="Employment Details" 
-                    icon={<FiBriefcase className="text-primary" />}
-                  >
-                    <InfoField label="Employee ID" value={user.employeeId || '-'} />
-                    <InfoField label="Position" value={user.position || '-'} />
-                    <InfoField label="Department" value={user.department || '-'} />
-                    <InfoField label="Salary" value={user.salary || '-'} />
-                    <InfoField 
-                      label="Joined Date" 
-                      value={user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      }) : '-'} 
-                    />
-                  </InfoCard>
-                
-                  <InfoCard 
-                    title="Account Information" 
-                    icon={<FiDollarSign className="text-primary" />}
-                  >
-                    <InfoField label="Username" value={user.username} />
-                    <InfoField label="Status" value={getStatusString(user.status)} />
-                    <InfoField label="Role" value={user.role} />
-                  </InfoCard>
+                  <InfoSection 
+                    title="Employment Details"
+                    icon={<FiBriefcase className="w-4 h-4" />}
+                    fields={[
+                      { label: "Employee ID", value: safeValue(user.employeeId ? user.employeeId : '-') },
+                      { label: "Position", value: safeValue(user.position ? user.position : '-') },
+                      { label: "Department", value: safeValue(user.department ? user.department : '-') },
+                      { label: "Joined Date", value: formatDate(user.createdAt) },
+                    ]}
+                  />
+                  
+                  <InfoSection 
+                    title="Account Information"
+                    icon={<FiDollarSign className="w-4 h-4" />}
+                    fields={[
+                      { label: "Username", value: safeValue(user.username) },
+                      { label: "Status", value: getStatusString(user.status) },
+                      { label: "Role", value: safeValue(user.role) },
+                      { label: "Salary", value: user.salary ? `$${user.salary}` : '-' },
+                    ]}
+                  />
                 </div>
               </motion.div>
             ) : (
+              <>
               <motion.form
-                key="edit"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.25, duration: 0.2 }}
-                exit={{ opacity: 0 }}
-                onSubmit={handleSubmit}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 border-1 border-border rounded-lg">
-                  <div className="p-4 border-r border-border">
-                    <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
-                      <FiBriefcase className="text-primary" /> 
-                      Employment Details
-                    </h3>
-                  
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium mb-1 md:mb-2">Employee ID</label>
-                        <Input
-                          value={formData.employeeId || ''}
-                          onChange={(e) => handleChange('employeeId', e.target.value)}
-                          disabled={isSaving}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1 md:mb-2">Position</label>
-                        <Input
-                          value={formData.position || ''}
-                          onChange={(e) => handleChange('position', e.target.value)}
-                          disabled={isSaving}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1 md:mb-2">Department</label>
-                        <Input
-                          value={formData.department || ''}
-                          onChange={(e) => handleChange('department', e.target.value)}
-                          disabled={isSaving}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1 md:mb-2">Salary</label>
-                        <Input
-                          value={formData.salary || ''}
-                          onChange={(e) => handleChange('salary', e.target.value)}
-                          disabled={isSaving}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 border-l border-border">
-                    <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
-                      <FiDollarSign className="text-primary" /> 
-                      Account Information
-                    </h3>
+                    key="edit"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.1 }}
+                    exit={{ opacity: 0 }}
+                    onSubmit={handleSubmit}
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 border-1 border-border rounded-lg">
+                      <div className="p-2 sm:p-4 sm:border-r border-border">
+                        <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
+                          <FiBriefcase className="text-primary" />
+                          Employment Details
+                        </h3>
 
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium mb-1 md:mb-2">Role</label>
-                        <Select
-                          value={formData.role?.toString() || ''}
-                          onValueChange={(value) => handleChange('role', value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select Role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roleOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value} className="border border-border hover:cursor-pointer hover:font-bold">
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="space-y-1 sm:space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium mb-1 md:mb-2">Employee ID</label>
+                            <Input
+                              value={formData.employeeId || ''}
+                              onChange={(e) => handleChange('employeeId', e.target.value)}
+                              disabled={isSaving} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1 md:mb-2">Position</label>
+                            <Input
+                              value={formData.position || ''}
+                              onChange={(e) => handleChange('position', e.target.value)}
+                              disabled={isSaving} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1 md:mb-2">Department</label>
+                            <Input
+                              value={formData.department || ''}
+                              onChange={(e) => handleChange('department', e.target.value)}
+                              disabled={isSaving} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1 md:mb-2">Salary</label>
+                            <Input
+                              value={formData.salary || ''}
+                              onChange={(e) => handleChange('salary', e.target.value)}
+                              disabled={isSaving} />
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1 md:mb-2">Status</label>
-                        <Select
-                          value={formData.status?.toString() || ''}
-                          onValueChange={(value) => handleChange('status', value)}
-                        >
-                          <SelectTrigger className="w-full ">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {statusOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value.toString()}  className="border border-border hover:cursor-pointer hover:font-bold">
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                      <div className="p-4 border-l border-border">
+                        <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
+                          <FiDollarSign className="text-primary" />
+                          Account Information
+                        </h3>
 
-                  </div>
-                  
-                </div>
-              </motion.form>
+                        <div className="space-y-1 sm:space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium mb-1 md:mb-2">Role</label>
+                            <Select
+                              value={formData.role?.toString() || ''}
+                              onValueChange={(value) => handleChange('role', value)}
+                            >
+                              <SelectTrigger className="w-full h-10">
+                                <SelectValue placeholder="Select Role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {roleOptions.map(option => (
+                                  <SelectItem key={option.value} value={option.value} className="border border-border hover:cursor-pointer hover:font-bold">
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1 md:mb-2">Status</label>
+                            <Select
+                              value={formData.status?.toString() || ''}
+                              onValueChange={(value) => handleChange('status', value)}
+                            >
+                              <SelectTrigger className="w-full h-10">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {statusOptions.map(option => (
+                                  <SelectItem key={option.value} value={option.value.toString()} className="border border-border hover:cursor-pointer hover:font-bold">
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                      </div>
+
+                    </div>
+                  </motion.form>
+                  </>
             )}
           </AnimatePresence>
         </div>
       
         {/* Delete button - Only shown in edit mode (and only for admins) */}
-        {isAdmin && editMode && (
+        {isAdmin && editMode ? (
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -483,6 +522,16 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </Button>
           </div>
           </motion.div>
+        ) : (
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.25, duration: 0.3 }}
+          >
+          <div className="sticky bottom-0 flex justify-center p-3 border-t border-border gap-2 h-16">
+            
+          </div>
+          </motion.div>
         )}
       </DialogContent>
     </Dialog>
@@ -513,18 +562,18 @@ const InfoCard: React.FC<{
 );
 
 // Info Field Component
-const InfoField: React.FC<{ label: string; value: string; }> = ({ label, value }) => (
+export const InfoField: React.FC<{ label: string; value: string; }> = ({ label, value }) => (
   <div className="flex flex-row items-center">
-    <div className="w-32 text-sm font-medium text-muted-foreground p-1">{label}</div>
-    <div className="text-foreground font-medium text-base break-all">{value}</div>
-  </div>
+    <div className="w-1/3 text-sm font-medium text-muted-foreground flex justify-start">{label}</div>
+      <div className="w-2/3 text-foreground font-medium flex justify-start break-all">{value}</div>
+    </div>
 );
 
 // Info Ancor Component
-const InfoAncor: React.FC<{ label: string; value: string; ref?: string; }> = ({ label, value, ref }) => (
+export const InfoAncor: React.FC<{ label: string; value: string; ref?: string; }> = ({ label, value, ref }) => (
   <div className="flex flex-row items-center">
-    <div className="w-32 text-sm font-medium text-muted-foreground p-1">{label}</div>
-    <div className="text-foreground font-medium text-base break-all">
+    <div className="w-1/3 text-sm font-medium text-muted-foreground flex justify-start">{label}</div>
+    <div className="w-2/3 text-foreground font-medium flex justify-start break-all">
       <a href={`${ref}:${value}`}>{value}</a>
     </div>
   </div>

@@ -443,34 +443,32 @@ export default function UserDashboard() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden p-2 mt-2">
-          <motion.div 
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="bg-card rounded-xl shadow-lg h-full flex flex-col overflow-hidden"
-          >
-            <div className="flex-1 overflow-auto">
-              <TabContent
-                activeTab={activeTab}
-                tabData={tabData}
-                users={users}
-                messages={messages}
-                groups={groups}
-                currentUser={currentUser}
-                onApproveUser={approveUser}
-                onUpdateUser={updateUser}
-                onUserDeleted={handleUserDeleted}
-                setMessages={setMessages}
-                setGroups={setGroups}
-                setCurrentUser={setCurrentUser}
-                handleProfileUpdate={handleProfileUpdate}
-              />
-            </div>
-          </motion.div>
-        </div>
+        <motion.div 
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="bg-card shadow-lg h-full flex flex-col overflow-hidden mb-10"
+        >
+          <div className="flex-1 overflow-auto">
+            <TabContent
+              activeTab={activeTab}
+              tabData={tabData}
+              users={users}
+              messages={messages}
+              groups={groups}
+              currentUser={currentUser}
+              onApproveUser={approveUser}
+              onUpdateUser={updateUser}
+              onUserDeleted={handleUserDeleted}
+              setMessages={setMessages}
+              setGroups={setGroups}
+              setCurrentUser={setCurrentUser}
+              handleProfileUpdate={handleProfileUpdate}
+            />
+          </div>
+        </motion.div>
       </Tabs>
       {/* Mobile Bottom Navigation with backdrop blur */}
       <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-card/80 backdrop-blur-md border-t border-border">

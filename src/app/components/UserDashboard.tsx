@@ -403,7 +403,7 @@ export default function UserDashboard() {
       >
         {/* Desktop Tabs Header - Fixed at the top with backdrop blur */}
         <div className="sticky top-0 z-30 hidden md:block bg-background/80 backdrop-blur-md">
-          <TabsList className="grid w-full grid-cols-4 bg-transparent p-2 gap-1">
+          <TabsList className="grid w-full grid-cols-4 bg-transparent gap-1 mb-2">
             <TabsTrigger 
               value="profile" 
               className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200 hover:bg-accent"

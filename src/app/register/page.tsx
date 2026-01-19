@@ -461,7 +461,7 @@ export default function RegisterPage() {
                     <option value="">Select Role</option>
                     <option value="employee">Employee</option>
                     <option value="erp">ERP & Admin</option>
-                    <option value="admin">HRM & Admin</option>
+                    <option value="admin">HR & Admin</option>
                     <option value="demand">Demand Entry</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">

@@ -46,7 +46,7 @@ const statusOptions = [
 
 const roleOptions = [
   { value: 'erp', label: 'ERP Management' },
-  { value: 'demand', label: 'Demand Entry' },
+  { value: 'employee', label: 'Employee' },
   { value: 'admin', label: 'HR & Admin Management' },
 ];
 

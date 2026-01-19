@@ -1,7 +1,17 @@
-"use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
-import { User, Message, Group } from "@/types/users";
+import { 
+  User, 
+  Message, 
+  Group, 
+  SSEEvent, 
+  UserEventData, 
+  MessageEventData, 
+  GroupEventData, 
+  InitialData,
+  TabValue,
+  TabState
+} from "@/types/users";
 import MobileBottomNav from "./user/MobileBottomNav";
 import TabContent from "./user/TabContent";
 import { toast } from "sonner";
@@ -10,16 +20,13 @@ import {
   FiUser, 
   FiUsers, 
   FiInbox, 
-  FiFolder,
-  FiMenu 
+  FiFolder
 } from "react-icons/fi";
+import ParamountLoader from "./Loader";
+import { userApi, messageApi, groupApi, sseApi } from "@/app/lib/api";
 
-export type TabValue = "profile" | "users" | "inbox" | "groups";
-type EventType = "user" | "message" | "group" | "initial" | "heartbeat";
-
-interface SSEEvent {
-  type: EventType;
-  data: any;
+interface TabData {
+  [key: string]: TabState;
 }
 
 export default function UserDashboard() {
@@ -29,8 +36,9 @@ export default function UserDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  const [tabData, setTabData] = useState({
+  const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
+  
+  const [tabData, setTabData] = useState<TabData>({
     profile: { loaded: true, loading: false },
     users: { loaded: false, loading: false },
     inbox: { loaded: false, loading: false },
@@ -39,6 +47,7 @@ export default function UserDashboard() {
 
   const [retryCount, setRetryCount] = useState(0);
   const [tabLoadingProgress, setTabLoadingProgress] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Refs to keep state fresh inside callbacks
   const usersRef = useRef(users);
@@ -46,6 +55,8 @@ export default function UserDashboard() {
   const groupsRef = useRef(groups);
   const activeTabRef = useRef(activeTab);
   const currentUserRef = useRef(currentUser);
+  const selectedUsernameRef = useRef(selectedUsername);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     usersRef.current = users;
@@ -53,112 +64,128 @@ export default function UserDashboard() {
     groupsRef.current = groups;
     activeTabRef.current = activeTab;
     currentUserRef.current = currentUser;
-  }, [users, messages, groups, activeTab, currentUser]);
+    selectedUsernameRef.current = selectedUsername;
+  }, [users, messages, groups, activeTab, currentUser, selectedUsername]);
+
+  // Fetch current user on component mount
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const user = await userApi.getCurrentUser();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error("Failed to fetch current user:", error);
+        toast.error("Failed to load your profile");
+      }
+    };
+    
+    fetchCurrentUser();
+  }, []);
 
   /** ----------------------------- SSE HANDLER ----------------------------- **/
   useEffect(() => {
-    let eventSource: EventSource | null = null;
-    let reconnectTimeout: NodeJS.Timeout;
-
-    const connect = () => {
-      eventSource = new EventSource("/api/user/stream");
-
-      eventSource.onopen = () => {
+    const cleanup = sseApi.connect({
+      onOpen: () => {
         console.log("SSE connection established");
         setRetryCount(0);
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const parsed: SSEEvent = JSON.parse(event.data);
-          switch (parsed.type) {
-            case "user":
-              handleUserEvent(parsed.data);
-              break;
-            case "message":
-              handleMessageEvent(parsed.data);
-              break;
-            case "group":
-              handleGroupEvent(parsed.data);
-              break;
-            case "initial":
-              handleInitialData(parsed.data);
-              break;
-          }
-        } catch (err) {
-          console.error("SSE parse error:", err);
-        }
-      };
-
-      eventSource.onerror = () => {
+      },
+      onMessage: (event: SSEEvent) => handleSSEEvent(event),
+      onError: () => {
         console.error("SSE error, reconnecting...");
-        eventSource?.close();
-        eventSource = null;
-
         const delay = Math.min(1000 * 2 ** retryCount, 30000);
-        setRetryCount((prev) => prev + 1);
-
-        reconnectTimeout = setTimeout(connect, delay);
+        setRetryCount(prev => prev + 1);
         toast.error("Connection lost! Reconnecting...");
-      };
-    };
+        return delay;
+      }
+    });
 
-    connect();
-    return () => {
-      eventSource?.close();
-      clearTimeout(reconnectTimeout);
-    };
+    return cleanup;
   }, [retryCount]);
 
+  /** ----------------------------- SSE EVENT HANDLER ----------------------------- **/
+  const handleSSEEvent = useCallback((event: SSEEvent) => {
+    switch (event.type) {
+      case "user":
+        handleUserEvent(event.data as UserEventData);
+        break;
+      case "message":
+        handleMessageEvent(event.data as MessageEventData);
+        break;
+      case "group":
+        handleGroupEvent(event.data as GroupEventData);
+        break;
+      case "initial":
+        handleInitialData(event.data as InitialData);
+        break;
+      case "heartbeat":
+        // Handle heartbeat if needed
+        break;
+    }
+  }, []);
+
   /** ----------------------------- EVENT HANDLERS ----------------------------- **/
-  const handleUserEvent = useCallback((data: any) => {
-    if (["created", "updated"].includes(data.action)) {
-      setUsers((prev) =>
-        prev.some((u) => u.username === data.user.username)
-          ? prev.map((u) =>
-              u.username === data.user.username ? data.user : u
-            )
-          : [...prev, data.user]
-      );
-      if (
-        currentUserRef.current &&
-        data.user.username === currentUserRef.current.username
-      ) {
-        setCurrentUser(data.user);
-      }
-    } else if (data.action === "deleted") {
-      setUsers((prev) => prev.filter((u) => u.username !== data.username));
+  const handleUserEvent = useCallback((data: UserEventData) => {
+    if (["created", "updated"].includes(data.action) && data.user) {
+      setUsers(prev => {
+        const userExists = prev.some(u => u.username === data.user?.username);
+        const updatedUsers = userExists
+          ? prev.map(u => u.username === data.user?.username ? data.user! : u)
+          : [...prev, data.user!];
+        
+        // Update selected user if it's the one being updated
+        if (selectedUsernameRef.current === data.user?.username) {
+          // This will trigger the selected user to be updated from the users list
+        }
+        
+        // Update currentUser if it's the current user being updated
+        if (currentUserRef.current?.username === data.user?.username) {
+          setCurrentUser(data.user!);
+        }
+        
+        return updatedUsers;
+      });
+    } else if (data.action === "deleted" && data.username) {
+      setUsers(prev => {
+        const filteredUsers = prev.filter(u => u.username !== data.username);
+        
+        // Clear selected user if it was deleted
+        if (selectedUsernameRef.current === data.username) {
+          setSelectedUsername(null);
+        }
+        
+        return filteredUsers;
+      });
     }
   }, []);
 
-  const handleMessageEvent = useCallback((data: any) => {
-    if (data.action === "created") {
-      setMessages((prev) => [data.message, ...prev]);
+  const handleMessageEvent = useCallback((data: MessageEventData) => {
+    if (data.action === "created" && data.message) {
+      setMessages(prev => [data.message!, ...prev]);
       if (activeTabRef.current !== "inbox") {
-        toast.message(`New Message From: ${data.message.from}`);
+        toast.message(`New Message From: ${data.message?.from}`);
       }
-    } else if (data.action === "updated") {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === data.message.id ? data.message : m))
+    } else if (data.action === "updated" && data.message) {
+      setMessages(prev =>
+        prev.map(m => (m.id === data.message?.id ? data.message! : m))
       );
-    } else if (data.action === "deleted") {
-      setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
+    } else if (data.action === "deleted" && data.messageId) {
+      setMessages(prev => prev.filter(m => m.id !== data.messageId));
     }
   }, []);
 
-  const handleGroupEvent = useCallback((data: any) => {
-    if (data.action === "created") {
-      setGroups((prev) => [...prev, data.group]);
-    } else if (data.action === "updated") {
-      setGroups((prev) =>
-        prev.map((g) => (g.id === data.group.id ? data.group : g))
+  const handleGroupEvent = useCallback((data: GroupEventData) => {
+    if (data.action === "created" && data.group) {
+      setGroups(prev => [...prev, data.group!]);
+    } else if (data.action === "updated" && data.group) {
+      setGroups(prev =>
+        prev.map(g => (g.id === data.group?.id ? data.group! : g))
       );
-    } else if (data.action === "deleted") {
-      setGroups((prev) => prev.filter((g) => g.id !== data.groupId));
+    } else if (data.action === "deleted" && data.groupId) {
+      setGroups(prev => prev.filter(g => g.id !== data.groupId));
     }
   }, []);
 
-  const handleInitialData = useCallback((data: any) => {
+  const handleInitialData = useCallback((data: InitialData) => {
     if (data.users) setUsers(data.users);
     if (data.messages) setMessages(data.messages);
     if (data.groups) setGroups(data.groups);
@@ -172,43 +199,32 @@ export default function UserDashboard() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  /** ----------------------------- FETCH HELPERS ----------------------------- **/
-  const fetchCurrentUser = useCallback(async () => {
-    try {
-      const username = localStorage.getItem("user");
-      if (!username) throw new Error("No user in local storage");
-
-      const res = await fetch("/api/user/get", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
-      });
-      if (!res.ok) throw new Error("Failed to fetch current user");
-
-      const data = await res.json();
-      setCurrentUser(data);
-    } catch (err) {
-      console.error("Fetch current user error:", err);
-      toast.error("Failed to load user data");
-    }
-  }, []);
-
   const fetchUsers = useCallback(async () => {
     try {
-      const res = await fetch("/api/user/all");
-      if (!res.ok) throw new Error("Failed to fetch users");
-      setUsers(await res.json());
+      setIsLoading(true);
+      const result = await userApi.getAllUsers();
+      setIsLoading(false);
+      
+      if (result) {
+        setUsers(result);
+      } else {
+        toast.error("Failed to fetch users");
+      }
     } catch (err) {
       console.error("Fetch users error:", err);
       toast.error("Failed to load users");
+      setIsLoading(false);
     }
   }, []);
 
   const fetchMessages = useCallback(async () => {
     try {
-      const res = await fetch("/api/user/messages");
-      if (!res.ok) throw new Error("Failed to fetch messages");
-      setMessages(await res.json());
+      const result = await messageApi.getMessages();
+      if (result) {
+        setMessages(result);
+      } else {
+        toast.error("Failed to fetch messages");
+      }
     } catch (err) {
       console.error("Fetch messages error:", err);
       toast.error("Failed to load messages");
@@ -217,9 +233,12 @@ export default function UserDashboard() {
 
   const fetchGroups = useCallback(async () => {
     try {
-      const res = await fetch("/api/user/groups");
-      if (!res.ok) throw new Error("Failed to fetch groups");
-      setGroups(await res.json());
+      const result = await groupApi.getGroups();
+      if (result) {
+        setGroups(result);
+      } else {
+        toast.error("Failed to fetch groups");
+      }
     } catch (err) {
       console.error("Fetch groups error:", err);
       toast.error("Failed to load groups");
@@ -228,39 +247,79 @@ export default function UserDashboard() {
 
   /** ----------------------------- TAB REFRESH ----------------------------- **/
   useEffect(() => {
-    const refresh = async () => {
-      setTabData((prev) => ({
+    // Create a new AbortController for this effect
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
+    const refreshTab = async () => {
+      const tabKey = activeTab;
+      
+      // Skip if already loading
+      if (tabData[tabKey]?.loading) return;
+      
+      setTabData(prev => ({
         ...prev,
-        [activeTab]: { ...prev[activeTab], loading: true },
+        [tabKey]: { ...prev[tabKey], loading: true },
       }));
 
       try {
-        if (activeTab === "users") await fetchUsers();
-        else if (activeTab === "inbox") await fetchMessages();
-        else if (activeTab === "groups") await fetchGroups();
-        else if (activeTab === "profile") await fetchCurrentUser(), await fetchUsers();
+        // Check if the component is still mounted and request not aborted
+        if (signal.aborted) return;
 
-        setTabData((prev) => ({
-          ...prev,
-          [activeTab]: { loaded: true, loading: false },
-        }));
-      } catch {
-        setTabData((prev) => ({
-          ...prev,
-          [activeTab]: { ...prev[activeTab], loading: false },
-        }));
+        switch (activeTab) {
+          case "users":
+            await fetchUsers();
+            break;
+          case "inbox":
+            await fetchMessages();
+            break;
+          case "groups":
+            await fetchGroups();
+            break;
+          case "profile":
+            await fetchUsers();
+            break;
+        }
+
+        // Check again before updating state
+        if (!signal.aborted) {
+          setTabData(prev => ({
+            ...prev,
+            [tabKey]: { loaded: true, loading: false },
+          }));
+        }
+      } catch (error: any) {
+        // Only log and show toast if it's not an abort error
+        if (error.name !== 'AbortError') {
+          console.error(`Failed to refresh ${activeTab} tab:`, error);
+          if (!signal.aborted) {
+            setTabData(prev => ({
+              ...prev,
+              [tabKey]: { ...prev[tabKey], loading: false },
+            }));
+          }
+        }
       }
     };
-    refresh();
-  }, [activeTab, fetchUsers, fetchMessages, fetchGroups, fetchCurrentUser]);
+
+    refreshTab();
+
+    // Cleanup function to abort ongoing requests
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [activeTab, fetchUsers, fetchMessages, fetchGroups]);
 
   /** ----------------------------- PROGRESS BAR ----------------------------- **/
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (Object.values(tabData).some((t) => t.loading)) {
+    if (Object.values(tabData).some(t => t.loading)) {
       interval = setInterval(
         () =>
-          setTabLoadingProgress((prev) =>
+          setTabLoadingProgress(prev =>
             prev >= 100 ? 100 : prev + 10
           ),
         100
@@ -271,108 +330,115 @@ export default function UserDashboard() {
     return () => clearInterval(interval);
   }, [tabData]);
 
-  /** ----------------------------- OTHER ACTIONS ----------------------------- **/
+  /** ----------------------------- USER ACTIONS ----------------------------- **/
   const approveUser = async (username: string) => {
     try {
-      const res = await fetch("/api/user/update-status", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, status: 2 }),
-      });
-      if (!res.ok) throw new Error("Approval failed");
-
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.username === username ? { ...u, status: 2 } : u
-        )
-      );
-      toast.success("User activated successfully!");
-    } catch {
+      setIsLoading(true);
+      const result = await userApi.updateUserStatus(username, 2);
+      setIsLoading(false);
+      
+      if (result) {
+        setUsers(prev =>
+          prev.map(u =>
+            u.username === username ? { ...u, status: 2 } : u
+          )
+        );
+        toast.success("User activated successfully!");
+      } else {
+        toast.error("Approval failed");
+      }
+    } catch (error) {
+      console.error("Approve user error:", error);
       toast.error("Approval failed, try again later");
-    }
-  };
-
-  const updateUser = async (
-    username: string,
-    updateData: Partial<User>
-  ): Promise<User[]> => {
-    try {
-      if (!username) throw new Error("Username is required");
-      const res = await fetch("/api/user/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, ...updateData }),
-      });
-      if (!res.ok) throw new Error("Update failed");
-
-      await fetchUsers();
-      toast.success("User updated successfully!");
-      return users;
-    } catch (err) {
-      toast.error("Error updating user!");
-      throw err;
+      setIsLoading(false);
     }
   };
 
   const handleProfileUpdate = async (updatedUser: User) => {
     try {
       if (!updatedUser.username) throw new Error("Invalid user");
-      const updated = await updateUser(
-        updatedUser.username,
-        updatedUser
-      );
-      const latest = updated.find(
-        (u) => u.username === updatedUser.username
-      );
-      if (latest) setCurrentUser(latest);
-      return true;
+      
+      const result : User = await userApi.updateUser(updatedUser.username, updatedUser);
+      if (result) {
+        setUsers(prev =>
+          prev.map(u =>
+            u.username === updatedUser.username ? result : u
+          )
+        );
+        
+        // Update currentUser state
+        setCurrentUser(result);
+        return true;
+      } else {
+        throw new Error("Update failed");
+      }
     } catch {
       toast.error("Profile update failed");
       return false;
     }
   };
 
+  const handleUserUpdate = async (username: string, updatedUser: Partial<User>) => {
+    try {
+      if (!username) throw new Error("Invalid user");
+      
+      const result = await userApi.updateUser(username, updatedUser);
+      if (result) {
+        setUsers(prev =>
+          prev.map(u =>
+            u.username === username ? { ...u, ...updatedUser } : u
+          )
+        );
+        
+        // Update currentUser if it's the current user
+        if (currentUser?.username === username) {
+          setCurrentUser(prev => prev ? { ...prev, ...updatedUser } : null);
+        }
+        
+        return result;
+      } else {
+        throw new Error("Update failed");
+      }
+    } catch {
+      toast.error("User update failed");
+      throw new Error("Update failed");
+    }
+  };
+
   const handleUserDeleted = (username: string) => {
-    setUsers((prev) => prev.filter((u) => u.username !== username));
+    setUsers(prev => prev.filter(u => u.username !== username));
     toast(`User ${username} removed`);
   };
 
   const sendMessage = async (to: string, content: string) => {
     try {
-      const res = await fetch("/api/user/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, content }),
-      });
-      if (!res.ok) throw new Error("Send failed");
-      const newMsg = await res.json();
-      setMessages((prev) => [newMsg, ...prev]);
-      toast.success("Message sent!");
+      const result = await messageApi.sendMessage(to, content);
+      if (result) {
+        setMessages(prev => [result, ...prev]);
+        toast.success("Message sent!");
+      } else {
+        throw new Error("Send failed");
+      }
     } catch {
       toast.error("Failed to send message");
     }
   };
 
+  // Get selected user from users list
+  const selectedUser = selectedUsername 
+    ? users.find(u => u.username === selectedUsername) || null
+    : null;
+
   /** ----------------------------- UNREAD + LOADING ----------------------------- **/
-  const unreadMessages = messages.filter((m) => !m.read);
-  const isTabLoading = Object.values(tabData).some((t) => t.loading);
+  const unreadMessages = messages.filter(m => !m.read);
+  const isTabLoading = Object.values(tabData).some(t => t.loading);
 
   /** ----------------------------- RENDER ----------------------------- **/
   if (!currentUser) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scaleX: 0 }}
-        animate={{ opacity: 1, scaleX: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed top-0 left-0 w-full h-1 bg-secondary/30 z-50 origin-left backdrop-blur-sm"
-      >
-        <motion.div
-          className="h-full bg-primary"
-          initial={{ width: "0%" }}
-          animate={{ width: `${100}%` }}
-          transition={{ duration: 0.15, ease: "linear" }}
-        />
-      </motion.div>
+      <div className="flex items-center justify-center min-h-screen">
+        <ParamountLoader />
+      </div>
     );
   }
 
@@ -401,7 +467,7 @@ export default function UserDashboard() {
         onValueChange={(val) => setActiveTab(val as TabValue)}
         className="flex flex-col max-h-[94vh]"
       >
-        {/* Desktop Tabs Header - Fixed at the top with backdrop blur */}
+        {/* Desktop Tabs Header */}
         <div className="sticky top-0 z-30 hidden md:block bg-background/80 backdrop-blur-md">
           <TabsList className="grid w-full grid-cols-4 bg-transparent gap-1 mb-2">
             <TabsTrigger 
@@ -452,25 +518,31 @@ export default function UserDashboard() {
           className="bg-card shadow-lg h-full flex flex-col overflow-hidden mb-10"
         >
           <div className="flex-1 overflow-auto">
-            <TabContent
-              activeTab={activeTab}
-              tabData={tabData}
-              users={users}
-              messages={messages}
-              groups={groups}
-              currentUser={currentUser}
-              onApproveUser={approveUser}
-              onUpdateUser={updateUser}
-              onUserDeleted={handleUserDeleted}
-              setMessages={setMessages}
-              setGroups={setGroups}
-              setCurrentUser={setCurrentUser}
-              handleProfileUpdate={handleProfileUpdate}
-            />
+            {isLoading ? <ParamountLoader /> : (
+              <TabContent
+                activeTab={activeTab}
+                tabData={tabData}
+                users={users}
+                messages={messages}
+                groups={groups}
+                currentUser={currentUser}
+                selectedUser={selectedUser}
+                onApproveUser={approveUser}
+                onUpdateUser={handleUserUpdate}
+                onUserDeleted={handleUserDeleted}
+                setMessages={setMessages}
+                setGroups={setGroups}
+                setCurrentUser={setCurrentUser}
+                setSelectedUsername={setSelectedUsername}
+                handleProfileUpdate={handleProfileUpdate}
+                sendMessage={sendMessage}
+              />
+            )}
           </div>
         </motion.div>
       </Tabs>
-      {/* Mobile Bottom Navigation with backdrop blur */}
+      
+      {/* Mobile Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-card/80 backdrop-blur-md border-t border-border">
         <MobileBottomNav
           activeTab={activeTab}

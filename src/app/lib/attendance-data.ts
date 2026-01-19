@@ -1,20 +1,27 @@
 import { getAccessTokenFromServiceAccount, getOrCreateFolder } from '@/app/lib/google-auth';
-import { User } from '@/types/users';
+import { AttendanceRecord } from '@/types/users';
 import axios from 'axios';
 
-const LOG_FILE_NAME = 'users.json';
+const ATTENDANCE_FILE_NAME = 'attendance.json';
 const GOOGLE_DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 const GOOGLE_DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
 
-const accessToken = await getAccessTokenFromServiceAccount();
-const userDataFolderId = await getOrCreateFolder(accessToken, "user-data");
+let accessToken: string;
+let attendanceFolderId: string;
 
+async function initialize() {
+  if (!accessToken) {
+    accessToken = await getAccessTokenFromServiceAccount();
+    attendanceFolderId = await getOrCreateFolder(accessToken, "attendance");
+  }
+}
 
-export async function readUsersFile(): Promise<User[]> {
+export async function readAttendanceFile(): Promise<AttendanceRecord[]> {
+  await initialize();
+
   try {
-
     const searchResponse = await axios.get(
-      `${GOOGLE_DRIVE_API_URL}?q=name='${LOG_FILE_NAME}' and '${userDataFolderId}' in parents and trashed=false`,
+      `${GOOGLE_DRIVE_API_URL}?q=name='${ATTENDANCE_FILE_NAME}' and '${attendanceFolderId}' in parents and trashed=false`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
@@ -30,18 +37,20 @@ export async function readUsersFile(): Promise<User[]> {
       ? downloadResponse.data 
       : [downloadResponse.data];
   } catch (error) {
-    console.error("Failed to read users file:", error);
-    throw new Error("Could not retrieve user data");
+    console.error("Failed to read attendance file:", error);
+    throw new Error("Could not retrieve attendance data");
   }
 }
 
-export async function writeUsersFile(users: User[]): Promise<void> {
+export async function writeAttendanceFile(attendance: AttendanceRecord[]): Promise<void> {
+  await initialize();
+
   try {
-    const jsonData = JSON.stringify(users, null, 2);
+    const jsonData = JSON.stringify(attendance, null, 2);
 
     // Search for existing file
     const searchResponse = await axios.get(
-      `${GOOGLE_DRIVE_API_URL}?q=name='${LOG_FILE_NAME}' and '${userDataFolderId}' in parents and trashed=false`,
+      `${GOOGLE_DRIVE_API_URL}?q=name='${ATTENDANCE_FILE_NAME}' and '${attendanceFolderId}' in parents and trashed=false`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
@@ -67,8 +76,8 @@ export async function writeUsersFile(users: User[]): Promise<void> {
         'Content-Type: application/json; charset=UTF-8',
         '',
         JSON.stringify({
-          name: LOG_FILE_NAME,
-          parents: [userDataFolderId],
+          name: ATTENDANCE_FILE_NAME,
+          parents: [attendanceFolderId],
           mimeType: 'application/json',
         }),
         `--${boundary}`,
@@ -90,7 +99,7 @@ export async function writeUsersFile(users: User[]): Promise<void> {
       );
     }
   } catch (error) {
-    console.error("Failed to write users file:", error);
-    throw new Error("Could not update user data");
+    console.error("Failed to write attendance file:", error);
+    throw new Error("Could not update attendance data");
   }
 }

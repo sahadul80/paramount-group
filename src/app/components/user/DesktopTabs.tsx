@@ -3,7 +3,7 @@ import React from 'react';
 import { FiUser, FiUsers, FiMail, FiMessageSquare } from "react-icons/fi";
 import { TabsList, TabsTrigger } from '../ui/tabs';
 import { Badge } from "../ui/badge";
-import { TabValue } from '../UserDashboard';
+import { TabValue } from '@/types/users';
 
 interface DesktopTabsProps {
   activeTab: TabValue;

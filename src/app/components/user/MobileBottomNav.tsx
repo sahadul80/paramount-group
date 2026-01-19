@@ -1,8 +1,8 @@
 // components/user/MobileBottomNav.tsx
 import React from 'react';
 import { FiUser, FiUsers, FiMail, FiMessageSquare, FiInbox, FiGitMerge } from "react-icons/fi";
-import { TabValue } from '../UserDashboard';
 import { Button } from '../ui/button';
+import { TabValue } from '@/types/users';
 
 interface MobileBottomNavProps {
   activeTab: TabValue;

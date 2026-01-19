@@ -163,6 +163,11 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
     return `${hours}h ${mins}m`;
   };
 
+  // Function to check if a task is assigned to current user
+  const isTaskAssignedToMe = (task: Task): boolean => {
+    return task.assignedTo && task.assignedTo.includes(currentUser.username);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -305,8 +310,8 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
       <div className="grid gap-4">
         <AnimatePresence>
           {filteredTasks.map((task) => {
-            const isUnread = unreadTaskIds.has(task.id);
-            const isAssignedToMe = task.assignedTo && task.assignedTo.includes(currentUser.username);
+            const isAssignedToMe = isTaskAssignedToMe(task);
+            const isUnread = isAssignedToMe && unreadTaskIds.has(task.id);
             
             return (
               <motion.div
@@ -316,11 +321,11 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <Card className={`border-border ${isUnread && isAssignedToMe ? 'border-l-4 border-l-primary' : ''}`}>
+                <Card className={`border-border ${isUnread ? 'border-l-4 border-l-primary' : ''}`}>
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div className="flex items-start gap-2">
-                        {isUnread && isAssignedToMe && (
+                        {isUnread && (
                           <FiCircle className="w-3 h-3 text-primary mt-1.5 animate-pulse" />
                         )}
                         <div>
@@ -372,7 +377,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
                       </div>
                       
                       <div className="flex gap-2">
-                        {isUnread && isAssignedToMe && (
+                        {isUnread && (
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -384,7 +389,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
                           </Button>
                         )}
                         
-                        {task.status !== 'completed' && (
+                        {task.status !== 'completed' && isAssignedToMe && (
                           <>
                             {activeTimers[task.id] ? (
                               <Button 
@@ -419,7 +424,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
                           </>
                         )}
                         
-                        {task.status === 'completed' && (
+                        {task.status === 'completed' && isAssignedToMe && (
                           <Button 
                             variant="outline" 
                             size="sm"

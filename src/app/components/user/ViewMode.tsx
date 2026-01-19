@@ -79,9 +79,9 @@ const ViewMode: React.FC<ViewModeProps> = ({
   };
 
   // Calculate time at company
-  const getTenure = () => {
-    if (!currentUser.createdAt) return '-';
-    const joinDate = new Date(currentUser.createdAt);
+  const getTenure = async () => {
+    if (!(await currentUser).createdAt) return '-';
+    const joinDate = new Date((await currentUser).createdAt);
     const today = new Date();
     const years = today.getFullYear() - joinDate.getFullYear();
     const months = today.getMonth() - joinDate.getMonth();
@@ -118,7 +118,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
                   className="object-cover"
                 />
                 <AvatarFallback className="text-xl bg-gradient-to-r from-blue-100 to-purple-100 text-text">
-                  {currentUser.firstName?.charAt(0) || currentUser.username.charAt(0)}
+                  {currentUser.firstName?.charAt(0) || currentUser.username?.charAt(0)}
                   {currentUser.lastName?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
@@ -194,14 +194,14 @@ const ViewMode: React.FC<ViewModeProps> = ({
                 <Tooltip>
                 <TooltipTrigger asChild>
                     <Button 
-                    variant={currentUser.status === 5 ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => updateUserStatus(5)}
-                    disabled={statusUpdating}
-                    className={`text-xs h-6 w-18 ${currentUser.status === 5 ? "bg-green-600" : "border-gray-300 hover:bg-green-700"}`}
+                      variant={currentUser.status === 5 ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => updateUserStatus(5)}
+                      disabled={statusUpdating}
+                      className={`text-xs h-6 w-18 ${currentUser.status === 5 ? "bg-green-600" : "border-gray-300 bg-transparent text-none hover:bg-green-700"}`}
                     >
                     <FiWifi />
-                    Online
+                      Online
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -214,14 +214,14 @@ const ViewMode: React.FC<ViewModeProps> = ({
                 <Tooltip>
                 <TooltipTrigger asChild>
                     <Button 
-                    variant={currentUser.status === 3 ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => updateUserStatus(3)}
-                    disabled={statusUpdating}
-                    className={`text-xs h-6 w-18 ${currentUser.status === 3 ? "bg-yellow-600" : "border-gray-300  hover:bg-yellow-700"}`}
+                      variant={currentUser.status === 3 ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => updateUserStatus(3)}
+                      disabled={statusUpdating}
+                      className={`text-xs h-6 w-18 ${currentUser.status === 3 ? "bg-yellow-600" : "border-gray-300 bg-transparent text-none hover:bg-yellow-700"}`}
                     >
                     <FiClock />
-                    Away
+                      Away
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -240,30 +240,30 @@ const ViewMode: React.FC<ViewModeProps> = ({
           <TabsList className="flex justify-between w-full rounded-none border-b border-border text-text p-0 h-10 ">
             <TabsTrigger 
               value="overview" 
-              className="flex flex-col rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
+              className="flex flex-row gap-2 rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
             >
-              <FiInfo className="hidden sm:flex"/>
+              <FiInfo className="hidden sm:flex h-4 w-4"/>
               <span>Overview</span>
             </TabsTrigger>
             <TabsTrigger 
               value="personal" 
-              className="flex flex-col rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
+              className="flex flex-row gap-2 rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
             >
-              <FiUser className="hidden sm:flex"/>
+              <FiUser className="hidden sm:flex h-4 w-4"/>
               <span>Personal</span>
             </TabsTrigger>
             <TabsTrigger 
               value="work"
-              className="flex flex-col rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
+              className="flex flex-row gap-2 rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
             >
-              <FiBriefcase className="hidden sm:flex"/>
+              <FiBriefcase className="hidden sm:flex h-4 w-4"/>
               <span>Work</span>
             </TabsTrigger>
             <TabsTrigger 
               value="account" 
-              className="flex flex-col rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
+              className="flex flex-row gap-2 rounded-none border-b-4 border-b-transparent data-[state=active]:border-b-blue-600 h-10 text-xs font-xs w-full"
             >
-              <FiShield className="hidden sm:flex"/>
+              <FiShield className="hidden sm:flex h-4 w-4"/>
               <span>Account</span>
             </TabsTrigger>
           </TabsList>
@@ -340,7 +340,6 @@ const ViewMode: React.FC<ViewModeProps> = ({
                 { label: "Department", value: safeValue(currentUser.department) },
                 { label: "Salary", value: currentUser.salary ? `$${currentUser.salary}` : '-' },
                 { label: "Joined Date", value: formatDate(currentUser.createdAt) },
-                { label: "Tenure", value: getTenure() },
               ]}
             />
           </TabsContent>

@@ -3,21 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../ui/card";
-
-interface Group {
-  id: number;
-  name: string;
-  members: string[];
-  createdBy: string;
-}
-
-interface User {
-  username: string;
-  email: string;
-  role: string;
-  status: number;
-  avatar?: string;
-}
+import { Group, User } from '@/types/users';
 
 interface GroupsTabProps {
   groups: Group[];
@@ -47,17 +33,19 @@ const GroupsTab: React.FC<GroupsTabProps> = ({ groups, setGroups, loading, users
     }
   };
 
-  const createGroup = (e: React.FormEvent) => {
+  const createGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroup.name || newGroup.members.length === 0) {
       alert('Please enter a group name and select at least one member');
       return;
     }
     const newGrp: Group = {
-      id: groups.length + 1,
+      id: Date.now+"_"+(await currentUser).username,
       name: newGroup.name,
-      members: [...newGroup.members, currentUser.username],
-      createdBy: currentUser.username
+      members: [...newGroup.members, (await currentUser).username],
+      createdBy: (await currentUser).username,
+      isPrivate: false,
+      createdAt: new Date().toDateString()
     };
     setGroups([newGrp, ...groups]);
     setNewGroup({ name: '', members: [] });
@@ -126,7 +114,7 @@ const GroupsTab: React.FC<GroupsTabProps> = ({ groups, setGroups, loading, users
                   </div>
                 ) : (
                   users
-                    .filter(user => user.username !== currentUser.username)
+                    .filter(async user => user.username !== (await currentUser).username)
                     .map(user => (
                       <div 
                         key={user.username} 

@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { Loader2 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { FiLogIn } from "react-icons/fi";
+import ParamountLoader from "../components/Loader";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -177,21 +177,7 @@ export default function LoginPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center"
           >
-            <motion.div
-              animate={{ 
-                rotate: 360,
-                transition: { 
-                  rotate: { 
-                    duration: 1, 
-                    repeat: Infinity, 
-                    ease: "linear" 
-                  } 
-                }
-              }}
-              className="text-primary"
-            >
-              <Loader2 className="h-16 w-16" />
-            </motion.div>
+              <ParamountLoader/>
           </motion.div>
         )}
       </AnimatePresence>
@@ -340,7 +326,6 @@ export default function LoginPage() {
                     <FiLogIn className="mr-1"/>
                     {isLoading ? (
                       <div className="flex items-center">
-                        <Loader2 className="h-4 w-4 animate-spin" />
                         <span>Signing In...</span>
                       </div>
                     ) : (

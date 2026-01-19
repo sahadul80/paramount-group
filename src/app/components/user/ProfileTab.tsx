@@ -1,4 +1,3 @@
-'use client'
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "../ui/card";
 import { User, Task, AttendanceRecord, MealRecord } from '@/types/users';
@@ -21,6 +20,7 @@ import AttendanceTracker from './AttendanceTracker';
 import MealTracker from './MealTracker';
 import SalaryAdjustment from './SalaryAdjustment';
 import { PerformanceMetrics } from './PerformanceMetrics';
+import AttendanceViewer from './AttendanceViewer';
 
 interface ProfileTabProps {
   currentUser: User;
@@ -30,64 +30,6 @@ interface ProfileTabProps {
 
 // Fixed Bangladesh country code
 const BANGLADESH_CODE = '+880';
-
-// Mock data for demonstration
-const mockTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Complete Q3 Financial Report',
-    description: 'Prepare and submit the quarterly financial report',
-    assignedTo: ['johndoe'],
-    assignedBy: 'manager',
-    status: 'in-progress',
-    priority: 'high',
-    dueDate: '2025-09-30',
-    startTime: '2025-09-25T09:00:00Z',
-    completedAt: '2025-09-15T16:30:00Z',
-    createdAt: '2025-09-02T10:30:00Z'
-  },
-  {
-    id: '2',
-    title: 'Client Meeting Preparation',
-    description: 'Prepare materials for upcoming client presentation',
-    assignedTo: ['johndoe'],
-    assignedBy: 'manager',
-    status: 'pending',
-    priority: 'medium',
-    dueDate: '2025-10-05',
-    startTime: '2025-09-10T13:00:00Z',
-    completedAt: '2025-09-15T16:30:00Z',
-    createdAt: '2025-09-03T14:15:00Z'
-  },
-  {
-    id: '3',
-    title: 'Team Training Session',
-    description: 'Conduct training for new team members',
-    assignedTo: ['johndoe'],
-    assignedBy: 'manager',
-    status: 'completed',
-    priority: 'medium',
-    dueDate: '2025-09-15',
-    startTime: '2025-09-10T13:00:00Z',
-    completedAt: '2025-09-15T16:30:00Z',
-    createdAt: '2025-09-05T11:20:00Z'
-  }
-];
-
-// Updated mock attendance data to use undefined instead of null
-const mockAttendance: AttendanceRecord[] = [
-  { date: '2025-09-25', checkIn: '09:05', checkOut: '17:30', status: 'present', code:'code1'},
-  { date: '2025-09-24', checkIn: '08:45', checkOut: '17:15', status: 'present', code:'code1' },
-  { date: '2025-09-23', checkIn: '09:15', checkOut: '17:45', status: 'present', code:'code1' },
-  { date: '2025-09-22', checkIn: undefined, checkOut: undefined, status: 'absent', code:'code1' },
-];
-
-const mockMealRecords: MealRecord[] = [
-  { date: '2025-09-25', type: 'lunch', time: '12:30', calories: 650 },
-  { date: '2025-09-25', type: 'snack', time: '15:15', calories: 250 },
-  { date: '2025-09-24', type: 'lunch', time: '13:00', calories: 720 },
-  { date: '2025-09-24', type: 'snack', time: '15:45', calories: 180 },
-];
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ 
   currentUser, 
@@ -105,10 +47,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
-  const [mealRecords, setMealRecords] = useState<MealRecord[]>(mockMealRecords);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [mealRecords, setMealRecords] = useState<MealRecord[]>([]);
   const [unreadTaskIds, setUnreadTaskIds] = useState<Set<string>>(new Set());
   const [taskNotificationCount, setTaskNotificationCount] = useState(0);
   const router = useRouter();
@@ -158,6 +100,24 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
 
     fetchUsers();
   }, []);
+
+  // Fetch attendance data
+  const fetchAttendance = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/user/attendance/get?username=${currentUser.username}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAttendance(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch attendance:', error);
+    }
+  }, [currentUser.username]);
+
+  // Load attendance on mount and when currentUser changes
+  useEffect(() => {
+    fetchAttendance();
+  }, [fetchAttendance]);
 
   // Track new tasks and update notification count
   useEffect(() => {
@@ -448,33 +408,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     toast.success("New task assigned");
   };
 
-  const handleCheckIn = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toTimeString().slice(0, 5);
-    
-    setAttendance(prev => {
-      const existingRecord = prev.find(record => record.date === today);
-      
-      if (existingRecord && existingRecord.checkIn) {
-        return prev.map(record => 
-          record.date === today ? { ...record, checkOut: now } : record
-        );
-      } else {
-        return [...prev, { 
-          date: today, 
-          checkIn: now, 
-          checkOut: undefined, 
-          status: 'present', 
-          code: 'code1' // Fixed the code reference
-        }];
-      }
-    });
-    
-    // Check if record exists after setting state
-    const currentRecord = attendance.find(record => record.date === today);
-    toast.success(currentRecord && currentRecord.checkIn ? "Checked out successfully" : "Checked in successfully");
-  };
-
   const handleMealRecord = (type: string, calories: number) => {
     // Validate the type
     const validTypes = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
@@ -483,7 +416,19 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toTimeString().slice(0, 5);
     
-    setMealRecords(prev => [...prev, { date: today, type: mealType, time: now, calories }]);
+    // Build a full MealRecord object to satisfy the MealRecord type requirements.
+    // Use currentUser.username as userId fallback and generate a simple id.
+    const newRecord = {
+      id: `${Date.now()}`,
+      userId: (currentUser && (currentUser.username || (currentUser as any).id)) || '',
+      date: today,
+      type: mealType,
+      time: now,
+      calories,
+      items: []
+    } as MealRecord;
+    
+    setMealRecords(prev => [...prev, newRecord]);
     toast.success(`${mealType.charAt(0).toUpperCase() + mealType.slice(1)} recorded`);
   };
 
@@ -628,11 +573,26 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             )}
             
             {activeSection === 'attendance' && (
-              <AttendanceTracker
-                attendance={attendance}
-                onCheckIn={handleCheckIn}
-                code=''
-              />
+              currentUser.role === 'admin' ? (
+                <div className="flex flex-row gap-4 p-4 overflow-auto w-full">
+                  <div className="w-1/3">
+                    <AttendanceTracker
+                      attendance={attendance}
+                      currentUser={currentUser}
+                      onAttendanceUpdate={fetchAttendance}
+                    />
+                  </div>
+                  <div className="w-2/3">
+                    <AttendanceViewer/>
+                  </div>
+                </div>
+              ) : (
+                <AttendanceTracker
+                  attendance={attendance}
+                  currentUser={currentUser}
+                  onAttendanceUpdate={fetchAttendance}
+                />
+              )
             )}
             
             {activeSection === 'meals' && (

@@ -1,6 +1,4 @@
-// components/user/UsersTab.tsx
-"use client";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   FiUsers,
   FiClock,
@@ -11,7 +9,6 @@ import {
   FiSearch,
   FiMail,
   FiBookmark,
-  FiUser,
 } from "react-icons/fi";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -36,108 +33,97 @@ type PresenceTabValue = "online" | "offline" | "away";
 interface UsersTabProps {
   users: User[];
   loading: boolean;
+  selectedUser: User | null;
   onApprove: (username: string) => void;
-  onUpdateUser: (
-    username: string,
-    updateData: Partial<User>
-  ) => Promise<User[]>;
+  onUpdateUser: (username: string, updateData: Partial<User>) => Promise<User>;
   onUserDeleted: (username: string) => void;
+  onUserSelect: (username: string) => void;
+  onUserDeselect: () => void;
 }
 
 const UsersTab: React.FC<UsersTabProps> = ({
   users,
   loading,
+  selectedUser,
   onApprove,
   onUpdateUser,
   onUserDeleted,
+  onUserSelect,
+  onUserDeselect,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [activeMainTab, setActiveMainTab] =
-    useState<StatusTabValue>("all");
-  const [activePresenceTab, setActivePresenceTab] =
-    useState<PresenceTabValue>("online");
+  const [activeMainTab, setActiveMainTab] = useState<StatusTabValue>("all");
+  const [activePresenceTab, setActivePresenceTab] = useState<PresenceTabValue>("online");
 
-  const getStatusString = (status: number) => {
-    switch (status) {
-      case 0:
-        return "inactive";
-      case 1:
-        return "pending";
-      case 2:
-        return "active";
-      case 3:
-        return "away";
-      case 4:
-        return "offline";
-      case 5:
-        return "online";
-      default:
-        return "unknown";
-    }
-  };
+  // Memoized filtered users
+  const { filteredUsers, pendingCount, onlineCount, offlineCount, awayCount, activeCount } = useMemo(() => {
+    const filtered = users.filter((user) => {
+      const term = searchTerm.toLowerCase();
+      return (
+        user.username?.toLowerCase().includes(term) ||
+        user.email?.toLowerCase().includes(term) ||
+        user.role?.toLowerCase().includes(term) ||
+        user.firstName?.toLowerCase().includes(term) ||
+        user.lastName?.toLowerCase().includes(term)
+      );
+    });
 
-  const getBadgeVariant = (status: number) => {
-    switch (status) {
-      case 0:
-        return "destructive";
-      case 1:
-        return "warning";
-      case 2:
-        return "success";
-      case 3:
-        return "secondary";
-      case 4:
-        return "outline";
-      case 5:
-        return "success";
-      default:
-        return "default";
-    }
-  };
+    const pendingCount = users.filter(u => u.status === 1).length;
+    const onlineCount = users.filter(u => u.status === 5).length;
+    const offlineCount = users.filter(u => u.status === 4).length;
+    const awayCount = users.filter(u => u.status === 3).length;
+    const activeCount = users.filter(u => [2, 3, 4, 5].includes(u.status)).length;
 
-  const filteredUsers = users.filter((user) => {
-    const term = searchTerm.toLowerCase();
-    return (
-      user.username?.toLowerCase().includes(term) ||
-      user.email?.toLowerCase().includes(term) ||
-      user.role?.toLowerCase().includes(term) ||
-      user.firstName?.toLowerCase().includes(term) ||
-      user.lastName?.toLowerCase().includes(term)
-    );
-  });
+    return { filteredUsers: filtered, pendingCount, onlineCount, offlineCount, awayCount, activeCount };
+  }, [users, searchTerm]);
 
-  const getUsersForTab = () => {
+  // Get users for current tab
+  const currentUsers = useMemo(() => {
     // Search overrides tabs
     if (searchTerm) return filteredUsers;
 
     switch (activeMainTab) {
       case "pending":
-        return users.filter((u) => u.status === 1);
+        return users.filter(u => u.status === 1);
       case "active":
         switch (activePresenceTab) {
           case "online":
-            return users.filter((u) => u.status === 5);
+            return users.filter(u => u.status === 5);
           case "offline":
-            return users.filter((u) => u.status === 4);
+            return users.filter(u => u.status === 4);
           case "away":
-            return users.filter((u) => u.status === 3);
+            return users.filter(u => u.status === 3);
           default:
-            return users.filter((u) => [2, 3, 4, 5].includes(u.status));
+            return users.filter(u => [2, 3, 4, 5].includes(u.status));
         }
       default:
         return users;
     }
+  }, [users, searchTerm, activeMainTab, activePresenceTab]);
+
+  const getStatusString = (status: number) => {
+    switch (status) {
+      case 0: return "inactive";
+      case 1: return "pending";
+      case 2: return "active";
+      case 3: return "away";
+      case 4: return "offline";
+      case 5: return "online";
+      default: return "unknown";
+    }
   };
 
-  const currentUsers = getUsersForTab();
-  const pendingCount = users.filter((u) => u.status === 1).length;
-  const onlineCount = users.filter((u) => u.status === 5).length;
-  const offlineCount = users.filter((u) => u.status === 4).length;
-  const awayCount = users.filter((u) => u.status === 3).length;
-  const activeCount = users.filter((u) =>
-    [2, 3, 4, 5].includes(u.status)
-  ).length;
+  const getBadgeVariant = (status: number) => {
+    switch (status) {
+      case 0: return "destructive";
+      case 1: return "warning";
+      case 2: return "success";
+      case 3: return "secondary";
+      case 4: return "outline";
+      case 5: return "success";
+      default: return "default";
+    }
+  };
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -163,17 +149,14 @@ const UsersTab: React.FC<UsersTabProps> = ({
       initial="hidden"
       animate="visible"
       custom={index}
+      onClick={() => onUserSelect(user.username)}
     >
-      <Card
-        onClick={() => setSelectedUser(user)}
-        className="flex flex-col justify-between hover:shadow-2xl transition-shadow h-full cursor-pointer bg-background border border-border"
-      >
+      <Card className="flex flex-col justify-between hover:shadow-2xl transition-shadow h-full cursor-pointer bg-background border border-border">
         <CardHeader className="flex flex-row items-center space-x-2 p-4">
           <Avatar className="border-2 border-primary">
             <AvatarImage src={user.avatar || ""} alt={user.username} />
             <AvatarFallback className="bg-primary/20 text-primary">
-              {(user.firstName?.charAt(0) || user.username.charAt(0)) ||
-                ""}
+              {(user.firstName?.charAt(0) || user.username.charAt(0)) || ""}
               {user.lastName?.charAt(0) || ""}
             </AvatarFallback>
           </Avatar>
@@ -221,7 +204,15 @@ const UsersTab: React.FC<UsersTabProps> = ({
         </CardContent>
 
         <CardFooter className="flex justify-between p-2">
-          <Button size="sm" variant="outline" className="flex items-center text-xs">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="flex items-center text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Handle message action
+            }}
+          >
             <FiMail />
             <span className="hidden md:inline text-xs ml-1">Message</span>
           </Button>
@@ -250,25 +241,11 @@ const UsersTab: React.FC<UsersTabProps> = ({
       <CardContent className="p-2 md:p-4 min-h-0">
         <div className="sticky top-0 z-10 bg-black/25 backdrop-blur-2xl rounded-none -mr-2 md:-mr-4 -ml-2 md:-ml-4 -mt-4 md:-mt-6">
           <div className="p-1">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-
-              <div className="relative w-full">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 sm"
-                />
-              </div>
-            </div>
-
-            {/* Main status tabs (remain in the sticky block) */}
-            <div className="mt-1">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <Tabs
                 value={activeMainTab}
                 onValueChange={(v) => setActiveMainTab(v as StatusTabValue)}
-                className="border border-border rounded-lg"
+                className="relative w-full sm:w-2/3 border border-border rounded-lg"
               >
                 <TabsList className="flex rounded-lg text-text">
                   <TabsTrigger
@@ -302,66 +279,67 @@ const UsersTab: React.FC<UsersTabProps> = ({
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+              <div className="relative w-full sm:w-1/3">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 sm"
+                />
+              </div>
             </div>
-            {/* Presence submenu tabs (also inside the same sticky block) */}
+
+            {/* Presence submenu tabs */}
             {activeMainTab === "active" && !searchTerm && (
-            <div className="mt-0 border border-border rounded-lg">
-              <Tabs
-                value={activePresenceTab}
-                onValueChange={(v) =>
-                  setActivePresenceTab(v as PresenceTabValue)
-                }
-              >
-                <TabsList className="flex justify-between bg-muted rounded-lg text-text">
-                  <TabsTrigger
-                    value="online"
-                    className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
-                  >
-                    <FiWifi className="mr-1 h-4 w-4" /> Online
-                    <span className="ml-1 text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
-                      {onlineCount}
-                    </span>
-                  </TabsTrigger>
+              <div className="mt-0 border border-border rounded-lg">
+                <Tabs
+                  value={activePresenceTab}
+                  onValueChange={(v) =>
+                    setActivePresenceTab(v as PresenceTabValue)
+                  }
+                >
+                  <TabsList className="flex justify-between bg-muted rounded-lg text-text">
+                    <TabsTrigger
+                      value="online"
+                      className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
+                    >
+                      <FiWifi className="mr-1 h-4 w-4" /> Online
+                      <span className="ml-1 text-xs bg-success/10 text-success rounded-full px-2 py-0.5">
+                        {onlineCount}
+                      </span>
+                    </TabsTrigger>
 
-                  <TabsTrigger
-                    value="offline"
-                    className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
-                  >
-                    <FiWifiOff className="mr-1 h-4 w-4" /> Offline
-                    <span className="ml-1 text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
-                      {offlineCount}
-                    </span>
-                  </TabsTrigger>
+                    <TabsTrigger
+                      value="offline"
+                      className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
+                    >
+                      <FiWifiOff className="mr-1 h-4 w-4" /> Offline
+                      <span className="ml-1 text-xs bg-muted-foreground/10 rounded-full px-2 py-0.5">
+                        {offlineCount}
+                      </span>
+                    </TabsTrigger>
 
-                  <TabsTrigger
-                    value="away"
-                    className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
-                  >
-                    <FiCoffee className="mr-1 h-4 w-4" /> Away
-                    <span className="ml-1 text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">
-                      {awayCount}
-                    </span>
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
+                    <TabsTrigger
+                      value="away"
+                      className="flex-1 flex items-center justify-center data-[state=active]:backdrop-blur-2xl data-[state=active]:shadow-sm"
+                    >
+                      <FiCoffee className="mr-1 h-4 w-4" /> Away
+                      <span className="ml-1 text-xs bg-warning/10 text-warning rounded-full px-2 py-0.5">
+                        {awayCount}
+                      </span>
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             )}
           </div>
         </div>
+
         {loading ? (
-          <motion.div
-              initial={{ opacity: 0, scaleX: 0 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed top-0 left-0 w-full h-1 bg-secondary/30 z-50 origin-left backdrop-blur-sm"
-            >
-              <motion.div
-                className="h-full bg-primary"
-                initial={{ width: "0%" }}
-                animate={{ width: `${loading}%` }}
-                transition={{ duration: 0.15, ease: "linear" }}
-              />
-            </motion.div>
+          <div className="flex justify-center items-center py-[30vh]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 mb-12 md:mb-0">
             {currentUsers.length > 0 ? (
@@ -392,7 +370,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
         {selectedUser && (
           <UserProfileModal
             user={selectedUser}
-            onClose={() => setSelectedUser(null)}
+            onClose={onUserDeselect}
             onUpdateUser={onUpdateUser}
             onUserDeleted={onUserDeleted}
           />

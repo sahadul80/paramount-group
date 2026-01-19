@@ -1,8 +1,6 @@
+"use client"
 import { motion } from "framer-motion";
 import { useState, useEffect } from 'react';
-import { FiMenu } from "react-icons/fi";
-import { AppSidebar } from "../AppSidebar";
-import { Sidebar, SidebarMobileToggle, SidebarProvider } from "../ui/sidebar";
 
 export default function UserTopBar() {
   const [user, setUser] = useState<string | null>(null);

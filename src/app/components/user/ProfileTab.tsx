@@ -574,7 +574,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             
             {activeSection === 'attendance' && (
               currentUser.role === 'admin' ? (
-                <div className="flex flex-row gap-4 p-4 overflow-auto w-full">
+                <div className="flex flex-col md:flex-row gap-4 p-4 overflow-auto w-auto">
                   <div className="w-1/3">
                     <AttendanceTracker
                       attendance={attendance}

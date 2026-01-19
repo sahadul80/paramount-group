@@ -5,7 +5,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Button } from "../components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiEye, FiEyeOff, FiUser, FiMail, FiKey, FiCheckCircle, FiArrowLeft, FiBriefcase } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiUser, FiMail, FiKey, FiCheckCircle, FiArrowLeft, FiBriefcase, FiAlertCircle } from "react-icons/fi";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -20,7 +20,103 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [existingUsernames, setExistingUsernames] = useState<string[]>([]);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameSuggestion, setUsernameSuggestion] = useState("");
   const router = useRouter();
+
+  // Fetch existing usernames on component mount
+  useEffect(() => {
+    const fetchExistingUsernames = async () => {
+      try {
+        const res = await fetch("/api/user/all");
+        const data = await res.json();
+        
+        if (res.ok && Array.isArray(data)) {
+          const usernames = data.map(user => user.username).filter(Boolean);
+          setExistingUsernames(usernames);
+        }
+      } catch (error) {
+        console.error("Failed to fetch existing usernames:", error);
+      }
+    };
+
+    fetchExistingUsernames();
+  }, []);
+
+  // Check username availability with debounce
+  useEffect(() => {
+    const checkUsernameAvailability = async () => {
+      if (!formData.username || formData.username.length < 3) {
+        setUsernameSuggestion("");
+        return;
+      }
+
+      if (errors.username?.includes("must be at least 3") || errors.username?.includes("Only lowercase letters")) {
+        return;
+      }
+
+      setIsCheckingUsername(true);
+
+      // Simulate API delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const usernameExists = existingUsernames.includes(formData.username.toLowerCase());
+
+      if (usernameExists) {
+        // Generate username suggestions
+        const suggestions = generateUsernameSuggestions(formData.username, existingUsernames);
+        setUsernameSuggestion(suggestions[0] || "");
+        
+        setErrors(prev => ({
+          ...prev,
+          username: `Username already taken. Try: ${suggestions.slice(0, 3).join(', ')}`
+        }));
+      } else {
+        setUsernameSuggestion("");
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          if (newErrors.username?.includes("already taken")) {
+            delete newErrors.username;
+          }
+          return newErrors;
+        });
+      }
+
+      setIsCheckingUsername(false);
+    };
+
+    const timeoutId = setTimeout(checkUsernameAvailability, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.username, existingUsernames]);
+
+  const generateUsernameSuggestions = (baseUsername: string, existingUsernames: string[]): string[] => {
+    const suggestions: string[] = [];
+    const cleanUsername = baseUsername.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    
+    // Add numbers
+    for (let i = 1; i <= 5; i++) {
+      const suggestion = `${cleanUsername}${i}`;
+      if (!existingUsernames.includes(suggestion)) {
+        suggestions.push(suggestion);
+      }
+    }
+    
+    // Add underscore with numbers
+    for (let i = 1; i <= 3; i++) {
+      const suggestion = `${cleanUsername}_${i}`;
+      if (!existingUsernames.includes(suggestion)) {
+        suggestions.push(suggestion);
+      }
+    }
+    
+    // Add "real" if none of the above work
+    if (suggestions.length === 0) {
+      suggestions.push(`${cleanUsername}_real`);
+    }
+    
+    return suggestions.slice(0, 5); // Return max 5 suggestions
+  };
 
   const validateField = (name: string, value: string) => {
     let newErrors = { ...errors };
@@ -29,12 +125,19 @@ export default function RegisterPage() {
       case "username":
         if (!value) {
           newErrors.username = "Username is required";
+          setUsernameSuggestion("");
         } else if (value.length < 3) {
           newErrors.username = "Username must be at least 3 characters";
+          setUsernameSuggestion("");
         } else if (!/^[a-z0-9_]+$/.test(value)) {
           newErrors.username = "Only lowercase letters, numbers and underscores";
+          setUsernameSuggestion("");
+        } else if (existingUsernames.includes(value.toLowerCase())) {
+          // This will be handled by the useEffect
+          // Don't set error here to avoid double-setting
         } else {
           delete newErrors.username;
+          setUsernameSuggestion("");
         }
         break;
         
@@ -94,20 +197,48 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name === "username" ? value.toLowerCase() : value }));
-    validateField(name, value);
+    const processedValue = name === "username" ? value.toLowerCase() : value;
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
+    
+    // Don't validate username here - let the useEffect handle it
+    if (name !== "username") {
+      validateField(name, processedValue);
+    }
+  };
+
+  const handleUseSuggestion = () => {
+    if (usernameSuggestion) {
+      setFormData(prev => ({ ...prev, username: usernameSuggestion }));
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.username;
+        return newErrors;
+      });
+      setUsernameSuggestion("");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate all fields
-    const isValid = Object.entries(formData).every(([name, value]) => 
-      validateField(name, value)
+    // Final validation
+    const fieldsToValidate = ["email", "role", "password", "confirmPassword"];
+    if (!errors.username) {
+      fieldsToValidate.push("username");
+    }
+    
+    const isValid = fieldsToValidate.every(name => 
+      validateField(name, formData[name as keyof typeof formData])
     );
     
-    if (!isValid) {
+    if (Object.keys(errors).length > 0 || !isValid) {
       toast.error("Please fix the errors in the form");
+      return;
+    }
+
+    // Double-check username availability
+    if (existingUsernames.includes(formData.username.toLowerCase())) {
+      toast.error("Username is already taken. Please choose another one.");
       return;
     }
 
@@ -236,15 +367,56 @@ export default function RegisterPage() {
                     } bg-input text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
                     disabled={isLoading}
                   />
+                  {isCheckingUsername && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                    </div>
+                  )}
                 </div>
                 {errors.username && (
-                  <motion.p 
+                  <motion.div 
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     className="text-red-500 text-xs mt-1 pl-2"
                   >
-                    {errors.username}
-                  </motion.p>
+                    <div className="flex items-start">
+                      <FiAlertCircle className="mr-1 mt-0.5 flex-shrink-0" />
+                      <span>{errors.username}</span>
+                    </div>
+                  </motion.div>
+                )}
+                {usernameSuggestion && !errors.username && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    className="text-green-600 text-xs mt-1 pl-2 flex items-center"
+                  >
+                    <FiCheckCircle className="mr-1" />
+                    Username is available!
+                  </motion.div>
+                )}
+                {usernameSuggestion && errors.username?.includes("already taken") && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    className="mt-2"
+                  >
+                    <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">
+                      Suggested username:
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-md px-3 py-2 text-sm font-medium">
+                        {usernameSuggestion}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleUseSuggestion}
+                        className="px-3 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition-colors"
+                      >
+                        Use This
+                      </button>
+                    </div>
+                  </motion.div>
                 )}
               </div>
 
@@ -376,9 +548,10 @@ export default function RegisterPage() {
                   </motion.p>
                 )}
               </div>
+              
               <Button
                 type="submit"
-                disabled={isLoading || Object.keys(errors).length > 0}
+                disabled={isLoading || Object.keys(errors).length > 0 || isCheckingUsername}
                 className={`w-full h-10 rounded-md font-bold transition-none ${
                   isLoading 
                     ? "bg-indigo-400" 

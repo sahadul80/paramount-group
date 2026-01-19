@@ -1,3 +1,4 @@
+"use client"
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { 

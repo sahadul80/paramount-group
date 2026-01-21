@@ -18,7 +18,9 @@ import {
   FiEye,
   FiMapPin,
   FiArrowUp,
-  FiArrowDown
+  FiArrowDown,
+  FiChevronLeft,
+  FiChevronRight
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { Badge } from '../ui/badge';
@@ -32,6 +34,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 
 interface AttendanceViewerProps {
   currentUser?: User;
@@ -44,11 +52,11 @@ type DateRange = {
 
 type ViewMode = 'day' | 'week' | 'month' | 'custom';
 
-// Date helper functions - defined at the top to avoid hoisting issues
+// Date helper functions
 const getStartOfWeek = (date: Date): Date => {
   const d = new Date(date);
   const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   return new Date(d.setDate(diff));
 };
 
@@ -77,7 +85,6 @@ const getWeekNumber = (date: Date): number => {
 };
 
 const formatDate = (date: Date, format: string): string => {
-  // Simple date formatting function
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -85,13 +92,8 @@ const formatDate = (date: Date, format: string): string => {
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  const monthShortNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-  ];
-  const dayNames = [
-    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
-  ];
+  const monthShortNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const dayShortNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
   switch (format) {
@@ -116,11 +118,6 @@ const formatDate = (date: Date, format: string): string => {
   }
 };
 
-// cn utility function for conditional classes
-const cn = (...classes: (string | boolean | undefined)[]): string => {
-  return classes.filter(Boolean).join(' ');
-};
-
 const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
   // State
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
@@ -142,6 +139,17 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
   // Dialog state
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+
+  // Mobile state
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check mobile viewport on mount and resize
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Fetch all users
   useEffect(() => {
@@ -183,7 +191,6 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
           params.append('startDate', formatDate(dateRange.from, 'yyyy-MM-dd'));
           params.append('endDate', formatDate(dateRange.to, 'yyyy-MM-dd'));
         } else {
-          // For week and month, calculate date range
           let startDate: Date;
           let endDate: Date;
 
@@ -318,19 +325,19 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'present':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>;
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">Present</Badge>;
       case 'absent':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Absent</Badge>;
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-xs">Absent</Badge>;
       case 'late':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Late</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 text-xs">Late</Badge>;
       case 'half-day':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Half Day</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">Half Day</Badge>;
       case 'holiday':
-        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Holiday</Badge>;
+        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-xs">Holiday</Badge>;
       case 'leave':
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Leave</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100 text-xs">Leave</Badge>;
       default:
-        return <Badge variant="outline">Unknown</Badge>;
+        return <Badge variant="outline" className="text-xs">Unknown</Badge>;
     }
   };
 
@@ -361,7 +368,6 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
           to: getEndOfMonth(now)
         });
         break;
-      // custom range stays as is
     }
   };
 
@@ -454,67 +460,67 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 px-2 md:px-0">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Attendance Tracker</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight">Attendance Tracker</h2>
+          <p className="text-xs md:text-sm text-muted-foreground">
             View and manage employee attendance records
           </p>
         </div>
-        <Button onClick={handleExportCSV} className="gap-2">
+        <Button onClick={handleExportCSV} className="gap-2 w-full sm:w-auto">
           <FiDownload className="w-4 h-4" />
-          Export CSV
+          <span className="hidden sm:inline">Export CSV</span>
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+        <Card className="col-span-1">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Records</p>
-                <p className="text-2xl font-bold">{stats.totalRecords}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Total Records</p>
+                <p className="text-lg md:text-2xl font-bold">{stats.totalRecords}</p>
               </div>
-              <FiUsers className="w-8 h-8 text-primary/20" />
+              <FiUsers className="w-6 h-6 md:w-8 md:h-8 text-primary/20" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="col-span-1">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Present Rate</p>
-                <p className="text-2xl font-bold">{stats.presentPercentage.toFixed(1)}%</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Present Rate</p>
+                <p className="text-lg md:text-2xl font-bold">{stats.presentPercentage.toFixed(1)}%</p>
               </div>
-              <FiCheckCircle className="w-8 h-8 text-green-500/20" />
+              <FiCheckCircle className="w-6 h-6 md:w-8 md:h-8 text-green-500/20" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="col-span-1">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Avg. Hours/Day</p>
-                <p className="text-2xl font-bold">{stats.avgHours.toFixed(1)}h</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Avg. Hours/Day</p>
+                <p className="text-lg md:text-2xl font-bold">{stats.avgHours.toFixed(1)}h</p>
               </div>
-              <FiClock className="w-8 h-8 text-blue-500/20" />
+              <FiClock className="w-6 h-6 md:w-8 md:h-8 text-blue-500/20" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="col-span-1">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Late Entries</p>
-                <p className="text-2xl font-bold">{stats.lateCount}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Late Entries</p>
+                <p className="text-lg md:text-2xl font-bold">{stats.lateCount}</p>
               </div>
-              <FiTrendingUp className="w-8 h-8 text-yellow-500/20" />
+              <FiTrendingUp className="w-6 h-6 md:w-8 md:h-8 text-yellow-500/20" />
             </div>
           </CardContent>
         </Card>
@@ -522,14 +528,14 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FiFilter className="w-5 h-5" />
+        <CardHeader className="pb-3 md:pb-4">
+          <CardTitle className="text-base md:text-lg flex items-center gap-2">
+            <FiFilter className="w-4 h-4 md:w-5 md:h-5" />
             Filters
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <CardContent className="pb-3 md:pb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
             {/* Search */}
             <div className="relative">
               <FiSearch className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -537,13 +543,13 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                 placeholder="Search by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 h-10"
               />
             </div>
 
             {/* User Filter */}
             <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger>
+              <SelectTrigger className="h-10">
                 <SelectValue placeholder="Select employee" />
               </SelectTrigger>
               <SelectContent>
@@ -556,18 +562,43 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
               </SelectContent>
             </Select>
 
-            {/* View Mode */}
-            <Select value={viewMode} onValueChange={(value: ViewMode) => handleViewModeChange(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="View mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="day">Day View</SelectItem>
-                <SelectItem value="week">Week View</SelectItem>
-                <SelectItem value="month">Month View</SelectItem>
-                <SelectItem value="custom">Custom Range</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* View Mode - Mobile dropdown, desktop select */}
+            {isMobile ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-10 w-full justify-start">
+                    <FiCalendar className="mr-2 h-4 w-4" />
+                    <span className="capitalize">{viewMode} View</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  <DropdownMenuItem onClick={() => handleViewModeChange('day')}>
+                    Day View
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleViewModeChange('week')}>
+                    Week View
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleViewModeChange('month')}>
+                    Month View
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleViewModeChange('custom')}>
+                    Custom Range
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Select value={viewMode} onValueChange={(value: ViewMode) => handleViewModeChange(value)}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="View mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">Day View</SelectItem>
+                  <SelectItem value="week">Week View</SelectItem>
+                  <SelectItem value="month">Month View</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
 
             {/* Date Selection based on view mode */}
             {viewMode === 'day' && (
@@ -575,10 +606,10 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-start text-left font-normal"
+                    className="w-full justify-start text-left font-normal h-10"
                   >
                     <FiCalendar className="mr-2 h-4 w-4" />
-                    {formatDate(selectedDate, 'PPP')}
+                    {formatDate(selectedDate, 'MMM dd')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -597,23 +628,20 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateRange.from && "text-muted-foreground"
-                    )}
+                    className="w-full justify-start text-left font-normal h-10"
                   >
                     <FiCalendar className="mr-2 h-4 w-4" />
                     {dateRange.from ? (
                       dateRange.to ? (
                         <>
-                          {formatDate(dateRange.from, "LLL dd, y")} -{" "}
-                          {formatDate(dateRange.to, "LLL dd, y")}
+                          {formatDate(dateRange.from, "MMM dd")} -{" "}
+                          {formatDate(dateRange.to, "MMM dd")}
                         </>
                       ) : (
-                        formatDate(dateRange.from, "LLL dd, y")
+                        formatDate(dateRange.from, "MMM dd")
                       )
                     ) : (
-                      <span>Pick a date range</span>
+                      <span>Pick date range</span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -629,7 +657,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                         setShowDatePicker(false);
                       }
                     }}
-                    numberOfMonths={2}
+                    numberOfMonths={isMobile ? 1 : 2}
                   />
                 </PopoverContent>
               </Popover>
@@ -640,6 +668,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-10 w-10"
                   onClick={() => {
                     const newDate = new Date(selectedDate);
                     newDate.setDate(newDate.getDate() - 7);
@@ -650,19 +679,20 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                     });
                   }}
                 >
-                  <FiArrowDown className="h-4 w-4" />
+                  <FiChevronLeft className="h-4 w-4" />
                 </Button>
-                <div className="text-center flex-1">
-                  <p className="text-sm font-medium">
-                    Week {getWeekNumber(dateRange.from || new Date())}, {selectedDate.getFullYear()}
+                <div className="text-center flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    W{getWeekNumber(dateRange.from || new Date())}, {selectedDate.getFullYear()}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     {formatDate(dateRange.from || new Date(), 'MMM dd')} - {formatDate(dateRange.to || new Date(), 'MMM dd')}
                   </p>
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-10 w-10"
                   onClick={() => {
                     const newDate = new Date(selectedDate);
                     newDate.setDate(newDate.getDate() + 7);
@@ -673,7 +703,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                     });
                   }}
                 >
-                  <FiArrowUp className="h-4 w-4" />
+                  <FiChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
@@ -683,6 +713,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-10 w-10"
                   onClick={() => {
                     const newDate = new Date(selectedDate);
                     newDate.setMonth(newDate.getMonth() - 1);
@@ -693,16 +724,17 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                     });
                   }}
                 >
-                  <FiArrowDown className="h-4 w-4" />
+                  <FiChevronLeft className="h-4 w-4" />
                 </Button>
-                <div className="text-center flex-1">
-                  <p className="text-sm font-medium">
-                    {formatDate(selectedDate, 'MMMM yyyy')}
+                <div className="text-center flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {formatDate(selectedDate, 'MMM yyyy')}
                   </p>
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-10 w-10"
                   onClick={() => {
                     const newDate = new Date(selectedDate);
                     newDate.setMonth(newDate.getMonth() + 1);
@@ -713,14 +745,14 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                     });
                   }}
                 >
-                  <FiArrowUp className="h-4 w-4" />
+                  <FiChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
           </div>
 
-          <div className="flex justify-end mt-4">
-            <Button variant="ghost" onClick={handleResetFilters}>
+          <div className="flex justify-end mt-3 md:mt-4">
+            <Button variant="ghost" size="sm" onClick={handleResetFilters}>
               Reset Filters
             </Button>
           </div>
@@ -730,37 +762,37 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
       {/* Tabs for different views */}
       <Tabs defaultValue="detailed" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="detailed">Detailed View</TabsTrigger>
-          <TabsTrigger value="summary">Summary View</TabsTrigger>
+          <TabsTrigger value="detailed">Detailed</TabsTrigger>
+          <TabsTrigger value="summary">Summary</TabsTrigger>
         </TabsList>
 
         <TabsContent value="detailed">
           <Card>
-            <CardHeader>
-              <CardTitle>Attendance Records</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-3 md:pb-4">
+              <CardTitle className="text-base md:text-lg">Attendance Records</CardTitle>
+              <CardDescription className="text-xs md:text-sm">
                 Showing {filteredData.length} records
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
+            <CardContent className="p-0 md:p-6">
+              <div className="overflow-x-auto rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Check In</TableHead>
-                      <TableHead>Check Out</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Hours</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="whitespace-nowrap">Employee</TableHead>
+                      <TableHead className="whitespace-nowrap">Date</TableHead>
+                      <TableHead className="whitespace-nowrap">Check In</TableHead>
+                      <TableHead className="whitespace-nowrap">Check Out</TableHead>
+                      <TableHead className="whitespace-nowrap">Status</TableHead>
+                      <TableHead className="whitespace-nowrap">Hours</TableHead>
+                      {!isMobile && <TableHead className="whitespace-nowrap">Location</TableHead>}
+                      <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredData.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={isMobile ? 7 : 8} className="text-center py-8 text-muted-foreground">
                           No attendance records found for the selected filters
                         </TableCell>
                       </TableRow>
@@ -768,84 +800,95 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                       filteredData.map((record) => {
                         const user = users.find(u => u.username === record.userName);
                         return (
-                          <TableRow key={record.id}>
+                          <TableRow key={record.id} className="hover:bg-muted/50">
                             <TableCell>
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 md:gap-3 min-w-[150px]">
                                 {user?.avatar ? (
                                   <img
                                     src={user.avatar}
                                     alt={user.username}
-                                    className="w-8 h-8 rounded-full"
+                                    className="w-6 h-6 md:w-8 md:h-8 rounded-full"
                                   />
                                 ) : (
-                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <FiUser className="w-4 h-4 text-primary" />
+                                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <FiUser className="w-3 h-3 md:w-4 md:h-4 text-primary" />
                                   </div>
                                 )}
-                                <div>
-                                  <p className="font-medium">
+                                <div className="min-w-0">
+                                  <p className="font-medium text-xs md:text-sm truncate">
                                     {user ? `${user.firstName || ''} ${user.lastName || ''}` : record.userName}
                                   </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {user?.position || 'N/A'}
-                                  </p>
+                                  {!isMobile && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {user?.position || 'N/A'}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="whitespace-nowrap">
                               <div>
-                                <p className="font-medium">{formatDate(new Date(record.date), 'MMM dd, yyyy')}</p>
+                                <p className="font-medium text-xs md:text-sm">{formatDate(new Date(record.date), 'MMM dd')}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {formatDate(new Date(record.date), 'EEEE')}
+                                  {formatDate(new Date(record.date), 'EEE')}
                                 </p>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <FiClock className="w-4 h-4 text-muted-foreground" />
-                                {formatTime(record.checkIn)}
+                            <TableCell className="whitespace-nowrap">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <FiClock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                                <span className="text-xs md:text-sm">{formatTime(record.checkIn)}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <FiClock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                                <span className="text-xs md:text-sm">{formatTime(record.checkOut)}</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2">
-                                <FiClock className="w-4 h-4 text-muted-foreground" />
-                                {formatTime(record.checkOut)}
+                              <div className="min-w-[80px]">
+                                {getStatusBadge(record.status)}
                               </div>
                             </TableCell>
-                            <TableCell>{getStatusBadge(record.status)}</TableCell>
-                            <TableCell>
-                              <div className="font-medium">
+                            <TableCell className="whitespace-nowrap">
+                              <div className="font-medium text-xs md:text-sm">
                                 {record.totalHours ? record.totalHours.toFixed(1) + 'h' : 'N/A'}
                                 {record.overtimeHours && record.overtimeHours > 0 && (
-                                  <Badge variant="outline" className="ml-2 text-xs">
+                                  <Badge variant="outline" className="ml-1 md:ml-2 text-xs">
                                     +{record.overtimeHours.toFixed(1)}h OT
                                   </Badge>
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                      <FiMapPin className="w-4 h-4" />
-                                      {record.checkInLocation?.address 
-                                        ? record.checkInLocation.address.split(',')[0]
-                                        : 'N/A'}
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="max-w-xs">
-                                      {record.checkInLocation?.address || 'No location data'}
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </TableCell>
+                            {!isMobile && (
+                              <TableCell className="max-w-[150px]">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <div className="flex items-center gap-1 text-sm text-muted-foreground truncate">
+                                        <FiMapPin className="w-4 h-4 flex-shrink-0" />
+                                        <span className="truncate">
+                                          {record.checkInLocation?.address 
+                                            ? record.checkInLocation.address.split(',')[0]
+                                            : 'N/A'}
+                                        </span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="max-w-xs">
+                                        {record.checkInLocation?.address || 'No location data'}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
+                            )}
                             <TableCell className="text-right">
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                className="h-8 w-8 p-0"
                                 onClick={() => handleRecordClick(record)}
                               >
                                 <FiEye className="w-4 h-4" />
@@ -864,76 +907,76 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
 
         <TabsContent value="summary">
           <Card>
-            <CardHeader>
-              <CardTitle>Employee Summary</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-3 md:pb-4">
+              <CardTitle className="text-base md:text-lg">Employee Summary</CardTitle>
+              <CardDescription className="text-xs md:text-sm">
                 Attendance summary for each employee
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
+            <CardContent className="p-0 md:p-6">
+              <div className="overflow-x-auto rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Present</TableHead>
-                      <TableHead>Absent</TableHead>
-                      <TableHead>Late</TableHead>
-                      <TableHead>Total Days</TableHead>
-                      <TableHead>Avg. Hours/Day</TableHead>
-                      <TableHead>Attendance Rate</TableHead>
+                      <TableHead className="whitespace-nowrap">Employee</TableHead>
+                      <TableHead className="whitespace-nowrap">Present</TableHead>
+                      <TableHead className="whitespace-nowrap">Absent</TableHead>
+                      <TableHead className="whitespace-nowrap">Late</TableHead>
+                      <TableHead className="whitespace-nowrap">Total Days</TableHead>
+                      <TableHead className="whitespace-nowrap">Avg Hours</TableHead>
+                      <TableHead className="whitespace-nowrap">Attendance Rate</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {Object.entries(userSummary).map(([username, summary]) => (
                       <TableRow key={username}>
                         <TableCell>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 md:gap-3 min-w-[150px]">
                             {summary.user.avatar ? (
                               <img
                                 src={summary.user.avatar}
                                 alt={username}
-                                className="w-8 h-8 rounded-full"
+                                className="w-6 h-6 md:w-8 md:h-8 rounded-full"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <FiUser className="w-4 h-4 text-primary" />
+                              <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <FiUser className="w-3 h-3 md:w-4 md:h-4 text-primary" />
                               </div>
                             )}
-                            <div>
-                              <p className="font-medium">
+                            <div className="min-w-0">
+                              <p className="font-medium text-xs md:text-sm truncate">
                                 {summary.user.firstName} {summary.user.lastName}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                {summary.user.position || summary.user.department || 'N/A'}
-                              </p>
+                              {!isMobile && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {summary.user.position || summary.user.department || 'N/A'}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                              <span className="text-green-800 font-medium">{summary.presentDays}</span>
-                            </div>
+                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+                            <span className="text-green-800 font-medium text-xs md:text-sm">{summary.presentDays}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                            <span className="text-red-800 font-medium">{summary.absentDays}</span>
+                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+                            <span className="text-red-800 font-medium text-xs md:text-sm">{summary.absentDays}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                            <span className="text-yellow-800 font-medium">{summary.lateDays}</span>
+                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-yellow-100 flex items-center justify-center mx-auto">
+                            <span className="text-yellow-800 font-medium text-xs md:text-sm">{summary.lateDays}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{summary.totalDays}</div>
+                          <div className="font-medium text-xs md:text-sm text-center">{summary.totalDays}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{summary.avgHours.toFixed(1)}h</div>
+                          <div className="font-medium text-xs md:text-sm text-center">{summary.avgHours.toFixed(1)}h</div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="min-w-[120px]">
                           <div className="flex items-center gap-2">
                             <div className="w-full bg-gray-200 rounded-full h-2">
                               <div
@@ -941,7 +984,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                                 style={{ width: `${summary.totalDays > 0 ? (summary.presentDays / summary.totalDays) * 100 : 0}%` }}
                               />
                             </div>
-                            <span className="text-sm font-medium">
+                            <span className="text-xs font-medium whitespace-nowrap">
                               {summary.totalDays > 0 
                                 ? ((summary.presentDays / summary.totalDays) * 100).toFixed(1)
                                 : '0'
@@ -961,18 +1004,18 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
 
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[95vw] md:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Attendance Details</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg md:text-xl">Attendance Details</DialogTitle>
+            <DialogDescription className="text-xs md:text-sm">
               Complete information about this attendance record
             </DialogDescription>
           </DialogHeader>
           
           {selectedRecord && (
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               {/* Employee Info */}
-              <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+              <div className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-muted rounded-lg">
                 {(() => {
                   const user = users.find(u => u.username === selectedRecord.userName);
                   return (
@@ -981,18 +1024,18 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                         <img
                           src={user.avatar}
                           alt={user.username}
-                          className="w-16 h-16 rounded-full"
+                          className="w-12 h-12 md:w-16 md:h-16 rounded-full"
                         />
                       ) : (
-                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                          <FiUser className="w-8 h-8 text-primary" />
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                          <FiUser className="w-6 h-6 md:w-8 md:h-8 text-primary" />
                         </div>
                       )}
-                      <div>
-                        <h3 className="text-lg font-semibold">
+                      <div className="min-w-0">
+                        <h3 className="text-base md:text-lg font-semibold truncate">
                           {user ? `${user.firstName || ''} ${user.lastName || ''}` : selectedRecord.userName}
                         </h3>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs md:text-sm text-muted-foreground truncate">
                           {user?.position} • {user?.department}
                         </p>
                       </div>
@@ -1002,57 +1045,57 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
               </div>
 
               {/* Attendance Details */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium">Date</h4>
-                  <p className="text-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div className="space-y-1 md:space-y-2">
+                  <h4 className="font-medium text-sm md:text-base">Date</h4>
+                  <p className="text-sm md:text-base">
                     {formatDate(new Date(selectedRecord.date), 'EEEE, MMMM dd, yyyy')}
                   </p>
                 </div>
                 
-                <div className="space-y-2">
-                  <h4 className="font-medium">Status</h4>
+                <div className="space-y-1 md:space-y-2">
+                  <h4 className="font-medium text-sm md:text-base">Status</h4>
                   <div>{getStatusBadge(selectedRecord.status)}</div>
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="font-medium">Check In</h4>
+                <div className="space-y-1 md:space-y-2">
+                  <h4 className="font-medium text-sm md:text-base">Check In</h4>
                   <div className="flex items-center gap-2">
-                    <FiClock className="w-5 h-5" />
-                    <span className="text-lg">{formatTime(selectedRecord.checkIn)}</span>
+                    <FiClock className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="text-base md:text-lg">{formatTime(selectedRecord.checkIn)}</span>
                   </div>
                   {selectedRecord.checkInLocation && (
-                    <p className="text-sm text-muted-foreground">
-                      <FiMapPin className="inline w-4 h-4 mr-1" />
+                    <p className="text-xs md:text-sm text-muted-foreground truncate">
+                      <FiMapPin className="inline w-3 h-3 md:w-4 md:h-4 mr-1" />
                       {selectedRecord.checkInLocation.address}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="font-medium">Check Out</h4>
+                <div className="space-y-1 md:space-y-2">
+                  <h4 className="font-medium text-sm md:text-base">Check Out</h4>
                   <div className="flex items-center gap-2">
-                    <FiClock className="w-5 h-5" />
-                    <span className="text-lg">{formatTime(selectedRecord.checkOut)}</span>
+                    <FiClock className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="text-base md:text-lg">{formatTime(selectedRecord.checkOut)}</span>
                   </div>
                   {selectedRecord.checkOutLocation && (
-                    <p className="text-sm text-muted-foreground">
-                      <FiMapPin className="inline w-4 h-4 mr-1" />
+                    <p className="text-xs md:text-sm text-muted-foreground truncate">
+                      <FiMapPin className="inline w-3 h-3 md:w-4 md:h-4 mr-1" />
                       {selectedRecord.checkOutLocation.address}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="font-medium">Total Hours</h4>
-                  <p className="text-2xl font-bold">
+                <div className="space-y-1 md:space-y-2">
+                  <h4 className="font-medium text-sm md:text-base">Total Hours</h4>
+                  <p className="text-xl md:text-2xl font-bold">
                     {selectedRecord.totalHours?.toFixed(1) || '0'} hours
                   </p>
                 </div>
 
                 {selectedRecord.overtimeHours && selectedRecord.overtimeHours > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Overtime</h4>
+                  <div className="space-y-1 md:space-y-2">
+                    <h4 className="font-medium text-sm md:text-base">Overtime</h4>
                     <p className="text-lg text-yellow-600">
                       +{selectedRecord.overtimeHours.toFixed(1)} hours
                     </p>
@@ -1062,21 +1105,21 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
 
               {/* Notes */}
               {selectedRecord.notes && (
-                <div className="space-y-2">
-                  <h4 className="font-medium">Notes</h4>
-                  <p className="text-muted-foreground">{selectedRecord.notes}</p>
+                <div className="space-y-1 md:space-y-2">
+                  <h4 className="font-medium text-sm md:text-base">Notes</h4>
+                  <p className="text-sm md:text-base text-muted-foreground">{selectedRecord.notes}</p>
                 </div>
               )}
 
               {/* Location Map Preview */}
               {(selectedRecord.checkInLocation || selectedRecord.checkOutLocation) && (
-                <div className="space-y-2">
-                  <h4 className="font-medium">Locations</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1 md:space-y-2">
+                  <h4 className="font-medium text-sm md:text-base">Locations</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     {selectedRecord.checkInLocation && (
                       <div className="p-3 border rounded-lg">
                         <p className="text-sm font-medium">Check-in Location</p>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1 truncate">
                           {selectedRecord.checkInLocation.address}
                         </p>
                         <p className="text-xs mt-1">
@@ -1087,7 +1130,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                     {selectedRecord.checkOutLocation && (
                       <div className="p-3 border rounded-lg">
                         <p className="text-sm font-medium">Check-out Location</p>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1 truncate">
                           {selectedRecord.checkOutLocation.address}
                         </p>
                         <p className="text-xs mt-1">

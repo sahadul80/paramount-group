@@ -1,12 +1,25 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { AttendanceRecord } from '@/types/users';
-import { FiClock, FiCheckCircle, FiXCircle, FiCalendar, FiMapPin } from 'react-icons/fi';
+import { 
+  FiClock, 
+  FiCheckCircle, 
+  FiXCircle, 
+  FiCalendar, 
+  FiMapPin,
+  FiWatch,
+  FiSunrise,
+  FiSunset,
+  FiTrendingUp,
+  FiAlertCircle,
+  FiLoader
+} from 'react-icons/fi';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { Progress } from '../ui/progress';
 
 interface AttendanceTrackerProps {
   attendance: AttendanceRecord[];
@@ -19,19 +32,35 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   currentUser,
   onAttendanceUpdate 
 }) => {
-  const [currentDate] = useState(new Date().toISOString().split('T')[0]);
+  // Get current date in Dhaka timezone (GMT+6)
+  const getDhakaDate = () => {
+    const now = new Date();
+    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+    return dhakaTime.toISOString().split('T')[0];
+  };
+
+  const getDhakaTime = () => {
+    const now = new Date();
+    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+    const hours = dhakaTime.getUTCHours().toString().padStart(2, '0');
+    const minutes = dhakaTime.getUTCMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const [currentDate] = useState(getDhakaDate());
   const [isLoading, setIsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lng: number; address?: string} | null>(null);
+  const [locationLoading, setLocationLoading] = useState(true);
   const currentRecord = attendance.find(record => record.date === currentDate);
 
   // Get user's current location
   useEffect(() => {
     if (navigator.geolocation) {
+      setLocationLoading(true);
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
           
-          // Try to get address from coordinates
           try {
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
@@ -57,11 +86,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               lng: longitude,
               address: `Location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
             });
+          } finally {
+            setLocationLoading(false);
           }
         },
         (error) => {
           console.error('Geolocation error:', error);
           toast.error("Could not get your location. Please enable location services.");
+          setLocationLoading(false);
         },
         {
           enableHighAccuracy: true,
@@ -69,16 +101,23 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           maximumAge: 0
         }
       );
+    } else {
+      setLocationLoading(false);
     }
   }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'present': return <Badge className="bg-success/10 text-success">Present</Badge>;
-      case 'absent': return <Badge className="bg-destructive/10 text-destructive">Absent</Badge>;
-      case 'late': return <Badge className="bg-warning/10 text-warning">Late</Badge>;
-      case 'half-day': return <Badge className="bg-info/10 text-info">Half Day</Badge>;
-      default: return <Badge variant="outline">Unknown</Badge>;
+      case 'present': 
+        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Present</Badge>;
+      case 'absent': 
+        return <Badge className="bg-red-100 text-red-800 border-red-200 hover:bg-red-100">Absent</Badge>;
+      case 'late': 
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100">Late</Badge>;
+      case 'half-day': 
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">Half Day</Badge>;
+      default: 
+        return <Badge variant="outline" className="border-gray-300">Unknown</Badge>;
     }
   };
 
@@ -102,6 +141,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
     setIsLoading(true);
     try {
+      const dhakaTime = getDhakaTime();
+      const dhakaDate = getDhakaDate();
+      
       const response = await fetch('/api/user/attendance/check', {
         method: 'POST',
         headers: {
@@ -110,7 +152,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         body: JSON.stringify({
           username: currentUser.username,
           type,
-          location: userLocation
+          location: userLocation,
+          time: dhakaTime,
+          date: dhakaDate,
+          timezone: 'Asia/Dhaka'
         })
       });
 
@@ -119,10 +164,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         throw new Error(error.error || 'Attendance failed');
       }
 
-      const data = await response.json();
-      toast.success(`Successfully ${type === 'check-in' ? 'checked in' : 'checked out'}!`);
-      
-      // Refresh attendance data
+      toast.success(`Successfully ${type === 'check-in' ? 'checked in' : 'checked out'} at ${dhakaTime} (Bangladesh Time)!`);
       onAttendanceUpdate();
     } catch (error: any) {
       console.error('Attendance error:', error);
@@ -134,162 +176,381 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
   const status = getCurrentStatus();
 
+  const formatDhakaDate = () => {
+    const now = new Date();
+    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+    return dhakaTime.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      timeZone: 'UTC'
+    });
+  };
+
+  // Calculate today's work progress if checked in
+  const calculateWorkProgress = () => {
+    if (!currentRecord?.checkIn || currentRecord.checkOut) return 0;
+    
+    const now = new Date();
+    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+    const checkInTime = new Date(`${currentDate}T${currentRecord.checkIn}:00Z`);
+    
+    const totalMinutes = 8 * 60; // 8 hours work day
+    const elapsedMinutes = (dhakaTime.getTime() - checkInTime.getTime()) / (1000 * 60);
+    
+    return Math.min(Math.max((elapsedMinutes / totalMinutes) * 100, 0), 100);
+  };
+
+  const workProgress = calculateWorkProgress();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-4 w-full"
+      className="space-y-4 md:space-y-6"
     >
       {/* Current Day Card */}
-      <Card className="border-border">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
-                <FiCalendar className="w-5 h-5" />
+      <Card className="border-border shadow-sm hover:shadow-md transition-shadow duration-300">
+        <CardHeader className="pb-3 md:pb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl lg:text-2xl">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <FiCalendar className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+                </div>
                 Today's Attendance
               </CardTitle>
-              <CardDescription className='text-xs sm:text-sm'>
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </CardDescription>
+              {/* FIXED: Removed CardDescription and replaced with div to avoid p tag nesting */}
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs sm:text-sm text-muted-foreground">
+                  {formatDhakaDate()}
+                </span>
+                <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">
+                  GMT+6
+                </Badge>
+              </div>
             </div>
-            <div className="relative">
-              {status === 'not-checked-in' && (
-                <Button 
-                  onClick={() => handleAttendance('check-in')} 
-                  className="flex items-center gap-1"
-                  disabled={isLoading || !userLocation}
-                >
-                  <FiCheckCircle />
-                  <span className='hidden md:flex'>
-                    {isLoading ? 'Checking in...' : 'Check In'}
-                  </span>
-                </Button>
-              )}
-              
-              {status === 'checked-in' && (
-                <Button 
-                  onClick={() => handleAttendance('check-out')} 
-                  variant="outline" 
-                  className="flex items-center gap-2"
-                  disabled={isLoading}
-                >
-                  <FiXCircle className="w-4 h-4" />
-                  {isLoading ? 'Checking out...' : 'Check Out'}
-                </Button>
-              )}
-              
-              {status === 'checked-out' && (
-                <Badge className="bg-success/10 text-success">Completed for today</Badge>
-              )}
+            
+            <div className="w-full sm:w-auto">
+              <AnimatePresence mode="wait">
+                {status === 'not-checked-in' && (
+                  <motion.div
+                    key="check-in"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                  >
+                    <Button 
+                      onClick={() => handleAttendance('check-in')} 
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
+                      disabled={isLoading || locationLoading || !userLocation}
+                      size="lg"
+                    >
+                      {isLoading ? (
+                        <FiLoader className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" />
+                      )}
+                      <span>
+                        {isLoading ? 'Checking in...' : 'Check In'}
+                      </span>
+                    </Button>
+                  </motion.div>
+                )}
+                
+                {status === 'checked-in' && (
+                  <motion.div
+                    key="check-out"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="space-y-2"
+                  >
+                    <Button 
+                      onClick={() => handleAttendance('check-out')} 
+                      variant="outline" 
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
+                      disabled={isLoading}
+                      size="lg"
+                    >
+                      {isLoading ? (
+                        <FiLoader className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FiXCircle className="w-4 h-4 md:w-5 md:h-5" />
+                      )}
+                      {isLoading ? 'Checking out...' : 'Check Out'}
+                    </Button>
+                    
+                    {/* Work Progress Indicator */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Work Progress</span>
+                        <span>{workProgress.toFixed(0)}%</span>
+                      </div>
+                      <Progress value={workProgress} className="h-1.5" />
+                    </div>
+                  </motion.div>
+                )}
+                
+                {status === 'checked-out' && (
+                  <motion.div
+                    key="completed"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                  >
+                    <Badge className="px-4 py-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-50">
+                      <FiCheckCircle className="w-3 h-3 md:w-4 md:h-4 mr-1.5" />
+                      Completed for today
+                    </Badge>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 md:space-y-5">
           {/* Location Display */}
-          {userLocation && (
-            <div className="p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-sm">
-                <FiMapPin className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium">Current Location:</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 truncate">
-                {userLocation.address}
-              </p>
-            </div>
-          )}
+          <AnimatePresence>
+            {locationLoading ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="p-3 rounded-lg bg-muted/50 border"
+              >
+                <div className="flex items-center gap-2">
+                  <FiLoader className="w-4 h-4 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Getting your location...</span>
+                </div>
+              </motion.div>
+            ) : userLocation ? (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 rounded-lg bg-blue-50/50 border border-blue-100"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="p-1.5 rounded-md bg-blue-100">
+                    <FiMapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-blue-700">Current Location</span>
+                      <Badge variant="outline" className="text-xs py-0 h-4 px-1.5 border-blue-200 text-blue-600">
+                        Live
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-blue-600/80 truncate">
+                      {userLocation.address}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 rounded-lg bg-yellow-50/50 border border-yellow-100"
+              >
+                <div className="flex items-start gap-2">
+                  <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <div className="text-xs font-medium text-yellow-700">Location Required</div>
+                    <div className="text-xs text-yellow-600/80">
+                      Please enable location services to check in/out
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Time Display */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-center p-4 rounded-lg bg-muted">
-              <div className="text-sm text-muted-foreground">Check In</div>
-              <div className="text-2xl font-bold text-card-foreground">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300 }}
+              className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border hover:shadow-sm"
+            >
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="p-1.5 rounded-full bg-blue-100">
+                  <FiSunrise className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
+                </div>
+                <div className="text-sm font-medium text-muted-foreground">Check In</div>
+              </div>
+              <div className="text-2xl md:text-3xl font-bold text-card-foreground mb-1">
                 {formatTime(currentRecord?.checkIn)}
               </div>
               {currentRecord?.checkInLocation?.address && (
-                <div className="text-xs text-muted-foreground mt-1 truncate">
+                <div className="text-xs text-muted-foreground truncate">
                   {currentRecord.checkInLocation.address.split(',')[0]}
                 </div>
               )}
-            </div>
+            </motion.div>
             
-            <div className="text-center p-4 rounded-lg bg-muted">
-              <div className="text-sm text-muted-foreground">Check Out</div>
-              <div className="text-2xl font-bold text-card-foreground">
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300 }}
+              className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border hover:shadow-sm"
+            >
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="p-1.5 rounded-full bg-purple-100">
+                  <FiSunset className="w-3.5 h-3.5 md:w-4 md:h-4 text-purple-600" />
+                </div>
+                <div className="text-sm font-medium text-muted-foreground">Check Out</div>
+              </div>
+              <div className="text-2xl md:text-3xl font-bold text-card-foreground mb-1">
                 {formatTime(currentRecord?.checkOut)}
               </div>
               {currentRecord?.checkOutLocation?.address && (
-                <div className="text-xs text-muted-foreground mt-1 truncate">
+                <div className="text-xs text-muted-foreground truncate">
                   {currentRecord.checkOutLocation.address.split(',')[0]}
                 </div>
               )}
-            </div>
+            </motion.div>
           </div>
 
           {/* Additional Info */}
           {currentRecord && (
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              {currentRecord.totalHours !== undefined && (
-                <div className="text-center p-2 rounded bg-background">
-                  <div className="text-muted-foreground">Total Hours</div>
-                  <div className="font-semibold">{currentRecord.totalHours.toFixed(1)}h</div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-2 gap-3"
+            >
+              <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm transition-shadow">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <FiWatch className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground" />
+                  <div className="text-xs text-muted-foreground">Total Hours</div>
+                </div>
+                <div className="text-lg md:text-xl font-semibold text-card-foreground">
+                  {currentRecord.totalHours?.toFixed(1) || '0'}h
+                </div>
+              </div>
+              
+              {currentRecord.overtimeHours && currentRecord.overtimeHours > 0 ? (
+                <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-100 hover:shadow-sm transition-shadow">
+                  <div className="flex items-center justify-center gap-1.5 mb-1">
+                    <FiTrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-600" />
+                    <div className="text-xs text-amber-700">Overtime</div>
+                  </div>
+                  <div className="text-lg md:text-xl font-semibold text-amber-700">
+                    +{currentRecord.overtimeHours.toFixed(1)}h
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm transition-shadow">
+                  <div className="text-xs text-muted-foreground mb-1">Status</div>
+                  {getStatusBadge(currentRecord.status)}
                 </div>
               )}
-              {currentRecord.overtimeHours && currentRecord.overtimeHours > 0 && (
-                <div className="text-center p-2 rounded bg-background">
-                  <div className="text-muted-foreground">Overtime</div>
-                  <div className="font-semibold text-warning">{currentRecord.overtimeHours.toFixed(1)}h</div>
-                </div>
-              )}
-            </div>
+            </motion.div>
           )}
         </CardContent>
       </Card>
 
       {/* Attendance History */}
       <div>
-        <h4 className="text-md font-medium text-card-foreground mb-3">Attendance History</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-base md:text-lg font-semibold text-card-foreground flex items-center gap-2">
+            <FiClock className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+            Recent Attendance
+          </h4>
+          <Badge variant="outline" className="text-xs">
+            Last 10 days
+          </Badge>
+        </div>
+        
         <div className="space-y-2">
           {attendance.slice(0, 10).map((record, index) => (
             <motion.div
               key={record.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 }}
+              whileHover={{ x: 4 }}
             >
-              <Card className="border-border">
-                <CardContent className="p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-3">
-                      <FiClock className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <div className="text-sm font-medium">
-                          {new Date(record.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              <Card className="border-border hover:shadow-sm transition-shadow cursor-pointer group">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="mt-0.5">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <FiCalendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {record.checkIn && `In: ${record.checkIn}`} {record.checkOut && `Out: ${record.checkOut}`}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="text-sm font-medium">
+                            {new Date(record.date).toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
+                          </div>
+                          <div className="hidden sm:block">
+                            {getStatusBadge(record.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <FiSunrise className="w-3 h-3" />
+                            <span>{formatTime(record.checkIn)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FiSunset className="w-3 h-3" />
+                            <span>{formatTime(record.checkOut)}</span>
+                          </div>
+                          {record.totalHours && (
+                            <div className="flex items-center gap-1">
+                              <FiWatch className="w-3 h-3" />
+                              <span>{record.totalHours.toFixed(1)}h</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                    {getStatusBadge(record.status)}
+                    
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                      <div className="sm:hidden">
+                        {getStatusBadge(record.status)}
+                      </div>
+                    </div>
                   </div>
                   
                   {/* Record Location if available */}
                   {(record.checkInLocation?.address || record.checkOutLocation?.address) && (
-                    <div className="flex items-start gap-1 text-xs text-muted-foreground mt-2">
+                    <div className="flex items-start gap-1.5 text-xs text-muted-foreground mt-3 pt-3 border-t">
                       <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                      <span className="truncate">
+                      <div className="truncate">
                         {record.checkInLocation?.address?.split(',')[0]}
                         {record.checkOutLocation?.address && ` → ${record.checkOutLocation.address.split(',')[0]}`}
-                      </span>
+                      </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
             </motion.div>
           ))}
+          
+          {attendance.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-8"
+            >
+              <div className="w-12 h-12 mx-auto rounded-full bg-muted flex items-center justify-center mb-3">
+                <FiCalendar className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <div className="text-muted-foreground">No attendance records found</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Your attendance history will appear here
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
     </motion.div>

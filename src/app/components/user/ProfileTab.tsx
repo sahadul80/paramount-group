@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+'use client'
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "../ui/card";
 import { User, Task, AttendanceRecord, MealRecord } from '@/types/users';
 import { 
@@ -36,7 +37,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   setCurrentUser, 
   handleProfileUpdate 
 }) => {
-  const [activeSection, setActiveSection] = useState<'profile' | 'tasks' | 'attendance' | 'meals' | 'salary' | 'performance'>('profile');
+  const [activeSection, setActiveSection] = useState<'profile' | 'tasks' | 'attendance' | 'meals' | 'performance'>('profile');
   const [editMode, setEditMode] = useState<boolean>(false);
   const [profileData, setProfileData] = useState<User>({ ...currentUser });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -128,7 +129,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     }
 
     const newTasks = tasks.filter(task => 
-      !prevTasksRef.current.some(prevTask => prevTask.id === task.id)
+      !prevTasksRef.current.some((prevTask: { id: string; }) => prevTask.id === task.id)
     );
 
     if (newTasks.length > 0) {
@@ -503,16 +504,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               <FiCoffee className="w-4 h-4" />
               <span className="hidden md:inline">Meals</span>
             </Button>
-            
-            <Button
-              variant={activeSection === 'salary' ? 'default' : 'ghost'}
-              onClick={() => setActiveSection('salary')}
-              className="rounded-lg flex items-center gap-1 hover:cursor-pointer"
-            >
-              <FiDollarSign className="w-4 h-4" />
-              <span className="hidden md:inline">Salary</span>
-            </Button>
-            
             <Button
               variant={activeSection === 'performance' ? 'default' : 'ghost'}
               onClick={() => setActiveSection('performance')}
@@ -574,15 +565,15 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             
             {activeSection === 'attendance' && (
               currentUser.role === 'admin' ? (
-                <div className="flex flex-col md:flex-row gap-4 p-4 overflow-auto w-auto">
-                  <div className="w-1/3">
+                <div className="flex flex-col lg:flex-row gap-4 p-2 sm:p-4 mx-auto max-w-[98vw]">
+                  <div className="w-auto md:w-1/3">
                     <AttendanceTracker
                       attendance={attendance}
                       currentUser={currentUser}
                       onAttendanceUpdate={fetchAttendance}
                     />
                   </div>
-                  <div className="w-2/3">
+                  <div className="w-auto md:w-2/3">
                     <AttendanceViewer/>
                   </div>
                 </div>
@@ -602,15 +593,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               />
             )}
             
-            {activeSection === 'salary' && (
-              <SalaryAdjustment
-                currentSalary={typeof currentUser.salary === 'string' ? 
-                              parseFloat(currentUser.salary) : 
-                              (currentUser.salary || 0)}
-                onSalaryAdjust={handleSalaryAdjustment}
-              />
-            )}
-            
             {activeSection === 'performance' && (
               <PerformanceMetrics
                 tasks={tasks}
@@ -622,7 +604,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         </CardContent>
         )}
         
-
         {/* Fixed buttons for mobile edit mode */}
         {editMode && activeSection === 'profile' && (
           <CardFooter className='-mt-6 md:mt-0'>

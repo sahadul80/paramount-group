@@ -406,8 +406,9 @@ export default function UserDashboard() {
     }
   };
 
-  const handleUserDeleted = (username: string) => {
+  const handleUserDeleted = async (username: string) => {
     setUsers(prev => prev.filter(u => u.username !== username));
+    await userApi.deleteUser(username);
     toast(`User ${username} removed`);
   };
 

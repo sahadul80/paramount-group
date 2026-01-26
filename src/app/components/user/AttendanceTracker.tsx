@@ -32,26 +32,59 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   currentUser,
   onAttendanceUpdate 
 }) => {
-  // Get current date in Dhaka timezone (GMT+6)
+  // Get current date and time in Dhaka timezone (Asia/Dhaka)
   const getDhakaDate = () => {
     const now = new Date();
-    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
-    return dhakaTime.toISOString().split('T')[0];
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now).replace(/\//g, '-');
   };
 
   const getDhakaTime = () => {
     const now = new Date();
-    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
-    const hours = dhakaTime.getUTCHours().toString().padStart(2, '0');
-    const minutes = dhakaTime.getUTCMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Dhaka',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(now);
   };
 
-  const [currentDate] = useState(getDhakaDate());
+  const getDhakaDateTime = () => {
+    const now = new Date();
+    return {
+      date: getDhakaDate(),
+      time: getDhakaTime(),
+      fullDate: new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Dhaka',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }).format(now)
+    };
+  };
+
+  const [currentDateTime, setCurrentDateTime] = useState(getDhakaDateTime());
   const [isLoading, setIsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lng: number; address?: string} | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
-  const currentRecord = attendance.find(record => record.date === currentDate);
+  const currentRecord = attendance.find(record => record.date === currentDateTime.date);
+
+  // Update time every minute and handle timezone
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentDateTime(getDhakaDateTime());
+    };
+
+    updateTime(); // Initial update
+    const interval = setInterval(updateTime, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Get user's current location
   useEffect(() => {
@@ -109,15 +142,35 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'present': 
-        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Present</Badge>;
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100 
+                           dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
+            Present
+          </Badge>
+        );
       case 'absent': 
-        return <Badge className="bg-red-100 text-red-800 border-red-200 hover:bg-red-100">Absent</Badge>;
+        return (
+          <Badge className="bg-red-100 text-red-800 border-red-200 hover:bg-red-100 
+                           dark:bg-red-900/30 dark:text-red-300 dark:border-red-800">
+            Absent
+          </Badge>
+        );
       case 'late': 
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100">Late</Badge>;
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100 
+                           dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800">
+            Late
+          </Badge>
+        );
       case 'half-day': 
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">Half Day</Badge>;
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 
+                           dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+            Half Day
+          </Badge>
+        );
       default: 
-        return <Badge variant="outline" className="border-gray-300">Unknown</Badge>;
+        return <Badge variant="outline" className="border-gray-300 dark:border-gray-600">Unknown</Badge>;
     }
   };
 
@@ -176,28 +229,30 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
   const status = getCurrentStatus();
 
-  const formatDhakaDate = () => {
-    const now = new Date();
-    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
-    return dhakaTime.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric',
-      timeZone: 'UTC'
-    });
-  };
-
   // Calculate today's work progress if checked in
   const calculateWorkProgress = () => {
     if (!currentRecord?.checkIn || currentRecord.checkOut) return 0;
     
+    // Create date objects in Dhaka timezone
     const now = new Date();
-    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
-    const checkInTime = new Date(`${currentDate}T${currentRecord.checkIn}:00Z`);
+    const dhakaTime = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Dhaka',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(now);
+    
+    // Parse check-in time (assuming stored time is in 24h format)
+    const [checkInHour, checkInMinute] = currentRecord.checkIn.split(':').map(Number);
+    const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+    
+    // Parse current Dhaka time
+    const [currentHour, currentMinute] = dhakaTime.split(':').map(Number);
+    const currentTotalMinutes = currentHour * 60 + currentMinute;
     
     const totalMinutes = 8 * 60; // 8 hours work day
-    const elapsedMinutes = (dhakaTime.getTime() - checkInTime.getTime()) / (1000 * 60);
+    const elapsedMinutes = currentTotalMinutes - checkInTotalMinutes;
     
     return Math.min(Math.max((elapsedMinutes / totalMinutes) * 100, 0), 100);
   };
@@ -212,23 +267,26 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       className="space-y-4 md:space-y-6"
     >
       {/* Current Day Card */}
-      <Card className="border-border shadow-sm hover:shadow-md transition-shadow duration-300">
+      <Card className="border-border shadow-sm hover:shadow-md transition-shadow duration-300 
+                      dark:bg-gray-900/50 dark:border-gray-800">
         <CardHeader className="pb-3 md:pb-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-lg md:text-xl lg:text-2xl">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <FiCalendar className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl lg:text-2xl 
+                                   dark:text-gray-100">
+                <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20">
+                  <FiCalendar className="w-4 h-4 md:w-5 md:h-5 text-primary dark:text-primary" />
                 </div>
                 Today's Attendance
               </CardTitle>
-              {/* FIXED: Removed CardDescription and replaced with div to avoid p tag nesting */}
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs sm:text-sm text-muted-foreground">
-                  {formatDhakaDate()}
+                <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
+                  {currentDateTime.fullDate}
                 </span>
-                <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">
-                  GMT+6
+                <Badge variant="outline" 
+                       className="text-xs border-blue-200 text-blue-700 bg-blue-50 
+                                 dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/30">
+                  GMT+6 (Asia/Dhaka)
                 </Badge>
               </div>
             </div>
@@ -242,21 +300,23 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                   >
-                    <Button 
-                      onClick={() => handleAttendance('check-in')} 
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
-                      disabled={isLoading || locationLoading || !userLocation}
-                      size="lg"
-                    >
-                      {isLoading ? (
-                        <FiLoader className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" />
-                      )}
-                      <span>
-                        {isLoading ? 'Checking in...' : 'Check In'}
-                      </span>
-                    </Button>
+                    <a>
+                      <Button 
+                        onClick={() => handleAttendance('check-in')} 
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
+                        disabled={isLoading || locationLoading || !userLocation}
+                        size="lg"
+                      >
+                        {isLoading ? (
+                          <FiLoader className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" />
+                        )}
+                        <span>
+                          {isLoading ? 'Checking in...' : 'Check In'}
+                        </span>
+                      </Button>
+                    </a>
                   </motion.div>
                 )}
                 
@@ -268,24 +328,28 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="space-y-2"
                   >
-                    <Button 
-                      onClick={() => handleAttendance('check-out')} 
-                      variant="outline" 
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
-                      disabled={isLoading}
-                      size="lg"
-                    >
-                      {isLoading ? (
-                        <FiLoader className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <FiXCircle className="w-4 h-4 md:w-5 md:h-5" />
-                      )}
-                      {isLoading ? 'Checking out...' : 'Check Out'}
-                    </Button>
+                    <a>
+                      <Button 
+                        onClick={() => handleAttendance('check-out')} 
+                        variant="outline" 
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12
+                                    dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                        disabled={isLoading}
+                        size="lg"
+                      >
+                        {isLoading ? (
+                          <FiLoader className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FiXCircle className="w-4 h-4 md:w-5 md:h-5" />
+                        )}
+                        {isLoading ? 'Checking out...' : 'Check Out'}
+                      </Button>
+                    </a>
                     
                     {/* Work Progress Indicator */}
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground 
+                                     dark:text-gray-400">
                         <span>Work Progress</span>
                         <span>{workProgress.toFixed(0)}%</span>
                       </div>
@@ -301,7 +365,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                   >
-                    <Badge className="px-4 py-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-50">
+                    <Badge className="px-4 py-2 bg-green-50 text-green-700 border-green-200 
+                                      hover:bg-green-50
+                                      dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 
+                                      dark:hover:bg-green-900/40">
                       <FiCheckCircle className="w-3 h-3 md:w-4 md:h-4 mr-1.5" />
                       Completed for today
                     </Badge>
@@ -320,31 +387,42 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="p-3 rounded-lg bg-muted/50 border"
+                className="p-3 rounded-lg bg-muted/50 border dark:bg-gray-800/50 dark:border-gray-700"
               >
                 <div className="flex items-center gap-2">
-                  <FiLoader className="w-4 h-4 animate-spin text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Getting your location...</span>
+                  <FiLoader className="w-4 h-4 animate-spin text-muted-foreground 
+                                      dark:text-gray-400" />
+                  <span className="text-sm text-muted-foreground dark:text-gray-400">
+                    Getting your location...
+                  </span>
                 </div>
               </motion.div>
             ) : userLocation ? (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-lg bg-blue-50/50 border border-blue-100"
+                className="p-3 rounded-lg bg-blue-50/50 border border-blue-100 
+                          dark:bg-blue-900/20 dark:border-blue-800"
               >
                 <div className="flex items-start gap-2">
-                  <div className="p-1.5 rounded-md bg-blue-100">
-                    <FiMapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
+                  <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-800">
+                    <FiMapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 
+                                        dark:text-blue-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-blue-700">Current Location</span>
-                      <Badge variant="outline" className="text-xs py-0 h-4 px-1.5 border-blue-200 text-blue-600">
+                      <span className="text-xs font-medium text-blue-700 
+                                       dark:text-blue-400">
+                        Current Location
+                      </span>
+                      <Badge variant="outline" 
+                             className="text-xs py-0 h-4 px-1.5 border-blue-200 text-blue-600
+                                       dark:border-blue-700 dark:text-blue-400">
                         Live
                       </Badge>
                     </div>
-                    <div className="text-xs text-blue-600/80 truncate">
+                    <div className="text-xs text-blue-600/80 truncate 
+                                   dark:text-blue-400/80">
                       {userLocation.address}
                     </div>
                   </div>
@@ -354,13 +432,19 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-lg bg-yellow-50/50 border border-yellow-100"
+                className="p-3 rounded-lg bg-yellow-50/50 border border-yellow-100
+                          dark:bg-yellow-900/20 dark:border-yellow-800"
               >
                 <div className="flex items-start gap-2">
-                  <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 text-yellow-600 
+                                           dark:text-yellow-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <div className="text-xs font-medium text-yellow-700">Location Required</div>
-                    <div className="text-xs text-yellow-600/80">
+                    <div className="text-xs font-medium text-yellow-700 
+                                   dark:text-yellow-400">
+                      Location Required
+                    </div>
+                    <div className="text-xs text-yellow-600/80 
+                                   dark:text-yellow-500/80">
                       Please enable location services to check in/out
                     </div>
                   </div>
@@ -374,19 +458,27 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <motion.div 
               whileHover={{ scale: 1.02 }}
               transition={{ type: "spring", stiffness: 300 }}
-              className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border hover:shadow-sm"
+              className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 
+                        border hover:shadow-sm
+                        dark:from-gray-800 dark:to-gray-900 dark:border-gray-700"
             >
               <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="p-1.5 rounded-full bg-blue-100">
-                  <FiSunrise className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
+                <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-800">
+                  <FiSunrise className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 
+                                       dark:text-blue-400" />
                 </div>
-                <div className="text-sm font-medium text-muted-foreground">Check In</div>
+                <div className="text-sm font-medium text-muted-foreground 
+                               dark:text-gray-400">
+                  Check In
+                </div>
               </div>
-              <div className="text-2xl md:text-3xl font-bold text-card-foreground mb-1">
+              <div className="text-2xl md:text-3xl font-bold text-card-foreground 
+                             dark:text-gray-100 mb-1">
                 {formatTime(currentRecord?.checkIn)}
               </div>
               {currentRecord?.checkInLocation?.address && (
-                <div className="text-xs text-muted-foreground truncate">
+                <div className="text-xs text-muted-foreground truncate 
+                               dark:text-gray-500">
                   {currentRecord.checkInLocation.address.split(',')[0]}
                 </div>
               )}
@@ -395,19 +487,27 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <motion.div 
               whileHover={{ scale: 1.02 }}
               transition={{ type: "spring", stiffness: 300 }}
-              className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border hover:shadow-sm"
+              className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 
+                        border hover:shadow-sm
+                        dark:from-gray-800 dark:to-gray-900 dark:border-gray-700"
             >
               <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="p-1.5 rounded-full bg-purple-100">
-                  <FiSunset className="w-3.5 h-3.5 md:w-4 md:h-4 text-purple-600" />
+                <div className="p-1.5 rounded-full bg-purple-100 dark:bg-purple-800">
+                  <FiSunset className="w-3.5 h-3.5 md:w-4 md:h-4 text-purple-600 
+                                      dark:text-purple-400" />
                 </div>
-                <div className="text-sm font-medium text-muted-foreground">Check Out</div>
+                <div className="text-sm font-medium text-muted-foreground 
+                               dark:text-gray-400">
+                  Check Out
+                </div>
               </div>
-              <div className="text-2xl md:text-3xl font-bold text-card-foreground mb-1">
+              <div className="text-2xl md:text-3xl font-bold text-card-foreground 
+                             dark:text-gray-100 mb-1">
                 {formatTime(currentRecord?.checkOut)}
               </div>
               {currentRecord?.checkOutLocation?.address && (
-                <div className="text-xs text-muted-foreground truncate">
+                <div className="text-xs text-muted-foreground truncate 
+                               dark:text-gray-500">
                   {currentRecord.checkOutLocation.address.split(',')[0]}
                 </div>
               )}
@@ -421,29 +521,43 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-2 gap-3"
             >
-              <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm transition-shadow">
+              <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
+                            transition-shadow dark:border-gray-700">
                 <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <FiWatch className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground" />
-                  <div className="text-xs text-muted-foreground">Total Hours</div>
+                  <FiWatch className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground 
+                                     dark:text-gray-400" />
+                  <div className="text-xs text-muted-foreground dark:text-gray-400">
+                    Total Hours
+                  </div>
                 </div>
-                <div className="text-lg md:text-xl font-semibold text-card-foreground">
+                <div className="text-lg md:text-xl font-semibold text-card-foreground 
+                               dark:text-gray-100">
                   {currentRecord.totalHours?.toFixed(1) || '0'}h
                 </div>
               </div>
               
               {currentRecord.overtimeHours && currentRecord.overtimeHours > 0 ? (
-                <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-100 hover:shadow-sm transition-shadow">
+                <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-100 
+                              hover:shadow-sm transition-shadow
+                              dark:bg-amber-900/20 dark:border-amber-800">
                   <div className="flex items-center justify-center gap-1.5 mb-1">
-                    <FiTrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-600" />
-                    <div className="text-xs text-amber-700">Overtime</div>
+                    <FiTrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-600 
+                                           dark:text-amber-500" />
+                    <div className="text-xs text-amber-700 dark:text-amber-400">
+                      Overtime
+                    </div>
                   </div>
-                  <div className="text-lg md:text-xl font-semibold text-amber-700">
+                  <div className="text-lg md:text-xl font-semibold text-amber-700 
+                                 dark:text-amber-400">
                     +{currentRecord.overtimeHours.toFixed(1)}h
                   </div>
                 </div>
               ) : (
-                <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm transition-shadow">
-                  <div className="text-xs text-muted-foreground mb-1">Status</div>
+                <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
+                              transition-shadow dark:border-gray-700">
+                  <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400">
+                    Status
+                  </div>
                   {getStatusBadge(currentRecord.status)}
                 </div>
               )}
@@ -455,11 +569,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       {/* Attendance History */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-base md:text-lg font-semibold text-card-foreground flex items-center gap-2">
-            <FiClock className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+          <h4 className="text-base md:text-lg font-semibold text-card-foreground 
+                        dark:text-gray-100 flex items-center gap-2">
+            <FiClock className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground 
+                               dark:text-gray-400" />
             Recent Attendance
           </h4>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs dark:border-gray-600">
             Last 10 days
           </Badge>
         </div>
@@ -473,18 +589,21 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               transition={{ delay: index * 0.05 }}
               whileHover={{ x: 4 }}
             >
-              <Card className="border-border hover:shadow-sm transition-shadow cursor-pointer group">
+              <Card className="border-border hover:shadow-sm transition-shadow cursor-pointer 
+                              group dark:bg-gray-900/50 dark:border-gray-800">
                 <CardContent className="p-3 md:p-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div className="mt-0.5">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <FiCalendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
+                        <div className="w-8 h-8 rounded-full bg-primary/10 
+                                       dark:bg-primary/20 flex items-center justify-center">
+                          <FiCalendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary 
+                                               dark:text-primary" />
                         </div>
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="text-sm font-medium">
+                          <div className="text-sm font-medium dark:text-gray-200">
                             {new Date(record.date).toLocaleDateString('en-US', { 
                               weekday: 'short', 
                               month: 'short', 
@@ -495,7 +614,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                             {getStatusBadge(record.status)}
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 
+                                      text-xs text-muted-foreground dark:text-gray-500">
                           <div className="flex items-center gap-1">
                             <FiSunrise className="w-3 h-3" />
                             <span>{formatTime(record.checkIn)}</span>
@@ -521,16 +641,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     </div>
                   </div>
                   
-                  {/* Record Location if available */}
-                  {(record.checkInLocation?.address || record.checkOutLocation?.address) && (
-                    <div className="flex items-start gap-1.5 text-xs text-muted-foreground mt-3 pt-3 border-t">
-                      <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                      <div className="truncate">
-                        {record.checkInLocation?.address?.split(',')[0]}
-                        {record.checkOutLocation?.address && ` → ${record.checkOutLocation.address.split(',')[0]}`}
-                      </div>
-                    </div>
-                  )}
+              {/* Record Location if available */}
+              {(record.checkInLocation?.address || record.checkOutLocation?.address) && (
+                <div className="flex items-start gap-1.5 text-xs text-muted-foreground 
+                              mt-3 pt-3 border-t dark:border-gray-800 dark:text-gray-500">
+                  <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  <div className="truncate">
+                    {record.checkInLocation?.address?.split(',')[0]}
+                    {record.checkOutLocation?.address && ` → ${record.checkOutLocation.address.split(',')[0]}`}
+                  </div>
+                </div>
+              )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -542,11 +663,15 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               animate={{ opacity: 1 }}
               className="text-center py-8"
             >
-              <div className="w-12 h-12 mx-auto rounded-full bg-muted flex items-center justify-center mb-3">
-                <FiCalendar className="w-6 h-6 text-muted-foreground" />
+              <div className="w-12 h-12 mx-auto rounded-full bg-muted 
+                            dark:bg-gray-800 flex items-center justify-center mb-3">
+                <FiCalendar className="w-6 h-6 text-muted-foreground 
+                                     dark:text-gray-400" />
               </div>
-              <div className="text-muted-foreground">No attendance records found</div>
-              <div className="text-sm text-muted-foreground mt-1">
+              <div className="text-muted-foreground dark:text-gray-400">
+                No attendance records found
+              </div>
+              <div className="text-sm text-muted-foreground mt-1 dark:text-gray-500">
                 Your attendance history will appear here
               </div>
             </motion.div>

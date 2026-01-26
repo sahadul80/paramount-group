@@ -32,17 +32,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   currentUser,
   onAttendanceUpdate 
 }) => {
-  // Get current date and time in Dhaka timezone (Asia/Dhaka)
-  const getDhakaDate = () => {
-    const now = new Date();
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Dhaka',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).format(now).replace(/\//g, '-');
-  };
-
+  // Helper function to get current time in Dhaka timezone
   const getDhakaTime = () => {
     const now = new Date();
     return new Intl.DateTimeFormat('en-US', {
@@ -53,31 +43,95 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     }).format(now);
   };
 
-  const getDhakaDateTime = () => {
+  // Helper function to get current date in Dhaka timezone
+  const getDhakaDate = () => {
     const now = new Date();
-    return {
-      date: getDhakaDate(),
-      time: getDhakaTime(),
-      fullDate: new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now).replace(/\//g, '-');
+  };
+
+  // Helper function to format a date/time string to Dhaka timezone
+  const formatToDhakaTime = (timeString?: string | null) => {
+    if (!timeString) return '--:--';
+    
+    try {
+      // If the time is already in HH:mm format, return as is
+      if (/^\d{2}:\d{2}$/.test(timeString)) {
+        return timeString;
+      }
+      
+      // Parse the time string as a Date in Dhaka timezone
+      const date = new Date(timeString);
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Dhaka',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(date);
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return timeString;
+    }
+  };
+
+  // Helper function to format date for display
+  const formatDhakaDate = (dateString?: string) => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('en-US', {
         timeZone: 'Asia/Dhaka',
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
-      }).format(now)
+      }).format(date);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
+    }
+  };
+
+  // Get current Dhaka date and time for display
+  const getCurrentDhakaDateTime = () => {
+    const now = new Date();
+    return {
+      date: getDhakaDate(),
+      time: getDhakaTime(),
+      formattedDate: formatDhakaDate(now.toISOString()),
+      isoString: now.toISOString() // Use ISO string for API
     };
   };
 
-  const [currentDateTime, setCurrentDateTime] = useState(getDhakaDateTime());
+  const [currentDhakaTime, setCurrentDhakaTime] = useState(getDhakaTime());
+  const [currentDateTime, setCurrentDateTime] = useState(getCurrentDhakaDateTime());
   const [isLoading, setIsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lng: number; address?: string} | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
-  const currentRecord = attendance.find(record => record.date === currentDateTime.date);
+  
+  const currentRecord = attendance.find(record => {
+    // Compare dates in Dhaka timezone
+    const recordDate = new Date(record.date);
+    const recordDateInDhaka = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(recordDate).replace(/\//g, '-');
+    
+    return recordDateInDhaka === currentDateTime.date;
+  });
 
-  // Update time every minute and handle timezone
+  // Update current time every minute
   useEffect(() => {
     const updateTime = () => {
-      setCurrentDateTime(getDhakaDateTime());
+      setCurrentDhakaTime(getDhakaTime());
+      setCurrentDateTime(getCurrentDhakaDateTime());
     };
 
     updateTime(); // Initial update
@@ -174,11 +228,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     }
   };
 
-  const formatTime = (time: string | null | undefined) => {
-    if (!time) return '--:--';
-    return time;
-  };
-
   const getCurrentStatus = () => {
     if (!currentRecord) return 'not-checked-in';
     if (currentRecord.checkIn && !currentRecord.checkOut) return 'checked-in';
@@ -197,6 +246,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       const dhakaTime = getDhakaTime();
       const dhakaDate = getDhakaDate();
       
+      // Send ISO string to ensure proper timezone handling on backend
       const response = await fetch('/api/user/attendance/check', {
         method: 'POST',
         headers: {
@@ -206,8 +256,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           username: currentUser.username,
           type,
           location: userLocation,
-          time: dhakaTime,
-          date: dhakaDate,
+          time: dhakaTime, // Send Dhaka time as string
+          date: dhakaDate, // Send Dhaka date as string
+          timestamp: new Date().toISOString(), // Also send ISO timestamp for backend
           timezone: 'Asia/Dhaka'
         })
       });
@@ -233,28 +284,24 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const calculateWorkProgress = () => {
     if (!currentRecord?.checkIn || currentRecord.checkOut) return 0;
     
-    // Create date objects in Dhaka timezone
-    const now = new Date();
-    const dhakaTime = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Dhaka',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    }).format(now);
-    
-    // Parse check-in time (assuming stored time is in 24h format)
-    const [checkInHour, checkInMinute] = currentRecord.checkIn.split(':').map(Number);
-    const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
-    
-    // Parse current Dhaka time
-    const [currentHour, currentMinute] = dhakaTime.split(':').map(Number);
-    const currentTotalMinutes = currentHour * 60 + currentMinute;
-    
-    const totalMinutes = 8 * 60; // 8 hours work day
-    const elapsedMinutes = currentTotalMinutes - checkInTotalMinutes;
-    
-    return Math.min(Math.max((elapsedMinutes / totalMinutes) * 100, 0), 100);
+    try {
+      // Parse check-in time (assuming it's stored in Dhaka time)
+      const [checkInHour, checkInMinute] = currentRecord.checkIn.split(':').map(Number);
+      
+      // Get current Dhaka time
+      const [currentHour, currentMinute] = currentDhakaTime.split(':').map(Number);
+      
+      const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+      const currentTotalMinutes = currentHour * 60 + currentMinute;
+      
+      const totalMinutes = 8 * 60; // 8 hours work day
+      const elapsedMinutes = currentTotalMinutes - checkInTotalMinutes;
+      
+      return Math.min(Math.max((elapsedMinutes / totalMinutes) * 100, 0), 100);
+    } catch (error) {
+      console.error('Error calculating work progress:', error);
+      return 0;
+    }
   };
 
   const workProgress = calculateWorkProgress();
@@ -281,13 +328,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               </CardTitle>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
-                  {currentDateTime.fullDate}
+                  {currentDateTime.formattedDate}
                 </span>
                 <Badge variant="outline" 
                        className="text-xs border-blue-200 text-blue-700 bg-blue-50 
                                  dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/30">
                   GMT+6 (Asia/Dhaka)
                 </Badge>
+                <span className="text-xs text-muted-foreground dark:text-gray-400">
+                  {currentDhakaTime}
+                </span>
               </div>
             </div>
             
@@ -300,23 +350,21 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                   >
-                    <a>
-                      <Button 
-                        onClick={() => handleAttendance('check-in')} 
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
-                        disabled={isLoading || locationLoading || !userLocation}
-                        size="lg"
-                      >
-                        {isLoading ? (
-                          <FiLoader className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" />
-                        )}
-                        <span>
-                          {isLoading ? 'Checking in...' : 'Check In'}
-                        </span>
-                      </Button>
-                    </a>
+                    <Button 
+                      onClick={() => handleAttendance('check-in')} 
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
+                      disabled={isLoading || locationLoading || !userLocation}
+                      size="lg"
+                    >
+                      {isLoading ? (
+                        <FiLoader className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" />
+                      )}
+                      <span>
+                        {isLoading ? 'Checking in...' : 'Check In'}
+                      </span>
+                    </Button>
                   </motion.div>
                 )}
                 
@@ -328,23 +376,21 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="space-y-2"
                   >
-                    <a>
-                      <Button 
-                        onClick={() => handleAttendance('check-out')} 
-                        variant="outline" 
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12
-                                    dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-                        disabled={isLoading}
-                        size="lg"
-                      >
-                        {isLoading ? (
-                          <FiLoader className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <FiXCircle className="w-4 h-4 md:w-5 md:h-5" />
-                        )}
-                        {isLoading ? 'Checking out...' : 'Check Out'}
-                      </Button>
-                    </a>
+                    <Button 
+                      onClick={() => handleAttendance('check-out')} 
+                      variant="outline" 
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12
+                                dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                      disabled={isLoading}
+                      size="lg"
+                    >
+                      {isLoading ? (
+                        <FiLoader className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FiXCircle className="w-4 h-4 md:w-5 md:h-5" />
+                      )}
+                      {isLoading ? 'Checking out...' : 'Check Out'}
+                    </Button>
                     
                     {/* Work Progress Indicator */}
                     <div className="space-y-1">
@@ -474,7 +520,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               </div>
               <div className="text-2xl md:text-3xl font-bold text-card-foreground 
                              dark:text-gray-100 mb-1">
-                {formatTime(currentRecord?.checkIn)}
+                {formatToDhakaTime(currentRecord?.checkIn)}
               </div>
               {currentRecord?.checkInLocation?.address && (
                 <div className="text-xs text-muted-foreground truncate 
@@ -503,7 +549,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               </div>
               <div className="text-2xl md:text-3xl font-bold text-card-foreground 
                              dark:text-gray-100 mb-1">
-                {formatTime(currentRecord?.checkOut)}
+                {formatToDhakaTime(currentRecord?.checkOut)}
               </div>
               {currentRecord?.checkOutLocation?.address && (
                 <div className="text-xs text-muted-foreground truncate 
@@ -618,11 +664,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                                       text-xs text-muted-foreground dark:text-gray-500">
                           <div className="flex items-center gap-1">
                             <FiSunrise className="w-3 h-3" />
-                            <span>{formatTime(record.checkIn)}</span>
+                            <span>{formatToDhakaTime(record.checkIn)}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <FiSunset className="w-3 h-3" />
-                            <span>{formatTime(record.checkOut)}</span>
+                            <span>{formatToDhakaTime(record.checkOut)}</span>
                           </div>
                           {record.totalHours && (
                             <div className="flex items-center gap-1">

@@ -69,27 +69,23 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   };
 
   // Helper function to format a date/time string to Dhaka timezone
-  const formatToDhakaTime = (timeString?: string | null) => {
-    if (!timeString) return '--:--';
-    
-    try {
-      // If the time is already in HH:mm format, return as is
-      if (/^\d{2}:\d{2}$/.test(timeString)) {
-        return timeString;
-      }
-      
-      // Parse the time string as a Date in Dhaka timezone
-      const date = new Date(timeString);
-      return new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Dhaka',
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(date);
-    } catch (error) {
-      console.error('Error formatting time:', error);
-      return timeString;
+  const formatToDhakaTime = (value?: string | null) => {
+    if (!value) return '--:--';
+
+    // If backend already sends HH:mm → trust it (NO Date parsing)
+    if (/^\d{2}:\d{2}$/.test(value)) {
+      return value;
     }
+
+    // If ISO string → convert once to Dhaka
+    const date = new Date(value);
+
+    return date.toLocaleTimeString('en-GB', {
+      timeZone: 'Asia/Dhaka',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
   };
 
   // Helper function to format date for display

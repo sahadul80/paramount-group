@@ -22,7 +22,7 @@ import {
   FiCrosshair
 } from 'react-icons/fi';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';

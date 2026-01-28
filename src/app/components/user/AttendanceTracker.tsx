@@ -49,8 +49,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   // Get current UTC time + 6 hours for Dhaka (GMT+6)
   const getCurrentUtcTime = () => {
     const now = new Date();
-    // Add 6 hours for Dhaka timezone (GMT+6)
-    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+    const dhakaTime = new Date(now.getTime());
     return dhakaTime.toISOString();
   };
 
@@ -451,7 +450,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
       const currentTotalMinutes = currentHour * 60 + currentMinute;
       
-      const totalMinutes = 8 * 60; // 8 hours work day
+      const totalMinutes = 9 * 60; // 8 hours work day
       const elapsedMinutes = currentTotalMinutes - checkInTotalMinutes;
       
       return Math.min(Math.max((elapsedMinutes / totalMinutes) * 100, 0), 100);

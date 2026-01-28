@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AttendanceRecord } from '@/types/users';
 import { 
   FiClock, 
@@ -14,7 +14,9 @@ import {
   FiAlertCircle,
   FiLoader,
   FiCalendar as FiCalendarIcon,
-  FiFileText
+  FiFileText,
+  FiRefreshCw,
+  FiNavigation
 } from 'react-icons/fi';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -166,7 +168,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [currentDhakaDate, setCurrentDhakaDate] = useState(TimeUtils.getDhakaDate());
   const [isLoading, setIsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lng: number; address?: string} | null>(null);
-  const [locationLoading, setLocationLoading] = useState(true);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [leaveRequest, setLeaveRequest] = useState<LeaveRequestData>({
     startDate: TimeUtils.getDhakaDate(),
@@ -175,6 +178,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     reason: ''
   });
   const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
+  
+  // Refs for managing location requests
+  const locationWatchId = useRef<number | null>(null);
+  const locationRetryCount = useRef(0);
+  const maxRetries = 3;
   
   // Find today's attendance record
   const currentRecord = attendance.find(record => {
@@ -198,57 +206,176 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Get user's current location
-  useEffect(() => {
-    if (navigator.geolocation) {
-      setLocationLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
+  // Optimized location fetching function
+  const fetchUserLocation = async () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      return false;
+    }
+
+    setLocationLoading(true);
+    setLocationError(null);
+    
+    return new Promise<boolean>((resolve) => {
+      const onSuccess = async (position: GeolocationPosition) => {
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          // Use a more reliable geocoding service with CORS headers
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
           
-          try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
-            );
-            
-            if (response.ok) {
-              const data = await response.json();
-              setUserLocation({
-                lat: latitude,
-                lng: longitude,
-                address: data.display_name || `Location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-              });
-            } else {
-              setUserLocation({
-                lat: latitude,
-                lng: longitude,
-                address: `Location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-              });
-            }
-          } catch (error) {
+          if (response.ok) {
+            const data = await response.json();
             setUserLocation({
               lat: latitude,
               lng: longitude,
-              address: `Location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+              address: data.locality || data.city || data.principalSubdivision || `Location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
             });
-          } finally {
-            setLocationLoading(false);
+          } else {
+            // Fallback to coordinates if API fails
+            setUserLocation({
+              lat: latitude,
+              lng: longitude,
+              address: `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`
+            });
           }
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          toast.error("Could not get your location. Please enable location services.");
+          
+          // Clear any watch if it was set
+          if (locationWatchId.current !== null) {
+            navigator.geolocation.clearWatch(locationWatchId.current);
+            locationWatchId.current = null;
+          }
+          
+          locationRetryCount.current = 0;
           setLocationLoading(false);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
+          resolve(true);
+        } catch (error) {
+          console.error('Error getting address:', error);
+          setUserLocation({
+            lat: latitude,
+            lng: longitude,
+            address: `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`
+          });
+          setLocationLoading(false);
+          resolve(true);
         }
-      );
-    } else {
+      };
+
+      const onError = (error: GeolocationPositionError) => {
+        console.error('Geolocation error:', error);
+        
+        let errorMessage = "Could not get your location.";
+        
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location permission denied. Please enable location services in your browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable. Please check your device settings.";
+            break;
+          case error.TIMEOUT:
+            if (locationRetryCount.current < maxRetries) {
+              locationRetryCount.current++;
+              // Retry with reduced accuracy
+              setTimeout(() => {
+                navigator.geolocation.getCurrentPosition(
+                  onSuccess,
+                  onError,
+                  {
+                    enableHighAccuracy: false,
+                    timeout: 5000,
+                    maximumAge: 30000
+                  }
+                );
+              }, 1000);
+              return;
+            }
+            errorMessage = "Location request timed out. Please try again.";
+            break;
+        }
+        
+        setLocationError(errorMessage);
+        setLocationLoading(false);
+        
+        // For iOS Safari, try using watchPosition as a workaround
+        if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+          try {
+            locationWatchId.current = navigator.geolocation.watchPosition(
+              onSuccess,
+              onError,
+              {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+              }
+            );
+            
+            // Clear watch after 10 seconds
+            setTimeout(() => {
+              if (locationWatchId.current !== null) {
+                navigator.geolocation.clearWatch(locationWatchId.current);
+                locationWatchId.current = null;
+                if (!userLocation) {
+                  setLocationError("Location detection timed out on iOS. Please ensure location services are enabled.");
+                }
+              }
+            }, 10000);
+          } catch (watchError) {
+            console.error('Watch position error:', watchError);
+          }
+        }
+        
+        resolve(false);
+      };
+
+      // Optimized options for different browsers
+      const options: PositionOptions = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      };
+
+      // For iOS, use slightly different options
+      if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+        options.timeout = 15000;
+        options.maximumAge = 10000;
+      }
+
+      try {
+        navigator.geolocation.getCurrentPosition(onSuccess, onError, options);
+      } catch (error) {
+        console.error('Geolocation request failed:', error);
+        setLocationError("Failed to request location. Please refresh the page and try again.");
+        setLocationLoading(false);
+        resolve(false);
+      }
+    });
+  };
+
+  // Get user's current location - with user interaction requirement for iOS
+  useEffect(() => {
+    // Don't auto-fetch location on iOS Safari immediately
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    
+    if (isIOS && isSafari) {
+      // On iOS Safari, we'll fetch location when user interacts
       setLocationLoading(false);
+      setLocationError("Tap 'Get Location' button to enable location services.");
+      return;
     }
+    
+    // For other browsers, try to get location on mount
+    fetchUserLocation();
+    
+    // Cleanup function
+    return () => {
+      if (locationWatchId.current !== null) {
+        navigator.geolocation.clearWatch(locationWatchId.current);
+      }
+    };
   }, []);
 
   const getStatusBadge = (status: string) => {
@@ -296,7 +423,21 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   // Handle attendance check-in/out
   const handleAttendance = async (type: 'check-in' | 'check-out') => {
     if (!userLocation) {
-      toast.error("Waiting for location... Please try again.");
+      toast.error("Location is required. Please enable location services.");
+      
+      // Try to get location if not available
+      const success = await fetchUserLocation();
+      if (!success) {
+        toast.error("Could not get your location. Please check your browser settings.");
+        return;
+      }
+      
+      // If location was just fetched, wait a moment and retry
+      setTimeout(() => {
+        if (userLocation) {
+          toast.info("Location acquired. Please try checking in/out again.");
+        }
+      }, 500);
       return;
     }
 
@@ -418,8 +559,15 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const timeStatus = getCurrentTimeStatus();
   const displayDate = TimeUtils.formatDate(currentDhakaDate);
 
+  // Truncate address for mobile display
+  const truncateAddress = (address?: string, maxLength: number = 60) => {
+    if (!address) return '';
+    if (address.length <= maxLength) return address;
+    return address.substring(0, maxLength) + '...';
+  };
+
   return (
-    <>
+    <div className="w-full max-w-full overflow-x-hidden">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -428,30 +576,30 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       >
         {/* Current Day Card */}
         <Card className="border-border shadow-sm hover:shadow-md transition-shadow duration-300 
-                        dark:bg-gray-900/50 dark:border-gray-800">
+                        dark:bg-gray-900/50 dark:border-gray-800 w-full overflow-hidden">
           <CardHeader className="pb-3 md:pb-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <div className="space-y-1">
+              <div className="space-y-1 flex-1 min-w-0">
                 <CardTitle className="flex items-center gap-2 text-lg md:text-xl lg:text-2xl 
-                                     dark:text-gray-100">
-                  <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20">
+                                     dark:text-gray-100 truncate">
+                  <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20 shrink-0">
                     <FiCalendar className="w-4 h-4 md:w-5 md:h-5 text-primary dark:text-primary" />
                   </div>
-                  Today's Attendance
+                  <span className="truncate">Today's Attendance</span>
                 </CardTitle>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400 truncate">
                     {displayDate}
                   </span>
                   <Badge variant="outline" 
                          className="text-xs border-blue-200 text-blue-700 bg-blue-50 
-                                   dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/30">
-                    GMT+6 (Asia/Dhaka)
+                                   dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/30 shrink-0">
+                    GMT+6
                   </Badge>
-                  <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
+                  <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400 truncate">
                     {currentDhakaTime.formatted24h}
                   </span>
-                  <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
+                  <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400 truncate">
                     ({currentDhakaTime.formatted12h})
                   </span>
                 </div>
@@ -463,27 +611,27 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
                     }`}>
                       {timeStatus.status === 'late' && <FiAlertCircle className="w-3 h-3 mr-1" />}
-                      {timeStatus.message}
+                      <span className="truncate">{timeStatus.message}</span>
                     </Badge>
                   </div>
                 )}
               </div>
               
-              <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+              <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0">
                 {/* Leave Request Button */}
                 <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
                   <DialogTrigger asChild>
                     <Button 
                       variant="outline" 
-                      className="flex items-center gap-2 h-11 md:h-12"
+                      className="flex items-center gap-2 h-11 md:h-12 w-full sm:w-auto"
                       size="lg"
                     >
                       <FiFileText className="w-4 h-4" />
-                      <span className="hidden sm:inline">Leave Request</span>
+                      <span className="truncate">Leave Request</span>
                     </Button>
                   </DialogTrigger>
                   
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Submit Leave Request</DialogTitle>
                       <DialogDescription>
@@ -495,7 +643,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     </DialogHeader>
                     
                     <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="startDate">Start Date *</Label>
                           <Input
@@ -505,6 +653,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                             onChange={(e) => setLeaveRequest({...leaveRequest, startDate: e.target.value})}
                             min={TimeUtils.getDhakaDate()}
                             required
+                            className="w-full"
                           />
                         </div>
                         <div className="space-y-2">
@@ -516,6 +665,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                             onChange={(e) => setLeaveRequest({...leaveRequest, endDate: e.target.value})}
                             min={leaveRequest.startDate}
                             required
+                            className="w-full"
                           />
                         </div>
                       </div>
@@ -526,7 +676,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           value={leaveRequest.leaveType} 
                           onValueChange={(value) => setLeaveRequest({...leaveRequest, leaveType: value})}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select leave type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -549,21 +699,24 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           onChange={(e) => setLeaveRequest({...leaveRequest, reason: e.target.value})}
                           rows={4}
                           required
+                          className="w-full resize-none"
                         />
                       </div>
                     </div>
                     
-                    <DialogFooter>
+                    <DialogFooter className="flex flex-col sm:flex-row gap-2">
                       <Button 
                         variant="outline" 
                         onClick={() => setShowLeaveDialog(false)}
                         disabled={isSubmittingLeave}
+                        className="w-full sm:w-auto"
                       >
                         Cancel
                       </Button>
                       <Button 
                         onClick={handleLeaveRequest}
                         disabled={isSubmittingLeave}
+                        className="w-full sm:w-auto"
                       >
                         {isSubmittingLeave ? (
                           <>
@@ -582,19 +735,20 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           </CardHeader>
           
           <CardContent className="space-y-4 md:space-y-5">
-            {/* Location Display */}
+            {/* Location Display - Fixed for mobile */}
             <AnimatePresence>
               {locationLoading ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="p-3 rounded-lg bg-muted/50 border dark:bg-gray-800/50 dark:border-gray-700"
+                  className="p-3 rounded-lg bg-muted/50 border dark:bg-gray-800/50 dark:border-gray-700 
+                           w-full max-w-full overflow-hidden"
                 >
                   <div className="flex items-center gap-2">
                     <FiLoader className="w-4 h-4 animate-spin text-muted-foreground 
-                                        dark:text-gray-400" />
-                    <span className="text-sm text-muted-foreground dark:text-gray-400">
+                                        dark:text-gray-400 shrink-0" />
+                    <span className="text-sm text-muted-foreground dark:text-gray-400 truncate">
                       Getting your location...
                     </span>
                   </div>
@@ -604,55 +758,91 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="p-3 rounded-lg bg-blue-50/50 border border-blue-100 
-                            dark:bg-blue-900/20 dark:border-blue-800"
+                            dark:bg-blue-900/20 dark:border-blue-800 w-full max-w-full overflow-hidden"
                 >
                   <div className="flex items-start gap-2">
-                    <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-800">
+                    <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-800 shrink-0">
                       <FiMapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 
                                           dark:text-blue-400" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="text-xs font-medium text-blue-700 
-                                         dark:text-blue-400">
+                                         dark:text-blue-400 truncate">
                           Current Location
                         </span>
                         <Badge variant="outline" 
                                className="text-xs py-0 h-4 px-1.5 border-blue-200 text-blue-600
-                                         dark:border-blue-700 dark:text-blue-400">
+                                         dark:border-blue-700 dark:text-blue-400 shrink-0">
                           Live
                         </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto text-xs h-6 px-2 shrink-0"
+                          onClick={fetchUserLocation}
+                        >
+                          <FiRefreshCw className="w-3 h-3 mr-1" />
+                          Refresh
+                        </Button>
                       </div>
-                      <div className="text-xs text-blue-600/80 truncate 
-                                     dark:text-blue-400/80">
-                        {userLocation.address}
+                      <div className="text-xs text-blue-600/80 break-words 
+                                     dark:text-blue-400/80 line-clamp-2">
+                        {truncateAddress(userLocation.address)}
                       </div>
                     </div>
                   </div>
                 </motion.div>
-              ) : (
+              ) : locationError ? (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="p-3 rounded-lg bg-yellow-50/50 border border-yellow-100
-                            dark:bg-yellow-900/20 dark:border-yellow-800"
+                            dark:bg-yellow-900/20 dark:border-yellow-800 w-full max-w-full overflow-hidden"
                 >
-                  <div className="flex items-start gap-2">
-                    <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 text-yellow-600 
-                                             dark:text-yellow-500 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <div className="text-xs font-medium text-yellow-700 
-                                     dark:text-yellow-400">
-                        Location Required
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                      <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 text-yellow-600 
+                                               dark:text-yellow-500 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium text-yellow-700 
+                                       dark:text-yellow-400 mb-1">
+                          Location Required
+                        </div>
+                        <div className="text-xs text-yellow-600/80 break-words 
+                                       dark:text-yellow-500/80 line-clamp-2">
+                          {locationError}
+                        </div>
                       </div>
-                      <div className="text-xs text-yellow-600/80 
-                                     dark:text-yellow-500/80">
-                        Please enable location services to check in/out
-                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:pl-2">
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={fetchUserLocation}
+                      >
+                        <FiNavigation className="w-3 h-3 mr-1" />
+                        Get Location
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => {
+                          if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+                            toast.info("On iOS, please enable Location Services in Settings > Privacy > Location Services");
+                          } else {
+                            toast.info("Please allow location access in your browser permissions");
+                          }
+                        }}
+                      >
+                        <FiAlertCircle className="w-3 h-3 mr-1" />
+                        Help
+                      </Button>
                     </div>
                   </div>
                 </motion.div>
-              )}
+              ) : null}
             </AnimatePresence>
             
             {/* Check In/Out Buttons */}
@@ -663,12 +853,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="w-full sm:w-auto"
+                  className="w-full"
                 >
                   <Button 
                     onClick={() => handleAttendance('check-in')} 
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
-                    disabled={isLoading || locationLoading || !userLocation}
+                    className="w-full flex items-center justify-center gap-2 h-11 md:h-12"
+                    disabled={isLoading || locationLoading}
                     size="lg"
                   >
                     {isLoading ? (
@@ -676,7 +866,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     ) : (
                       <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" />
                     )}
-                    <span>
+                    <span className="truncate">
                       {isLoading ? 'Checking in...' : 'Check In'}
                     </span>
                   </Button>
@@ -689,12 +879,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="space-y-2 w-full sm:w-auto"
+                  className="space-y-2 w-full"
                 >
                   <Button 
                     onClick={() => handleAttendance('check-out')} 
                     variant="outline" 
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12
+                    className="w-full flex items-center justify-center gap-2 h-11 md:h-12
                               dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
                     disabled={isLoading}
                     size="lg"
@@ -704,7 +894,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     ) : (
                       <FiXCircle className="w-4 h-4 md:w-5 md:h-5" />
                     )}
-                    {isLoading ? 'Checking out...' : 'Check Out'}
+                    <span className="truncate">
+                      {isLoading ? 'Checking out...' : 'Check Out'}
+                    </span>
                   </Button>
                   
                   {/* Work Progress Indicator */}
@@ -714,7 +906,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       <span>Work Progress</span>
                       <span>{workProgress.toFixed(0)}%</span>
                     </div>
-                    <Progress value={workProgress} className="h-1.5" />
+                    <Progress value={workProgress} className="h-1.5 w-full" />
                   </div>
                 </motion.div>
               )}
@@ -725,45 +917,46 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full"
                 >
                   <Badge className="px-4 py-2 bg-green-50 text-green-700 border-green-200 
-                                    hover:bg-green-50
+                                    hover:bg-green-50 w-full justify-center
                                     dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 
                                     dark:hover:bg-green-900/40">
                     <FiCheckCircle className="w-3 h-3 md:w-4 md:h-4 mr-1.5" />
-                    Completed for today
+                    <span className="truncate">Completed for today</span>
                   </Badge>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Time Display */}
+            {/* Time Display - Optimized for mobile */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <motion.div 
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 300 }}
                 className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 
-                          border hover:shadow-sm
+                          border hover:shadow-sm overflow-hidden
                           dark:from-gray-800 dark:to-gray-900 dark:border-gray-700"
               >
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-800">
+                  <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-800 shrink-0">
                     <FiSunrise className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 
                                          dark:text-blue-400" />
                   </div>
                   <div className="text-sm font-medium text-muted-foreground 
-                                 dark:text-gray-400">
+                                 dark:text-gray-400 truncate">
                     Check In
                   </div>
                 </div>
                 <div className="text-2xl md:text-3xl font-bold text-card-foreground 
-                               dark:text-gray-100 mb-1">
+                               dark:text-gray-100 mb-1 truncate">
                   {TimeUtils.formatTime(currentRecord?.checkIn)}
                 </div>
                 {currentRecord?.checkInLocation?.address && (
                   <div className="text-xs text-muted-foreground truncate 
-                                 dark:text-gray-500">
-                    {currentRecord.checkInLocation.address.split(',')[0]}
+                                 dark:text-gray-500 px-1">
+                    {truncateAddress(currentRecord.checkInLocation.address, 40)}
                   </div>
                 )}
               </motion.div>
@@ -772,113 +965,117 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 300 }}
                 className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 
-                          border hover:shadow-sm
+                          border hover:shadow-sm overflow-hidden
                           dark:from-gray-800 dark:to-gray-900 dark:border-gray-700"
               >
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <div className="p-1.5 rounded-full bg-purple-100 dark:bg-purple-800">
+                  <div className="p-1.5 rounded-full bg-purple-100 dark:bg-purple-800 shrink-0">
                     <FiSunset className="w-3.5 h-3.5 md:w-4 md:h-4 text-purple-600 
                                         dark:text-purple-400" />
                   </div>
                   <div className="text-sm font-medium text-muted-foreground 
-                                 dark:text-gray-400">
+                                 dark:text-gray-400 truncate">
                     Check Out
                   </div>
                 </div>
                 <div className="text-2xl md:text-3xl font-bold text-card-foreground 
-                               dark:text-gray-100 mb-1">
+                               dark:text-gray-100 mb-1 truncate">
                   {TimeUtils.formatTime(currentRecord?.checkOut)}
                 </div>
                 {currentRecord?.checkOutLocation?.address && (
                   <div className="text-xs text-muted-foreground truncate 
-                                 dark:text-gray-500">
-                    {currentRecord.checkOutLocation.address.split(',')[0]}
+                                 dark:text-gray-500 px-1">
+                    {truncateAddress(currentRecord.checkOutLocation.address, 40)}
                   </div>
                 )}
               </motion.div>
             </div>
 
-            {/* Additional Info */}
+            {/* Additional Info - Responsive grid */}
             {currentRecord && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-2 md:grid-cols-4 gap-3"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3"
               >
                 <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
-                              transition-shadow dark:border-gray-700">
+                              transition-shadow dark:border-gray-700 overflow-hidden">
                   <div className="flex items-center justify-center gap-1.5 mb-1">
                     <FiWatch className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground 
-                                       dark:text-gray-400" />
-                    <div className="text-xs text-muted-foreground dark:text-gray-400">
+                                       dark:text-gray-400 shrink-0" />
+                    <div className="text-xs text-muted-foreground dark:text-gray-400 truncate">
                       Total Hours
                     </div>
                   </div>
                   <div className="text-lg md:text-xl font-semibold text-card-foreground 
-                                 dark:text-gray-100">
+                                 dark:text-gray-100 truncate">
                     {currentRecord.totalHours?.toFixed(1) || '0'}h
                   </div>
                 </div>
                 
                 {currentRecord.overtimeHours && currentRecord.overtimeHours > 0 ? (
                   <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-100 
-                                hover:shadow-sm transition-shadow
+                                hover:shadow-sm transition-shadow overflow-hidden
                                 dark:bg-amber-900/20 dark:border-amber-800">
                     <div className="flex items-center justify-center gap-1.5 mb-1">
                       <FiTrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-600 
-                                             dark:text-amber-500" />
-                      <div className="text-xs text-amber-700 dark:text-amber-400">
+                                             dark:text-amber-500 shrink-0" />
+                      <div className="text-xs text-amber-700 dark:text-amber-400 truncate">
                         Overtime
                       </div>
                     </div>
                     <div className="text-lg md:text-xl font-semibold text-amber-700 
-                                   dark:text-amber-400">
+                                   dark:text-amber-400 truncate">
                       +{currentRecord.overtimeHours.toFixed(1)}h
                     </div>
                   </div>
                 ) : (
                   <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
-                                transition-shadow dark:border-gray-700">
-                    <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400">
+                                transition-shadow dark:border-gray-700 overflow-hidden">
+                    <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400 truncate">
                       Status
                     </div>
-                    {getStatusBadge(currentRecord.status)}
+                    <div className="truncate">
+                      {getStatusBadge(currentRecord.status)}
+                    </div>
                   </div>
                 )}
 
                 <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
-                              transition-shadow dark:border-gray-700">
-                  <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400">
+                              transition-shadow dark:border-gray-700 overflow-hidden">
+                  <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400 truncate">
                     Arrival Time
                   </div>
                   <div className="text-lg md:text-xl font-semibold text-card-foreground 
-                                 dark:text-gray-100">
+                                 dark:text-gray-100 truncate">
                     {TimeUtils.formatTime(currentRecord.checkIn)}
                   </div>
                 </div>
 
                 <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
-                              transition-shadow dark:border-gray-700">
-                  <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400">
+                              transition-shadow dark:border-gray-700 overflow-hidden">
+                  <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400 truncate">
                     Current Status
                   </div>
-                  {getStatusBadge(TimeUtils.calculateStatus(currentRecord.checkIn))}
+                  <div className="truncate">
+                    {getStatusBadge(TimeUtils.calculateStatus(currentRecord.checkIn))}
+                  </div>
                 </div>
               </motion.div>
             )}
           </CardContent>
         </Card>
 
-        {/* Attendance History */}
-        <div>
+        {/* Attendance History - Mobile optimized */}
+        <div className="w-full overflow-hidden">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-base md:text-lg font-semibold text-card-foreground 
-                          dark:text-gray-100 flex items-center gap-2">
+                          dark:text-gray-100 flex items-center gap-2 truncate">
               <FiClock className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground 
-                                 dark:text-gray-400" />
-              Recent Attendance
+                                 dark:text-gray-400 shrink-0" />
+              <span className="truncate">Recent Attendance</span>
             </h4>
-            <Badge variant="outline" className="text-xs dark:border-gray-600">
+            <Badge variant="outline" className="text-xs dark:border-gray-600 shrink-0">
               Last 10 days
             </Badge>
           </div>
@@ -891,53 +1088,54 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 whileHover={{ x: 4 }}
+                className="w-full"
               >
                 <Card className="border-border hover:shadow-sm transition-shadow cursor-pointer 
-                                group dark:bg-gray-900/50 dark:border-gray-800">
+                                group dark:bg-gray-900/50 dark:border-gray-800 w-full overflow-hidden">
                   <CardContent className="p-3 md:p-4">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className="mt-0.5">
+                        <div className="mt-0.5 shrink-0">
                           <div className="w-8 h-8 rounded-full bg-primary/10 
                                          dark:bg-primary/20 flex items-center justify-center">
                             <FiCalendarIcon className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary 
                                                      dark:text-primary" />
                           </div>
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="text-sm font-medium dark:text-gray-200">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <div className="text-sm font-medium dark:text-gray-200 truncate">
                               {new Date(record.date).toLocaleDateString('en-US', { 
                                 weekday: 'short', 
                                 month: 'short', 
                                 day: 'numeric' 
                               })}
                             </div>
-                            <div className="hidden sm:block">
+                            <div className="hidden sm:block shrink-0">
                               {getStatusBadge(record.status)}
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 
                                         text-xs text-muted-foreground dark:text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <FiSunrise className="w-3 h-3" />
-                              <span>{TimeUtils.formatTime(record.checkIn)}</span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <FiSunrise className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{TimeUtils.formatTime(record.checkIn)}</span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <FiSunset className="w-3 h-3" />
-                              <span>{TimeUtils.formatTime(record.checkOut)}</span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <FiSunset className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{TimeUtils.formatTime(record.checkOut)}</span>
                             </div>
                             {record.totalHours && (
-                              <div className="flex items-center gap-1">
-                                <FiWatch className="w-3 h-3" />
-                                <span>{record.totalHours.toFixed(1)}h</span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <FiWatch className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{record.totalHours.toFixed(1)}h</span>
                               </div>
                             )}
                           </div>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3 self-end sm:self-auto">
+                      <div className="flex items-center gap-3 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-normal">
                         <div className="sm:hidden">
                           {getStatusBadge(record.status)}
                         </div>
@@ -949,7 +1147,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       <div className="flex items-start gap-1.5 text-xs text-muted-foreground 
                                     mt-3 pt-3 border-t dark:border-gray-800 dark:text-gray-500">
                         <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                        <div className="truncate">
+                        <div className="truncate flex-1">
                           {record.checkInLocation?.address?.split(',')[0]}
                           {record.checkOutLocation?.address && ` → ${record.checkOutLocation.address.split(',')[0]}`}
                         </div>
@@ -982,7 +1180,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           </div>
         </div>
       </motion.div>
-    </>
+    </div>
   );
 };
 

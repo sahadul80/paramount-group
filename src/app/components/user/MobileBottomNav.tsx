@@ -17,7 +17,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   return (
     <div className="md:hidden flex bottom-0 left-0 right-0 z-40 bg-black/25 backdrop-blur-2xl shadow-2xl">
-      <div className="flex justify-between overflow-x-auto w-full border border-border">
+      <div className="flex items-center justify-center gap-4 overflow-x-auto w-full border border-border">
         <Button
           variant={activeTab === 'profile' ? 'default' : 'ghost'}
           onClick={() => setActiveTab('profile')}
@@ -36,31 +36,6 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <div className='flex flex-col items-center '>
             <FiUsers  />
             <span className="text-xs">Users</span>
-          </div>
-        </Button>
-        <Button
-          variant={activeTab === 'inbox' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('inbox')}
-          className="rounded-lg gap-1 hover:cursor-pointer"
-        >
-          <div className='flex flex-col items-center '>
-            <FiInbox  />
-            <span className="text-xs">Inbox</span>
-          </div>
-          {unreadCount > 0 && (
-            <span className="absolute top-2 right-4 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-              {unreadCount}
-            </span>
-          )}
-        </Button>
-        <Button
-          variant={activeTab === 'groups' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('groups')}
-          className="rounded-lg gap-1 hover:cursor-pointer"
-        >
-          <div className='flex flex-col items-center '>
-            <FiGitMerge  />
-            <span className="text-xs">Groups</span>
           </div>
         </Button>
       </div>

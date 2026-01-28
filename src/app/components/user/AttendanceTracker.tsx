@@ -46,121 +46,134 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   currentUser,
   onAttendanceUpdate 
 }) => {
-  // Get current UTC time (works consistently across browsers)
+  // Get current UTC time + 6 hours for Dhaka (GMT+6)
   const getCurrentUtcTime = () => {
-    return new Date().toISOString();
+    const now = new Date();
+    // Add 6 hours for Dhaka timezone (GMT+6)
+    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+    return dhakaTime.toISOString();
   };
 
-  // Get current date in YYYY-MM-DD format (UTC)
+  // Get current date in YYYY-MM-DD format (UTC+6 for Dhaka)
   const getCurrentUtcDate = () => {
-    return new Date().toISOString().split('T')[0];
+    const now = new Date();
+    // Add 6 hours for Dhaka timezone
+    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+    return dhakaTime.toISOString().split('T')[0];
   };
 
-  // Convert time string to 24-hour format
-  const to24HourFormat = (timeString: string): string => {
-    if (!timeString) return '00:00';
+  // Format time string to HH:mm (handles various formats)
+  const formatDisplayTime = (timeValue?: string | null): string => {
+    if (!timeValue || timeValue === '--:--') return '--:--';
     
-    // If already in 24-hour format (HH:mm)
-    if (/^\d{1,2}:\d{2}$/.test(timeString)) {
-      const [hours, minutes] = timeString.split(':').map(Number);
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    }
+    // Debug log to see what format we're receiving
+    console.log('formatDisplayTime received:', timeValue);
     
-    // If in 12-hour format with AM/PM
-    const match = timeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (match) {
-      let hours = parseInt(match[1]);
-      const minutes = parseInt(match[2]);
-      const period = match[3].toUpperCase();
+    try {
+      // Check if it's already in HH:mm format
+      if (/^\d{1,2}:\d{2}$/.test(timeValue)) {
+        const [hours, minutes] = timeValue.split(':');
+        const hoursNum = parseInt(hours, 10);
+        const minutesNum = parseInt(minutes, 10);
+        
+        // Validate hours and minutes
+        if (hoursNum >= 0 && hoursNum < 24 && minutesNum >= 0 && minutesNum < 60) {
+          return `${hoursNum.toString().padStart(2, '0')}:${minutesNum.toString().padStart(2, '0')}`;
+        }
+      }
       
-      if (period === 'PM' && hours < 12) hours += 12;
-      if (period === 'AM' && hours === 12) hours = 0;
+      // Check if it's in 12-hour format with AM/PM
+      const time12hMatch = timeValue.match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)/i);
+      if (time12hMatch) {
+        let hours = parseInt(time12hMatch[1], 10);
+        const minutes = parseInt(time12hMatch[2], 10);
+        const period = time12hMatch[3].toUpperCase();
+        
+        // Convert 12-hour to 24-hour format
+        if (period === 'PM' && hours < 12) {
+          hours += 12;
+        } else if (period === 'AM' && hours === 12) {
+          hours = 0;
+        }
+        
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      }
       
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      // Try parsing as ISO date string
+      try {
+        const date = new Date(timeValue);
+        if (!isNaN(date.getTime())) {
+          // Get UTC hours and minutes (add 6 for Dhaka timezone)
+          let hours = date.getUTCHours() + 6;
+          const minutes = date.getUTCMinutes();
+          
+          // Handle overflow to next day
+          if (hours >= 24) {
+            hours -= 24;
+          }
+          
+          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+      } catch (e) {
+        console.log('Failed to parse as ISO date:', e);
+      }
+      
+      // Try parsing as simple time string (h:mm or hh:mm)
+      const simpleTimeMatch = timeValue.match(/(\d{1,2}):(\d{2})/);
+      if (simpleTimeMatch) {
+        const hours = parseInt(simpleTimeMatch[1], 10);
+        const minutes = parseInt(simpleTimeMatch[2], 10);
+        
+        if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+      }
+      
+      console.warn('Unrecognized time format:', timeValue);
+      return '--:--';
+    } catch (error) {
+      console.error('Error formatting time:', error, 'Value:', timeValue);
+      return '--:--';
     }
-    
-    return '00:00';
   };
 
-  // Get current Dhaka time
+  // Get current Dhaka time for display and submission
   const getCurrentDhakaTime = () => {
     const now = new Date();
+    // Get current UTC time
     const utcHours = now.getUTCHours();
     const utcMinutes = now.getUTCMinutes();
     
     // Convert UTC to Dhaka (UTC+6)
     let dhakaHours = utcHours + 6;
+    // Handle overflow to next day
     if (dhakaHours >= 24) {
       dhakaHours -= 24;
     }
     
+    const hours24 = dhakaHours;
+    const hours12 = dhakaHours % 12 || 12;
+    const ampm = dhakaHours >= 12 ? 'PM' : 'AM';
+    
     return {
       hours: dhakaHours,
       minutes: utcMinutes,
-      formatted24h: `${dhakaHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`,
-      formatted12h: `${(dhakaHours % 12 || 12)}:${utcMinutes.toString().padStart(2, '0')} ${dhakaHours >= 12 ? 'PM' : 'AM'}`
+      formatted24h: `${hours24.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`,
+      formatted12h: `${hours12}:${utcMinutes.toString().padStart(2, '0')} ${ampm}`
     };
   };
 
   // Get current Dhaka date
   const getCurrentDhakaDate = () => {
     const now = new Date();
-    const utcDate = new Date(now);
+    // Add 6 hours to get Dhaka timezone
+    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
     
-    // Check if UTC time is after 18:00 (which would be 00:00 next day in Dhaka)
-    const utcHours = now.getUTCHours();
-    if (utcHours >= 18) {
-      utcDate.setUTCDate(utcDate.getUTCDate() + 1);
-    }
-    
-    const year = utcDate.getUTCFullYear();
-    const month = (utcDate.getUTCMonth() + 1).toString().padStart(2, '0');
-    const day = utcDate.getUTCDate().toString().padStart(2, '0');
+    const year = dhakaTime.getUTCFullYear();
+    const month = (dhakaTime.getUTCMonth() + 1).toString().padStart(2, '0');
+    const day = dhakaTime.getUTCDate().toString().padStart(2, '0');
     
     return `${year}-${month}-${day}`;
-  };
-
-  // Format time for display (robust function that handles various formats)
-  const formatDisplayTime = (timeValue?: string | null): string => {
-    if (!timeValue) return '--:--';
-    
-    try {
-      // Try parsing as ISO string first
-      if (timeValue.includes('T') || timeValue.includes('Z')) {
-        const date = new Date(timeValue);
-        if (!isNaN(date.getTime())) {
-          // Extract UTC time and convert to Dhaka
-          const utcHours = date.getUTCHours();
-          const utcMinutes = date.getUTCMinutes();
-          let dhakaHours = utcHours + 6;
-          if (dhakaHours >= 24) dhakaHours -= 24;
-          
-          return `${dhakaHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`;
-        }
-      }
-      
-      // Try as HH:mm format
-      if (/^\d{1,2}:\d{2}$/.test(timeValue)) {
-        const [hours, minutes] = timeValue.split(':');
-        const hoursNum = parseInt(hours);
-        const minutesNum = parseInt(minutes);
-        
-        if (hoursNum >= 0 && hoursNum < 24 && minutesNum >= 0 && minutesNum < 60) {
-          return `${hoursNum.toString().padStart(2, '0')}:${minutesNum.toString().padStart(2, '0')}`;
-        }
-      }
-      
-      // Try to convert from 12-hour format
-      const formatted24h = to24HourFormat(timeValue);
-      if (formatted24h !== '00:00') {
-        return formatted24h;
-      }
-      
-      return '--:--';
-    } catch (error) {
-      console.error('Error formatting time:', error, 'Value:', timeValue);
-      return '--:--';
-    }
   };
 
   // Format date for display
@@ -200,9 +213,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   // Find today's attendance record
   const currentRecord = attendance.find(record => {
     try {
-      const recordDate = new Date(record.date).toISOString().split('T')[0];
-      const todayUtc = new Date().toISOString().split('T')[0];
-      return recordDate === todayUtc;
+      const recordDate = new Date(record.date);
+      if (isNaN(recordDate.getTime())) return false;
+      
+      const recordDateStr = recordDate.toISOString().split('T')[0];
+      const todayDate = new Date(getCurrentUtcTime()).toISOString().split('T')[0];
+      
+      return recordDateStr === todayDate;
     } catch (error) {
       console.error('Error comparing dates:', error);
       return false;
@@ -372,7 +389,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           location: userLocation,
           time: time24h, // Send as 24-hour format
           date: dhakaDate,
-          timestamp: getCurrentUtcTime(), // Send UTC timestamp
+          timestamp: getCurrentUtcTime(), // Send UTC+6 timestamp
           timezone: 'Asia/Dhaka',
           status: type === 'check-in' ? calculateAttendanceStatus(time24h) : undefined
         })
@@ -469,7 +486,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const timeStatus = getCurrentTimeStatus();
 
   // Format today's date for display
-  const displayDate = formatDisplayDate(new Date().toISOString());
+  const displayDate = formatDisplayDate(getCurrentUtcTime());
 
   return (
     <>

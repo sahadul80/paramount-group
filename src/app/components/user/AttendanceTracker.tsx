@@ -46,154 +46,209 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   currentUser,
   onAttendanceUpdate 
 }) => {
-  // Helper function to get current time in Dhaka timezone
-  const getDhakaTime = () => {
-    const now = new Date();
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Dhaka',
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(now);
+  // Get current UTC time (works consistently across browsers)
+  const getCurrentUtcTime = () => {
+    return new Date().toISOString();
   };
 
-  // Helper function to get current date in Dhaka timezone
-  const getDhakaDate = () => {
-    const now = new Date();
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Dhaka',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).format(now).replace(/\//g, '-');
+  // Get current date in YYYY-MM-DD format (UTC)
+  const getCurrentUtcDate = () => {
+    return new Date().toISOString().split('T')[0];
   };
 
-  // Helper function to format a date/time string to Dhaka timezone
-  const formatToDhakaTime = (value?: string | null) => {
-    if (!value) return '--:--';
-
-    // If backend already sends HH:mm → trust it (NO Date parsing)
-    if (/^\d{2}:\d{2}$/.test(value)) {
-      return value;
+  // Convert time string to 24-hour format
+  const to24HourFormat = (timeString: string): string => {
+    if (!timeString) return '00:00';
+    
+    // If already in 24-hour format (HH:mm)
+    if (/^\d{1,2}:\d{2}$/.test(timeString)) {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     }
-
-    // If ISO string → convert once to Dhaka
-    const date = new Date(value);
-
-    return date.toLocaleTimeString('en-GB', {
-      timeZone: 'Asia/Dhaka',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
+    
+    // If in 12-hour format with AM/PM
+    const match = timeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (match) {
+      let hours = parseInt(match[1]);
+      const minutes = parseInt(match[2]);
+      const period = match[3].toUpperCase();
+      
+      if (period === 'PM' && hours < 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+    
+    return '00:00';
   };
 
-  // Helper function to format date for display
-  const formatDhakaDate = (dateString?: string) => {
+  // Get current Dhaka time
+  const getCurrentDhakaTime = () => {
+    const now = new Date();
+    const utcHours = now.getUTCHours();
+    const utcMinutes = now.getUTCMinutes();
+    
+    // Convert UTC to Dhaka (UTC+6)
+    let dhakaHours = utcHours + 6;
+    if (dhakaHours >= 24) {
+      dhakaHours -= 24;
+    }
+    
+    return {
+      hours: dhakaHours,
+      minutes: utcMinutes,
+      formatted24h: `${dhakaHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`,
+      formatted12h: `${(dhakaHours % 12 || 12)}:${utcMinutes.toString().padStart(2, '0')} ${dhakaHours >= 12 ? 'PM' : 'AM'}`
+    };
+  };
+
+  // Get current Dhaka date
+  const getCurrentDhakaDate = () => {
+    const now = new Date();
+    const utcDate = new Date(now);
+    
+    // Check if UTC time is after 18:00 (which would be 00:00 next day in Dhaka)
+    const utcHours = now.getUTCHours();
+    if (utcHours >= 18) {
+      utcDate.setUTCDate(utcDate.getUTCDate() + 1);
+    }
+    
+    const year = utcDate.getUTCFullYear();
+    const month = (utcDate.getUTCMonth() + 1).toString().padStart(2, '0');
+    const day = utcDate.getUTCDate().toString().padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  };
+
+  // Format time for display (robust function that handles various formats)
+  const formatDisplayTime = (timeValue?: string | null): string => {
+    if (!timeValue) return '--:--';
+    
+    try {
+      // Try parsing as ISO string first
+      if (timeValue.includes('T') || timeValue.includes('Z')) {
+        const date = new Date(timeValue);
+        if (!isNaN(date.getTime())) {
+          // Extract UTC time and convert to Dhaka
+          const utcHours = date.getUTCHours();
+          const utcMinutes = date.getUTCMinutes();
+          let dhakaHours = utcHours + 6;
+          if (dhakaHours >= 24) dhakaHours -= 24;
+          
+          return `${dhakaHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`;
+        }
+      }
+      
+      // Try as HH:mm format
+      if (/^\d{1,2}:\d{2}$/.test(timeValue)) {
+        const [hours, minutes] = timeValue.split(':');
+        const hoursNum = parseInt(hours);
+        const minutesNum = parseInt(minutes);
+        
+        if (hoursNum >= 0 && hoursNum < 24 && minutesNum >= 0 && minutesNum < 60) {
+          return `${hoursNum.toString().padStart(2, '0')}:${minutesNum.toString().padStart(2, '0')}`;
+        }
+      }
+      
+      // Try to convert from 12-hour format
+      const formatted24h = to24HourFormat(timeValue);
+      if (formatted24h !== '00:00') {
+        return formatted24h;
+      }
+      
+      return '--:--';
+    } catch (error) {
+      console.error('Error formatting time:', error, 'Value:', timeValue);
+      return '--:--';
+    }
+  };
+
+  // Format date for display
+  const formatDisplayDate = (dateString?: string): string => {
     if (!dateString) return '';
     
     try {
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Dhaka',
+      if (isNaN(date.getTime())) return '';
+      
+      return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
-      }).format(date);
+      });
     } catch (error) {
       console.error('Error formatting date:', error);
-      return dateString;
+      return '';
     }
   };
 
-  // Get current Dhaka date and time for display
-  const getCurrentDhakaDateTime = () => {
-    const now = new Date();
-    const dhakaTime = getDhakaTime();
-    const dhakaDate = getDhakaDate();
-    
-    // Parse the time to get hour and minute
-    const [hours, minutes] = dhakaTime.split(':').map(Number);
-    
-    return {
-      date: dhakaDate,
-      time: dhakaTime,
-      formattedDate: formatDhakaDate(now.toISOString()),
-      isoString: now.toISOString(),
-      hour: hours,
-      minute: minutes
-    };
-  };
-
-  const [currentDhakaTime, setCurrentDhakaTime] = useState(getDhakaTime());
-  const [currentDateTime, setCurrentDateTime] = useState(getCurrentDhakaDateTime());
+  const [currentDhakaTime, setCurrentDhakaTime] = useState(getCurrentDhakaTime());
+  const [currentDhakaDate, setCurrentDhakaDate] = useState(getCurrentDhakaDate());
   const [isLoading, setIsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lng: number; address?: string} | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [leaveRequest, setLeaveRequest] = useState<LeaveRequestData>({
-    startDate: getDhakaDate(),
-    endDate: getDhakaDate(),
+    startDate: getCurrentDhakaDate(),
+    endDate: getCurrentDhakaDate(),
     leaveType: 'casual',
     reason: ''
   });
   const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
   
+  // Find today's attendance record
   const currentRecord = attendance.find(record => {
-    // Parse the record date and compare with today's date in Dhaka timezone
-    const recordDate = new Date(record.date);
-    const recordDateInDhaka = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Dhaka',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).format(recordDate).replace(/\//g, '-');
-    
-    return recordDateInDhaka === currentDateTime.date;
+    try {
+      const recordDate = new Date(record.date).toISOString().split('T')[0];
+      const todayUtc = new Date().toISOString().split('T')[0];
+      return recordDate === todayUtc;
+    } catch (error) {
+      console.error('Error comparing dates:', error);
+      return false;
+    }
   });
 
   // Calculate attendance status based on check-in time
-  const calculateAttendanceStatus = (checkInTime?: string) => {
+  const calculateAttendanceStatus = (checkInTime?: string): string => {
     if (!checkInTime) return 'absent';
     
     try {
-      // Parse check-in time to hours and minutes
-      const [hoursStr, minutesStr] = checkInTime.split(':');
+      const formattedTime = formatDisplayTime(checkInTime);
+      if (formattedTime === '--:--') return 'absent';
+      
+      const [hoursStr, minutesStr] = formattedTime.split(':');
       const checkInHour = parseInt(hoursStr, 10);
       const checkInMinute = parseInt(minutesStr, 10);
       
-      // Convert to total minutes for comparison
       const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
-      
-      // 11:00 AM in minutes = 11 * 60 = 660
-      const elevenAM = 11 * 60;
+      const elevenAM = 11 * 60; // 11:00 AM
+      const nineAM = 9 * 60;    // 9:00 AM
       
       if (checkInTotalMinutes > elevenAM) {
         return 'half-day';
-      } else if (checkInHour >= 9 && checkInTotalMinutes > (9 * 60)) { // After 9:00 AM
+      } else if (checkInHour >= 9 && checkInTotalMinutes > nineAM) {
         return 'late';
-      } else if (checkInHour < 9) { // Before 9:00 AM
+      } else if (checkInHour < 9) {
         return 'present';
       }
       
-      return 'present'; // Default for 9:00-9:59 AM
+      return 'present';
     } catch (error) {
       console.error('Error calculating attendance status:', error);
-      return 'present'; // Default to present if there's an error
+      return 'present';
     }
   };
 
   // Update current time every minute
   useEffect(() => {
     const updateTime = () => {
-      setCurrentDhakaTime(getDhakaTime());
-      setCurrentDateTime(getCurrentDhakaDateTime());
+      setCurrentDhakaTime(getCurrentDhakaTime());
+      setCurrentDhakaDate(getCurrentDhakaDate());
     };
 
-    updateTime(); // Initial update
-    const interval = setInterval(updateTime, 60000); // Update every minute
-
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -300,14 +355,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
     setIsLoading(true);
     try {
-      const dhakaTime = getDhakaTime();
-      const dhakaDate = getDhakaDate();
+      const dhakaTime = currentDhakaTime;
+      const dhakaDate = currentDhakaDate;
       
-      // Calculate status for check-in
-      let status = 'present';
-      if (type === 'check-in') {
-        status = calculateAttendanceStatus(dhakaTime);
-      }
+      // Always send in 24-hour format
+      const time24h = dhakaTime.formatted24h;
       
       const response = await fetch('/api/user/attendance/check', {
         method: 'POST',
@@ -318,11 +370,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           username: currentUser.username,
           type,
           location: userLocation,
-          time: dhakaTime,
+          time: time24h, // Send as 24-hour format
           date: dhakaDate,
-          timestamp: new Date().toISOString(),
+          timestamp: getCurrentUtcTime(), // Send UTC timestamp
           timezone: 'Asia/Dhaka',
-          status: type === 'check-in' ? status : undefined
+          status: type === 'check-in' ? calculateAttendanceStatus(time24h) : undefined
         })
       });
 
@@ -331,7 +383,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         throw new Error(error.error || 'Attendance failed');
       }
 
-      toast.success(`Successfully ${type === 'check-in' ? 'checked in' : 'checked out'} at ${dhakaTime} (Bangladesh Time)!`);
+      toast.success(`Successfully ${type === 'check-in' ? 'checked in' : 'checked out'} at ${time24h} (Bangladesh Time)!`);
       onAttendanceUpdate();
     } catch (error: any) {
       console.error('Attendance error:', error);
@@ -349,24 +401,15 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
     setIsSubmittingLeave(true);
     try {
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Show coming soon message instead of actual API call
       toast.success('Leave request submitted successfully! This feature will be implemented soon.');
-      
       setShowLeaveDialog(false);
       setLeaveRequest({
-        startDate: getDhakaDate(),
-        endDate: getDhakaDate(),
+        startDate: getCurrentDhakaDate(),
+        endDate: getCurrentDhakaDate(),
         leaveType: 'casual',
         reason: ''
       });
-      
-      // Note: We're not calling onAttendanceUpdate() since this is just a mock
-      // When the feature is implemented, you can uncomment this:
-      // onAttendanceUpdate();
-      
     } catch (error: any) {
       console.error('Leave request error:', error);
       toast.error(error.message || 'Failed to submit leave request');
@@ -382,8 +425,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     if (!currentRecord?.checkIn || currentRecord.checkOut) return 0;
     
     try {
-      const [checkInHour, checkInMinute] = currentRecord.checkIn.split(':').map(Number);
-      const [currentHour, currentMinute] = currentDhakaTime.split(':').map(Number);
+      const checkInFormatted = formatDisplayTime(currentRecord.checkIn);
+      if (checkInFormatted === '--:--') return 0;
+      
+      const [checkInHour, checkInMinute] = checkInFormatted.split(':').map(Number);
+      const currentHour = currentDhakaTime.hours;
+      const currentMinute = currentDhakaTime.minutes;
       
       const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
       const currentTotalMinutes = currentHour * 60 + currentMinute;
@@ -402,16 +449,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
   // Calculate current status based on time
   const getCurrentTimeStatus = () => {
-    const currentHour = currentDateTime.hour;
-    const currentMinute = currentDateTime.minute;
+    const currentHour = currentDhakaTime.hours;
+    const currentMinute = currentDhakaTime.minutes;
     const currentTotalMinutes = currentHour * 60 + currentMinute;
     
     // 11:00 AM in minutes
     const elevenAM = 11 * 60;
+    const nineAM = 9 * 60;
     
     if (currentTotalMinutes > elevenAM) {
       return { status: 'half-day', message: 'Arrival after 11:00 AM is considered half day' };
-    } else if (currentHour >= 9 && currentTotalMinutes > (9 * 60)) {
+    } else if (currentHour >= 9 && currentTotalMinutes > nineAM) {
       return { status: 'late', message: 'Arrival after 9:00 AM is considered late' };
     }
     
@@ -419,6 +467,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   };
 
   const timeStatus = getCurrentTimeStatus();
+
+  // Format today's date for display
+  const displayDate = formatDisplayDate(new Date().toISOString());
 
   return (
     <>
@@ -443,7 +494,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 </CardTitle>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
-                    {currentDateTime.formattedDate}
+                    {displayDate}
                   </span>
                   <Badge variant="outline" 
                          className="text-xs border-blue-200 text-blue-700 bg-blue-50 
@@ -451,7 +502,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     GMT+6 (Asia/Dhaka)
                   </Badge>
                   <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
-                    {currentDhakaTime}
+                    {currentDhakaTime.formatted24h}
+                  </span>
+                  <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
+                    ({currentDhakaTime.formatted12h})
                   </span>
                 </div>
                 {!currentRecord?.checkIn && (
@@ -502,7 +556,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                             type="date"
                             value={leaveRequest.startDate}
                             onChange={(e) => setLeaveRequest({...leaveRequest, startDate: e.target.value})}
-                            min={getDhakaDate()}
+                            min={getCurrentDhakaDate()}
                             required
                           />
                         </div>
@@ -653,87 +707,88 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 </motion.div>
               )}
             </AnimatePresence>
+            
             {/* Check In/Out Button */}
-              <AnimatePresence mode="wait">
-                {status === 'not-checked-in' && (
-                  <motion.div
-                    key="check-in"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="w-full sm:w-auto"
+            <AnimatePresence mode="wait">
+              {status === 'not-checked-in' && (
+                <motion.div
+                  key="check-in"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full sm:w-auto"
+                >
+                  <Button 
+                    onClick={() => handleAttendance('check-in')} 
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
+                    disabled={isLoading || locationLoading || !userLocation}
+                    size="lg"
                   >
-                    <Button 
-                      onClick={() => handleAttendance('check-in')} 
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12"
-                      disabled={isLoading || locationLoading || !userLocation}
-                      size="lg"
-                    >
-                      {isLoading ? (
-                        <FiLoader className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" />
-                      )}
-                      <span>
-                        {isLoading ? 'Checking in...' : 'Check In'}
-                      </span>
-                    </Button>
-                  </motion.div>
-                )}
-                
-                {status === 'checked-in' && (
-                  <motion.div
-                    key="check-out"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="space-y-2 w-full sm:w-auto"
+                    {isLoading ? (
+                      <FiLoader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FiCheckCircle className="w-4 h-4 md:w-5 md:h-5" />
+                    )}
+                    <span>
+                      {isLoading ? 'Checking in...' : 'Check In'}
+                    </span>
+                  </Button>
+                </motion.div>
+              )}
+              
+              {status === 'checked-in' && (
+                <motion.div
+                  key="check-out"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="space-y-2 w-full sm:w-auto"
+                >
+                  <Button 
+                    onClick={() => handleAttendance('check-out')} 
+                    variant="outline" 
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12
+                              dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                    disabled={isLoading}
+                    size="lg"
                   >
-                    <Button 
-                      onClick={() => handleAttendance('check-out')} 
-                      variant="outline" 
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 md:h-12
-                                dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-                      disabled={isLoading}
-                      size="lg"
-                    >
-                      {isLoading ? (
-                        <FiLoader className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <FiXCircle className="w-4 h-4 md:w-5 md:h-5" />
-                      )}
-                      {isLoading ? 'Checking out...' : 'Check Out'}
-                    </Button>
-                    
-                    {/* Work Progress Indicator */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground 
-                                      dark:text-gray-400">
-                        <span>Work Progress</span>
-                        <span>{workProgress.toFixed(0)}%</span>
-                      </div>
-                      <Progress value={workProgress} className="h-1.5" />
+                    {isLoading ? (
+                      <FiLoader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FiXCircle className="w-4 h-4 md:w-5 md:h-5" />
+                    )}
+                    {isLoading ? 'Checking out...' : 'Check Out'}
+                  </Button>
+                  
+                  {/* Work Progress Indicator */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground 
+                                    dark:text-gray-400">
+                      <span>Work Progress</span>
+                      <span>{workProgress.toFixed(0)}%</span>
                     </div>
-                  </motion.div>
-                )}
-                
-                {status === 'checked-out' && (
-                  <motion.div
-                    key="completed"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                  >
-                    <Badge className="px-4 py-2 bg-green-50 text-green-700 border-green-200 
-                                      hover:bg-green-50
-                                      dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 
-                                      dark:hover:bg-green-900/40">
-                      <FiCheckCircle className="w-3 h-3 md:w-4 md:h-4 mr-1.5" />
-                      Completed for today
-                    </Badge>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <Progress value={workProgress} className="h-1.5" />
+                  </div>
+                </motion.div>
+              )}
+              
+              {status === 'checked-out' && (
+                <motion.div
+                  key="completed"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                >
+                  <Badge className="px-4 py-2 bg-green-50 text-green-700 border-green-200 
+                                    hover:bg-green-50
+                                    dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 
+                                    dark:hover:bg-green-900/40">
+                    <FiCheckCircle className="w-3 h-3 md:w-4 md:h-4 mr-1.5" />
+                    Completed for today
+                  </Badge>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Time Display */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
@@ -756,7 +811,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 </div>
                 <div className="text-2xl md:text-3xl font-bold text-card-foreground 
                                dark:text-gray-100 mb-1">
-                  {formatToDhakaTime(currentRecord?.checkIn)}
+                  {formatDisplayTime(currentRecord?.checkIn)}
                 </div>
                 {currentRecord?.checkInLocation?.address && (
                   <div className="text-xs text-muted-foreground truncate 
@@ -785,7 +840,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 </div>
                 <div className="text-2xl md:text-3xl font-bold text-card-foreground 
                                dark:text-gray-100 mb-1">
-                  {formatToDhakaTime(currentRecord?.checkOut)}
+                  {formatDisplayTime(currentRecord?.checkOut)}
                 </div>
                 {currentRecord?.checkOutLocation?.address && (
                   <div className="text-xs text-muted-foreground truncate 
@@ -851,7 +906,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   </div>
                   <div className="text-lg md:text-xl font-semibold text-card-foreground 
                                  dark:text-gray-100">
-                    {currentRecord.checkIn ? formatToDhakaTime(currentRecord.checkIn) : '--:--'}
+                    {formatDisplayTime(currentRecord.checkIn)}
                   </div>
                 </div>
 
@@ -919,11 +974,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                                         text-xs text-muted-foreground dark:text-gray-500">
                             <div className="flex items-center gap-1">
                               <FiSunrise className="w-3 h-3" />
-                              <span>{formatToDhakaTime(record.checkIn)}</span>
+                              <span>{formatDisplayTime(record.checkIn)}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <FiSunset className="w-3 h-3" />
-                              <span>{formatToDhakaTime(record.checkOut)}</span>
+                              <span>{formatDisplayTime(record.checkOut)}</span>
                             </div>
                             {record.totalHours && (
                               <div className="flex items-center gap-1">

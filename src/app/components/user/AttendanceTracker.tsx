@@ -12,7 +12,9 @@ import {
   FiSunset,
   FiTrendingUp,
   FiAlertCircle,
-  FiLoader
+  FiLoader,
+  FiCalendar as FiCalendarIcon,
+  FiFileText
 } from 'react-icons/fi';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -20,6 +22,11 @@ import { Badge } from '../ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Progress } from '../ui/progress';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { Label } from '../ui/label';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface AttendanceTrackerProps {
   attendance: AttendanceRecord[];
@@ -27,31 +34,44 @@ interface AttendanceTrackerProps {
   onAttendanceUpdate: () => void;
 }
 
+interface LeaveRequestData {
+  startDate: string;
+  endDate: string;
+  leaveType: string;
+  reason: string;
+}
+
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ 
   attendance, 
   currentUser,
   onAttendanceUpdate 
 }) => {
+  // Get Dhaka timezone offset in minutes
+  const getDhakaTimezoneOffset = () => {
+    const dhakaTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dhaka' });
+    const localTime = new Date();
+    const dhakaDate = new Date(dhakaTime);
+    return dhakaDate.getTime() - localTime.getTime();
+  };
+
   // Helper function to get current time in Dhaka timezone
   const getDhakaTime = () => {
     const now = new Date();
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Dhaka',
+    // Add Dhaka timezone offset
+    const dhakaNow = new Date(now.getTime() + getDhakaTimezoneOffset());
+    return dhakaNow.toLocaleTimeString('en-US', {
+      hour12: false,
       hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(now);
+      minute: '2-digit'
+    });
   };
 
   // Helper function to get current date in Dhaka timezone
   const getDhakaDate = () => {
     const now = new Date();
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Dhaka',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).format(now).replace(/\//g, '-');
+    // Add Dhaka timezone offset
+    const dhakaNow = new Date(now.getTime() + getDhakaTimezoneOffset());
+    return dhakaNow.toISOString().split('T')[0]; // Returns YYYY-MM-DD
   };
 
   // Helper function to format a date/time string to Dhaka timezone
@@ -59,19 +79,26 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     if (!timeString) return '--:--';
     
     try {
-      // If the time is already in HH:mm format, return as is
-      if (/^\d{2}:\d{2}$/.test(timeString)) {
-        return timeString;
+      // Parse the time string
+      let date: Date;
+      
+      // If it's already in ISO format or similar
+      if (timeString.includes('T') || timeString.includes(':')) {
+        date = new Date(timeString);
+        // Adjust to Dhaka timezone
+        date = new Date(date.getTime() + getDhakaTimezoneOffset());
+      } else {
+        // If it's just HH:mm, combine with today's date
+        const today = getDhakaDate();
+        date = new Date(`${today}T${timeString}:00.000Z`);
       }
       
-      // Parse the time string as a Date in Dhaka timezone
-      const date = new Date(timeString);
-      return new Intl.DateTimeFormat('en-US', {
+      return date.toLocaleTimeString('en-US', {
         timeZone: 'Asia/Dhaka',
+        hour12: false,
         hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }).format(date);
+        minute: '2-digit'
+      });
     } catch (error) {
       console.error('Error formatting time:', error);
       return timeString;
@@ -84,13 +111,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     
     try {
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat('en-US', {
+      const dhakaDate = new Date(date.getTime() + getDhakaTimezoneOffset());
+      return dhakaDate.toLocaleDateString('en-US', {
         timeZone: 'Asia/Dhaka',
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
-      }).format(date);
+      });
     } catch (error) {
       console.error('Error formatting date:', error);
       return dateString;
@@ -100,11 +128,25 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   // Get current Dhaka date and time for display
   const getCurrentDhakaDateTime = () => {
     const now = new Date();
+    const dhakaNow = new Date(now.getTime() + getDhakaTimezoneOffset());
+    
     return {
-      date: getDhakaDate(),
-      time: getDhakaTime(),
-      formattedDate: formatDhakaDate(now.toISOString()),
-      isoString: now.toISOString() // Use ISO string for API
+      date: dhakaNow.toISOString().split('T')[0],
+      time: dhakaNow.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      formattedDate: dhakaNow.toLocaleDateString('en-US', {
+        timeZone: 'Asia/Dhaka',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      isoString: dhakaNow.toISOString(),
+      hour: dhakaNow.getHours(),
+      minute: dhakaNow.getMinutes()
     };
   };
 
@@ -113,19 +155,45 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lng: number; address?: string} | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [leaveRequest, setLeaveRequest] = useState<LeaveRequestData>({
+    startDate: getDhakaDate(),
+    endDate: getDhakaDate(),
+    leaveType: 'casual',
+    reason: ''
+  });
+  const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
   
   const currentRecord = attendance.find(record => {
-    // Compare dates in Dhaka timezone
-    const recordDate = new Date(record.date);
-    const recordDateInDhaka = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Dhaka',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).format(recordDate).replace(/\//g, '-');
-    
-    return recordDateInDhaka === currentDateTime.date;
+    const recordDate = new Date(record.date).toISOString().split('T')[0];
+    return recordDate === currentDateTime.date;
   });
+
+  // Calculate attendance status based on check-in time
+  const calculateAttendanceStatus = (checkInTime?: string) => {
+    if (!checkInTime) return 'absent';
+    
+    // Parse check-in time to hours and minutes
+    const [hoursStr, minutesStr] = checkInTime.split(':');
+    const checkInHour = parseInt(hoursStr, 10);
+    const checkInMinute = parseInt(minutesStr, 10);
+    
+    // Convert to total minutes for comparison
+    const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+    
+    // 11:00 AM in minutes = 11 * 60 = 660
+    const elevenAM = 11 * 60;
+    
+    if (checkInTotalMinutes > elevenAM) {
+      return 'half-day';
+    } else if (checkInHour >= 9 && checkInTotalMinutes > (9 * 60)) { // After 9:00 AM
+      return 'late';
+    } else if (checkInHour < 9) { // Before 9:00 AM
+      return 'present';
+    }
+    
+    return 'present'; // Default
+  };
 
   // Update current time every minute
   useEffect(() => {
@@ -246,7 +314,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       const dhakaTime = getDhakaTime();
       const dhakaDate = getDhakaDate();
       
-      // Send ISO string to ensure proper timezone handling on backend
+      // Calculate status for check-in
+      let status = 'present';
+      if (type === 'check-in') {
+        status = calculateAttendanceStatus(dhakaTime);
+      }
+      
       const response = await fetch('/api/user/attendance/check', {
         method: 'POST',
         headers: {
@@ -256,10 +329,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           username: currentUser.username,
           type,
           location: userLocation,
-          time: dhakaTime, // Send Dhaka time as string
-          date: dhakaDate, // Send Dhaka date as string
-          timestamp: new Date().toISOString(), // Also send ISO timestamp for backend
-          timezone: 'Asia/Dhaka'
+          time: dhakaTime,
+          date: dhakaDate,
+          timestamp: new Date().toISOString(),
+          timezone: 'Asia/Dhaka',
+          status: type === 'check-in' ? status : undefined
         })
       });
 
@@ -278,6 +352,51 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     }
   };
 
+  const handleLeaveRequest = async () => {
+    if (!leaveRequest.startDate || !leaveRequest.endDate || !leaveRequest.reason.trim()) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    setIsSubmittingLeave(true);
+    try {
+      const response = await fetch('/api/user/leave', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: currentUser.username,
+          startDate: leaveRequest.startDate,
+          endDate: leaveRequest.endDate,
+          leaveType: leaveRequest.leaveType,
+          reason: leaveRequest.reason,
+          submittedAt: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Leave request failed');
+      }
+
+      toast.success('Leave request submitted successfully!');
+      setShowLeaveDialog(false);
+      setLeaveRequest({
+        startDate: getDhakaDate(),
+        endDate: getDhakaDate(),
+        leaveType: 'casual',
+        reason: ''
+      });
+      onAttendanceUpdate(); // Refresh attendance data
+    } catch (error: any) {
+      console.error('Leave request error:', error);
+      toast.error(error.message || 'Failed to submit leave request');
+    } finally {
+      setIsSubmittingLeave(false);
+    }
+  };
+
   const status = getCurrentStatus();
 
   // Calculate today's work progress if checked in
@@ -285,10 +404,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     if (!currentRecord?.checkIn || currentRecord.checkOut) return 0;
     
     try {
-      // Parse check-in time (assuming it's stored in Dhaka time)
       const [checkInHour, checkInMinute] = currentRecord.checkIn.split(':').map(Number);
-      
-      // Get current Dhaka time
       const [currentHour, currentMinute] = currentDhakaTime.split(':').map(Number);
       
       const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
@@ -306,42 +422,257 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
   const workProgress = calculateWorkProgress();
 
+  // Calculate current status based on time
+  const getCurrentTimeStatus = () => {
+    const currentHour = currentDateTime.hour;
+    const currentMinute = currentDateTime.minute;
+    const currentTotalMinutes = currentHour * 60 + currentMinute;
+    
+    // 11:00 AM in minutes
+    const elevenAM = 11 * 60;
+    
+    if (currentTotalMinutes > elevenAM) {
+      return { status: 'half-day', message: 'Arrival after 11:00 AM is considered half day' };
+    } else if (currentHour >= 9 && currentTotalMinutes > (9 * 60)) {
+      return { status: 'late', message: 'Arrival after 9:00 AM is considered late' };
+    }
+    
+    return { status: 'on-time', message: 'You can check in' };
+  };
+
+  const timeStatus = getCurrentTimeStatus();
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-4 md:space-y-6"
-    >
-      {/* Current Day Card */}
-      <Card className="border-border shadow-sm hover:shadow-md transition-shadow duration-300 
-                      dark:bg-gray-900/50 dark:border-gray-800">
-        <CardHeader className="pb-3 md:pb-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-lg md:text-xl lg:text-2xl 
-                                   dark:text-gray-100">
-                <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20">
-                  <FiCalendar className="w-4 h-4 md:w-5 md:h-5 text-primary dark:text-primary" />
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="space-y-4 md:space-y-6"
+      >
+        {/* Current Day Card */}
+        <Card className="border-border shadow-sm hover:shadow-md transition-shadow duration-300 
+                        dark:bg-gray-900/50 dark:border-gray-800">
+          <CardHeader className="pb-3 md:pb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2 text-lg md:text-xl lg:text-2xl 
+                                     dark:text-gray-100">
+                  <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20">
+                    <FiCalendar className="w-4 h-4 md:w-5 md:h-5 text-primary dark:text-primary" />
+                  </div>
+                  Today's Attendance
+                </CardTitle>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
+                    {currentDateTime.formattedDate}
+                  </span>
+                  <Badge variant="outline" 
+                         className="text-xs border-blue-200 text-blue-700 bg-blue-50 
+                                   dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/30">
+                    GMT+6 (Asia/Dhaka)
+                  </Badge>
+                  <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
+                    {currentDhakaTime}
+                  </span>
                 </div>
-                Today's Attendance
-              </CardTitle>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">
-                  {currentDateTime.formattedDate}
-                </span>
-                <Badge variant="outline" 
-                       className="text-xs border-blue-200 text-blue-700 bg-blue-50 
-                                 dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/30">
-                  GMT+6 (Asia/Dhaka)
-                </Badge>
-                <span className="text-xs text-muted-foreground dark:text-gray-400">
-                  {currentDhakaTime}
-                </span>
+                {!currentRecord?.checkIn && (
+                  <div className="mt-2">
+                    <Badge variant="outline" className={`text-xs ${
+                      timeStatus.status === 'late' ? 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800' :
+                      timeStatus.status === 'half-day' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800' :
+                      'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
+                    }`}>
+                      {timeStatus.status === 'late' && <FiAlertCircle className="w-3 h-3 mr-1" />}
+                      {timeStatus.message}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+              
+              <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+                {/* Leave Request Button */}
+                <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center gap-2 h-11 md:h-12"
+                      size="lg"
+                    >
+                      <FiFileText className="w-4 h-4" />
+                      <span className="hidden sm:inline">Leave Request</span>
+                    </Button>
+                  </DialogTrigger>
+                  
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Submit Leave Request</DialogTitle>
+                      <DialogDescription>
+                        Fill out the form below to request leave. Your request will be reviewed by management.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="startDate">Start Date *</Label>
+                          <Input
+                            id="startDate"
+                            type="date"
+                            value={leaveRequest.startDate}
+                            onChange={(e) => setLeaveRequest({...leaveRequest, startDate: e.target.value})}
+                            min={getDhakaDate()}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="endDate">End Date *</Label>
+                          <Input
+                            id="endDate"
+                            type="date"
+                            value={leaveRequest.endDate}
+                            onChange={(e) => setLeaveRequest({...leaveRequest, endDate: e.target.value})}
+                            min={leaveRequest.startDate}
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="leaveType">Leave Type *</Label>
+                        <Select 
+                          value={leaveRequest.leaveType} 
+                          onValueChange={(value) => setLeaveRequest({...leaveRequest, leaveType: value})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select leave type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="casual">Casual Leave</SelectItem>
+                            <SelectItem value="sick">Sick Leave</SelectItem>
+                            <SelectItem value="earned">Earned Leave</SelectItem>
+                            <SelectItem value="maternity">Maternity Leave</SelectItem>
+                            <SelectItem value="paternity">Paternity Leave</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="reason">Reason *</Label>
+                        <Textarea
+                          id="reason"
+                          placeholder="Please provide a reason for your leave request..."
+                          value={leaveRequest.reason}
+                          onChange={(e) => setLeaveRequest({...leaveRequest, reason: e.target.value})}
+                          rows={4}
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowLeaveDialog(false)}
+                        disabled={isSubmittingLeave}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleLeaveRequest}
+                        disabled={isSubmittingLeave}
+                      >
+                        {isSubmittingLeave ? (
+                          <>
+                            <FiLoader className="w-4 h-4 mr-2 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          'Submit Request'
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
-            
-            <div className="w-full sm:w-auto">
+          </CardHeader>
+          
+          <CardContent className="space-y-4 md:space-y-5">
+            {/* Location Display */}
+            <AnimatePresence>
+              {locationLoading ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="p-3 rounded-lg bg-muted/50 border dark:bg-gray-800/50 dark:border-gray-700"
+                >
+                  <div className="flex items-center gap-2">
+                    <FiLoader className="w-4 h-4 animate-spin text-muted-foreground 
+                                        dark:text-gray-400" />
+                    <span className="text-sm text-muted-foreground dark:text-gray-400">
+                      Getting your location...
+                    </span>
+                  </div>
+                </motion.div>
+              ) : userLocation ? (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-lg bg-blue-50/50 border border-blue-100 
+                            dark:bg-blue-900/20 dark:border-blue-800"
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-800">
+                      <FiMapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 
+                                          dark:text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-blue-700 
+                                         dark:text-blue-400">
+                          Current Location
+                        </span>
+                        <Badge variant="outline" 
+                               className="text-xs py-0 h-4 px-1.5 border-blue-200 text-blue-600
+                                         dark:border-blue-700 dark:text-blue-400">
+                          Live
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-blue-600/80 truncate 
+                                     dark:text-blue-400/80">
+                        {userLocation.address}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-lg bg-yellow-50/50 border border-yellow-100
+                            dark:bg-yellow-900/20 dark:border-yellow-800"
+                >
+                  <div className="flex items-start gap-2">
+                    <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 text-yellow-600 
+                                             dark:text-yellow-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="text-xs font-medium text-yellow-700 
+                                     dark:text-yellow-400">
+                        Location Required
+                      </div>
+                      <div className="text-xs text-yellow-600/80 
+                                     dark:text-yellow-500/80">
+                        Please enable location services to check in/out
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {/* Check In/Out Button */}
               <AnimatePresence mode="wait">
                 {status === 'not-checked-in' && (
                   <motion.div
@@ -349,6 +680,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
+                    className="w-full sm:w-auto"
                   >
                     <Button 
                       onClick={() => handleAttendance('check-in')} 
@@ -374,7 +706,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="space-y-2"
+                    className="space-y-2 w-full sm:w-auto"
                   >
                     <Button 
                       onClick={() => handleAttendance('check-out')} 
@@ -395,7 +727,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     {/* Work Progress Indicator */}
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs text-muted-foreground 
-                                     dark:text-gray-400">
+                                      dark:text-gray-400">
                         <span>Work Progress</span>
                         <span>{workProgress.toFixed(0)}%</span>
                       </div>
@@ -421,310 +753,253 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4 md:space-y-5">
-          {/* Location Display */}
-          <AnimatePresence>
-            {locationLoading ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="p-3 rounded-lg bg-muted/50 border dark:bg-gray-800/50 dark:border-gray-700"
-              >
-                <div className="flex items-center gap-2">
-                  <FiLoader className="w-4 h-4 animate-spin text-muted-foreground 
-                                      dark:text-gray-400" />
-                  <span className="text-sm text-muted-foreground dark:text-gray-400">
-                    Getting your location...
-                  </span>
-                </div>
-              </motion.div>
-            ) : userLocation ? (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-lg bg-blue-50/50 border border-blue-100 
-                          dark:bg-blue-900/20 dark:border-blue-800"
-              >
-                <div className="flex items-start gap-2">
-                  <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-800">
-                    <FiMapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 
-                                        dark:text-blue-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-blue-700 
-                                       dark:text-blue-400">
-                        Current Location
-                      </span>
-                      <Badge variant="outline" 
-                             className="text-xs py-0 h-4 px-1.5 border-blue-200 text-blue-600
-                                       dark:border-blue-700 dark:text-blue-400">
-                        Live
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-blue-600/80 truncate 
-                                   dark:text-blue-400/80">
-                      {userLocation.address}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-lg bg-yellow-50/50 border border-yellow-100
-                          dark:bg-yellow-900/20 dark:border-yellow-800"
-              >
-                <div className="flex items-start gap-2">
-                  <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 text-yellow-600 
-                                           dark:text-yellow-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <div className="text-xs font-medium text-yellow-700 
-                                   dark:text-yellow-400">
-                      Location Required
-                    </div>
-                    <div className="text-xs text-yellow-600/80 
-                                   dark:text-yellow-500/80">
-                      Please enable location services to check in/out
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
-          {/* Time Display */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-            <motion.div 
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 300 }}
-              className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 
-                        border hover:shadow-sm
-                        dark:from-gray-800 dark:to-gray-900 dark:border-gray-700"
-            >
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-800">
-                  <FiSunrise className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 
-                                       dark:text-blue-400" />
-                </div>
-                <div className="text-sm font-medium text-muted-foreground 
-                               dark:text-gray-400">
-                  Check In
-                </div>
-              </div>
-              <div className="text-2xl md:text-3xl font-bold text-card-foreground 
-                             dark:text-gray-100 mb-1">
-                {formatToDhakaTime(currentRecord?.checkIn)}
-              </div>
-              {currentRecord?.checkInLocation?.address && (
-                <div className="text-xs text-muted-foreground truncate 
-                               dark:text-gray-500">
-                  {currentRecord.checkInLocation.address.split(',')[0]}
-                </div>
-              )}
-            </motion.div>
-            
-            <motion.div 
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 300 }}
-              className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 
-                        border hover:shadow-sm
-                        dark:from-gray-800 dark:to-gray-900 dark:border-gray-700"
-            >
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="p-1.5 rounded-full bg-purple-100 dark:bg-purple-800">
-                  <FiSunset className="w-3.5 h-3.5 md:w-4 md:h-4 text-purple-600 
-                                      dark:text-purple-400" />
-                </div>
-                <div className="text-sm font-medium text-muted-foreground 
-                               dark:text-gray-400">
-                  Check Out
-                </div>
-              </div>
-              <div className="text-2xl md:text-3xl font-bold text-card-foreground 
-                             dark:text-gray-100 mb-1">
-                {formatToDhakaTime(currentRecord?.checkOut)}
-              </div>
-              {currentRecord?.checkOutLocation?.address && (
-                <div className="text-xs text-muted-foreground truncate 
-                               dark:text-gray-500">
-                  {currentRecord.checkOutLocation.address.split(',')[0]}
-                </div>
-              )}
-            </motion.div>
-          </div>
-
-          {/* Additional Info */}
-          {currentRecord && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-2 gap-3"
-            >
-              <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
-                            transition-shadow dark:border-gray-700">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <FiWatch className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground 
-                                     dark:text-gray-400" />
-                  <div className="text-xs text-muted-foreground dark:text-gray-400">
-                    Total Hours
+            {/* Time Display */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 
+                          border hover:shadow-sm
+                          dark:from-gray-800 dark:to-gray-900 dark:border-gray-700"
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-800">
+                    <FiSunrise className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 
+                                         dark:text-blue-400" />
+                  </div>
+                  <div className="text-sm font-medium text-muted-foreground 
+                                 dark:text-gray-400">
+                    Check In
                   </div>
                 </div>
-                <div className="text-lg md:text-xl font-semibold text-card-foreground 
-                               dark:text-gray-100">
-                  {currentRecord.totalHours?.toFixed(1) || '0'}h
+                <div className="text-2xl md:text-3xl font-bold text-card-foreground 
+                               dark:text-gray-100 mb-1">
+                  {formatToDhakaTime(currentRecord?.checkIn)}
                 </div>
-              </div>
+                {currentRecord?.checkInLocation?.address && (
+                  <div className="text-xs text-muted-foreground truncate 
+                                 dark:text-gray-500">
+                    {currentRecord.checkInLocation.address.split(',')[0]}
+                  </div>
+                )}
+              </motion.div>
               
-              {currentRecord.overtimeHours && currentRecord.overtimeHours > 0 ? (
-                <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-100 
-                              hover:shadow-sm transition-shadow
-                              dark:bg-amber-900/20 dark:border-amber-800">
-                  <div className="flex items-center justify-center gap-1.5 mb-1">
-                    <FiTrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-600 
-                                           dark:text-amber-500" />
-                    <div className="text-xs text-amber-700 dark:text-amber-400">
-                      Overtime
-                    </div>
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 
+                          border hover:shadow-sm
+                          dark:from-gray-800 dark:to-gray-900 dark:border-gray-700"
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-full bg-purple-100 dark:bg-purple-800">
+                    <FiSunset className="w-3.5 h-3.5 md:w-4 md:h-4 text-purple-600 
+                                        dark:text-purple-400" />
                   </div>
-                  <div className="text-lg md:text-xl font-semibold text-amber-700 
-                                 dark:text-amber-400">
-                    +{currentRecord.overtimeHours.toFixed(1)}h
+                  <div className="text-sm font-medium text-muted-foreground 
+                                 dark:text-gray-400">
+                    Check Out
                   </div>
                 </div>
-              ) : (
+                <div className="text-2xl md:text-3xl font-bold text-card-foreground 
+                               dark:text-gray-100 mb-1">
+                  {formatToDhakaTime(currentRecord?.checkOut)}
+                </div>
+                {currentRecord?.checkOutLocation?.address && (
+                  <div className="text-xs text-muted-foreground truncate 
+                                 dark:text-gray-500">
+                    {currentRecord.checkOutLocation.address.split(',')[0]}
+                  </div>
+                )}
+              </motion.div>
+            </div>
+
+            {/* Additional Info */}
+            {currentRecord && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-2 md:grid-cols-4 gap-3"
+              >
+                <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
+                              transition-shadow dark:border-gray-700">
+                  <div className="flex items-center justify-center gap-1.5 mb-1">
+                    <FiWatch className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground 
+                                       dark:text-gray-400" />
+                    <div className="text-xs text-muted-foreground dark:text-gray-400">
+                      Total Hours
+                    </div>
+                  </div>
+                  <div className="text-lg md:text-xl font-semibold text-card-foreground 
+                                 dark:text-gray-100">
+                    {currentRecord.totalHours?.toFixed(1) || '0'}h
+                  </div>
+                </div>
+                
+                {currentRecord.overtimeHours && currentRecord.overtimeHours > 0 ? (
+                  <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-100 
+                                hover:shadow-sm transition-shadow
+                                dark:bg-amber-900/20 dark:border-amber-800">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <FiTrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-600 
+                                             dark:text-amber-500" />
+                      <div className="text-xs text-amber-700 dark:text-amber-400">
+                        Overtime
+                      </div>
+                    </div>
+                    <div className="text-lg md:text-xl font-semibold text-amber-700 
+                                   dark:text-amber-400">
+                      +{currentRecord.overtimeHours.toFixed(1)}h
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
+                                transition-shadow dark:border-gray-700">
+                    <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400">
+                      Status
+                    </div>
+                    {getStatusBadge(currentRecord.status)}
+                  </div>
+                )}
+
                 <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
                               transition-shadow dark:border-gray-700">
                   <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400">
-                    Status
+                    Arrival Time
                   </div>
-                  {getStatusBadge(currentRecord.status)}
+                  <div className="text-lg md:text-xl font-semibold text-card-foreground 
+                                 dark:text-gray-100">
+                    {currentRecord.checkIn ? formatToDhakaTime(currentRecord.checkIn) : '--:--'}
+                  </div>
                 </div>
-              )}
-            </motion.div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Attendance History */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-base md:text-lg font-semibold text-card-foreground 
-                        dark:text-gray-100 flex items-center gap-2">
-            <FiClock className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground 
-                               dark:text-gray-400" />
-            Recent Attendance
-          </h4>
-          <Badge variant="outline" className="text-xs dark:border-gray-600">
-            Last 10 days
-          </Badge>
-        </div>
-        
-        <div className="space-y-2">
-          {attendance.slice(0, 10).map((record, index) => (
-            <motion.div
-              key={record.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              whileHover={{ x: 4 }}
-            >
-              <Card className="border-border hover:shadow-sm transition-shadow cursor-pointer 
-                              group dark:bg-gray-900/50 dark:border-gray-800">
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="mt-0.5">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 
-                                       dark:bg-primary/20 flex items-center justify-center">
-                          <FiCalendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary 
-                                               dark:text-primary" />
+                <div className="text-center p-3 rounded-lg bg-background border hover:shadow-sm 
+                              transition-shadow dark:border-gray-700">
+                  <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400">
+                    Current Status
+                  </div>
+                  {getStatusBadge(calculateAttendanceStatus(currentRecord.checkIn))}
+                </div>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Attendance History */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-base md:text-lg font-semibold text-card-foreground 
+                          dark:text-gray-100 flex items-center gap-2">
+              <FiClock className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground 
+                                 dark:text-gray-400" />
+              Recent Attendance
+            </h4>
+            <Badge variant="outline" className="text-xs dark:border-gray-600">
+              Last 10 days
+            </Badge>
+          </div>
+          
+          <div className="space-y-2">
+            {attendance.slice(0, 10).map((record, index) => (
+              <motion.div
+                key={record.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ x: 4 }}
+              >
+                <Card className="border-border hover:shadow-sm transition-shadow cursor-pointer 
+                                group dark:bg-gray-900/50 dark:border-gray-800">
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="mt-0.5">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 
+                                         dark:bg-primary/20 flex items-center justify-center">
+                            <FiCalendarIcon className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary 
+                                                     dark:text-primary" />
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="text-sm font-medium dark:text-gray-200">
+                              {new Date(record.date).toLocaleDateString('en-US', { 
+                                weekday: 'short', 
+                                month: 'short', 
+                                day: 'numeric' 
+                              })}
+                            </div>
+                            <div className="hidden sm:block">
+                              {getStatusBadge(record.status)}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 
+                                        text-xs text-muted-foreground dark:text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <FiSunrise className="w-3 h-3" />
+                              <span>{formatToDhakaTime(record.checkIn)}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <FiSunset className="w-3 h-3" />
+                              <span>{formatToDhakaTime(record.checkOut)}</span>
+                            </div>
+                            {record.totalHours && (
+                              <div className="flex items-center gap-1">
+                                <FiWatch className="w-3 h-3" />
+                                <span>{record.totalHours.toFixed(1)}h</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="text-sm font-medium dark:text-gray-200">
-                            {new Date(record.date).toLocaleDateString('en-US', { 
-                              weekday: 'short', 
-                              month: 'short', 
-                              day: 'numeric' 
-                            })}
-                          </div>
-                          <div className="hidden sm:block">
-                            {getStatusBadge(record.status)}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 
-                                      text-xs text-muted-foreground dark:text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <FiSunrise className="w-3 h-3" />
-                            <span>{formatToDhakaTime(record.checkIn)}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <FiSunset className="w-3 h-3" />
-                            <span>{formatToDhakaTime(record.checkOut)}</span>
-                          </div>
-                          {record.totalHours && (
-                            <div className="flex items-center gap-1">
-                              <FiWatch className="w-3 h-3" />
-                              <span>{record.totalHours.toFixed(1)}h</span>
-                            </div>
-                          )}
+                      
+                      <div className="flex items-center gap-3 self-end sm:self-auto">
+                        <div className="sm:hidden">
+                          {getStatusBadge(record.status)}
                         </div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3 self-end sm:self-auto">
-                      <div className="sm:hidden">
-                        {getStatusBadge(record.status)}
+                    {/* Record Location if available */}
+                    {(record.checkInLocation?.address || record.checkOutLocation?.address) && (
+                      <div className="flex items-start gap-1.5 text-xs text-muted-foreground 
+                                    mt-3 pt-3 border-t dark:border-gray-800 dark:text-gray-500">
+                        <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                        <div className="truncate">
+                          {record.checkInLocation?.address?.split(',')[0]}
+                          {record.checkOutLocation?.address && ` → ${record.checkOutLocation.address.split(',')[0]}`}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  
-              {/* Record Location if available */}
-              {(record.checkInLocation?.address || record.checkOutLocation?.address) && (
-                <div className="flex items-start gap-1.5 text-xs text-muted-foreground 
-                              mt-3 pt-3 border-t dark:border-gray-800 dark:text-gray-500">
-                  <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  <div className="truncate">
-                    {record.checkInLocation?.address?.split(',')[0]}
-                    {record.checkOutLocation?.address && ` → ${record.checkOutLocation.address.split(',')[0]}`}
-                  </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+            
+            {attendance.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-8"
+              >
+                <div className="w-12 h-12 mx-auto rounded-full bg-muted 
+                              dark:bg-gray-800 flex items-center justify-center mb-3">
+                  <FiCalendar className="w-6 h-6 text-muted-foreground 
+                                       dark:text-gray-400" />
                 </div>
-              )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-          
-          {attendance.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-8"
-            >
-              <div className="w-12 h-12 mx-auto rounded-full bg-muted 
-                            dark:bg-gray-800 flex items-center justify-center mb-3">
-                <FiCalendar className="w-6 h-6 text-muted-foreground 
-                                     dark:text-gray-400" />
-              </div>
-              <div className="text-muted-foreground dark:text-gray-400">
-                No attendance records found
-              </div>
-              <div className="text-sm text-muted-foreground mt-1 dark:text-gray-500">
-                Your attendance history will appear here
-              </div>
-            </motion.div>
-          )}
+                <div className="text-muted-foreground dark:text-gray-400">
+                  No attendance records found
+                </div>
+                <div className="text-sm text-muted-foreground mt-1 dark:text-gray-500">
+                  Your attendance history will appear here
+                </div>
+              </motion.div>
+            )}
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

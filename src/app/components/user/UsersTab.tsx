@@ -134,6 +134,8 @@ const UsersTab: React.FC<UsersTabProps> = ({
     }),
   };
 
+  const currentUserRole = localStorage.getItem('role');
+
   const UserCard = ({
     user,
     index,
@@ -217,7 +219,7 @@ const UsersTab: React.FC<UsersTabProps> = ({
             <span className="hidden md:inline text-xs ml-1">Message</span>
           </Button>
 
-          {user.status === 1 && (
+          {user.status === 1 && currentUserRole === "admin" && (
             <Button
               size="sm"
               variant="default"

@@ -46,32 +46,26 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   currentUser,
   onAttendanceUpdate 
 }) => {
-  // Get Dhaka timezone offset in minutes
-  const getDhakaTimezoneOffset = () => {
-    const dhakaTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dhaka' });
-    const localTime = new Date();
-    const dhakaDate = new Date(dhakaTime);
-    return dhakaDate.getTime() - localTime.getTime();
-  };
-
   // Helper function to get current time in Dhaka timezone
   const getDhakaTime = () => {
     const now = new Date();
-    // Add Dhaka timezone offset
-    const dhakaNow = new Date(now.getTime() + getDhakaTimezoneOffset());
-    return dhakaNow.toLocaleTimeString('en-US', {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Dhaka',
       hour12: false,
       hour: '2-digit',
       minute: '2-digit'
-    });
+    }).format(now);
   };
 
   // Helper function to get current date in Dhaka timezone
   const getDhakaDate = () => {
     const now = new Date();
-    // Add Dhaka timezone offset
-    const dhakaNow = new Date(now.getTime() + getDhakaTimezoneOffset());
-    return dhakaNow.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now).replace(/\//g, '-');
   };
 
   // Helper function to format a date/time string to Dhaka timezone
@@ -79,26 +73,19 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     if (!timeString) return '--:--';
     
     try {
-      // Parse the time string
-      let date: Date;
-      
-      // If it's already in ISO format or similar
-      if (timeString.includes('T') || timeString.includes(':')) {
-        date = new Date(timeString);
-        // Adjust to Dhaka timezone
-        date = new Date(date.getTime() + getDhakaTimezoneOffset());
-      } else {
-        // If it's just HH:mm, combine with today's date
-        const today = getDhakaDate();
-        date = new Date(`${today}T${timeString}:00.000Z`);
+      // If the time is already in HH:mm format, return as is
+      if (/^\d{2}:\d{2}$/.test(timeString)) {
+        return timeString;
       }
       
-      return date.toLocaleTimeString('en-US', {
+      // Parse the time string as a Date in Dhaka timezone
+      const date = new Date(timeString);
+      return new Intl.DateTimeFormat('en-US', {
         timeZone: 'Asia/Dhaka',
         hour12: false,
         hour: '2-digit',
         minute: '2-digit'
-      });
+      }).format(date);
     } catch (error) {
       console.error('Error formatting time:', error);
       return timeString;
@@ -111,14 +98,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     
     try {
       const date = new Date(dateString);
-      const dhakaDate = new Date(date.getTime() + getDhakaTimezoneOffset());
-      return dhakaDate.toLocaleDateString('en-US', {
+      return new Intl.DateTimeFormat('en-US', {
         timeZone: 'Asia/Dhaka',
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
-      });
+      }).format(date);
     } catch (error) {
       console.error('Error formatting date:', error);
       return dateString;
@@ -128,25 +114,19 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   // Get current Dhaka date and time for display
   const getCurrentDhakaDateTime = () => {
     const now = new Date();
-    const dhakaNow = new Date(now.getTime() + getDhakaTimezoneOffset());
+    const dhakaTime = getDhakaTime();
+    const dhakaDate = getDhakaDate();
+    
+    // Parse the time to get hour and minute
+    const [hours, minutes] = dhakaTime.split(':').map(Number);
     
     return {
-      date: dhakaNow.toISOString().split('T')[0],
-      time: dhakaNow.toLocaleTimeString('en-US', {
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-      formattedDate: dhakaNow.toLocaleDateString('en-US', {
-        timeZone: 'Asia/Dhaka',
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      isoString: dhakaNow.toISOString(),
-      hour: dhakaNow.getHours(),
-      minute: dhakaNow.getMinutes()
+      date: dhakaDate,
+      time: dhakaTime,
+      formattedDate: formatDhakaDate(now.toISOString()),
+      isoString: now.toISOString(),
+      hour: hours,
+      minute: minutes
     };
   };
 
@@ -165,34 +145,47 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
   
   const currentRecord = attendance.find(record => {
-    const recordDate = new Date(record.date).toISOString().split('T')[0];
-    return recordDate === currentDateTime.date;
+    // Parse the record date and compare with today's date in Dhaka timezone
+    const recordDate = new Date(record.date);
+    const recordDateInDhaka = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(recordDate).replace(/\//g, '-');
+    
+    return recordDateInDhaka === currentDateTime.date;
   });
 
   // Calculate attendance status based on check-in time
   const calculateAttendanceStatus = (checkInTime?: string) => {
     if (!checkInTime) return 'absent';
     
-    // Parse check-in time to hours and minutes
-    const [hoursStr, minutesStr] = checkInTime.split(':');
-    const checkInHour = parseInt(hoursStr, 10);
-    const checkInMinute = parseInt(minutesStr, 10);
-    
-    // Convert to total minutes for comparison
-    const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
-    
-    // 11:00 AM in minutes = 11 * 60 = 660
-    const elevenAM = 11 * 60;
-    
-    if (checkInTotalMinutes > elevenAM) {
-      return 'half-day';
-    } else if (checkInHour >= 9 && checkInTotalMinutes > (9 * 60)) { // After 9:00 AM
-      return 'late';
-    } else if (checkInHour < 9) { // Before 9:00 AM
-      return 'present';
+    try {
+      // Parse check-in time to hours and minutes
+      const [hoursStr, minutesStr] = checkInTime.split(':');
+      const checkInHour = parseInt(hoursStr, 10);
+      const checkInMinute = parseInt(minutesStr, 10);
+      
+      // Convert to total minutes for comparison
+      const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+      
+      // 11:00 AM in minutes = 11 * 60 = 660
+      const elevenAM = 11 * 60;
+      
+      if (checkInTotalMinutes > elevenAM) {
+        return 'half-day';
+      } else if (checkInHour >= 9 && checkInTotalMinutes > (9 * 60)) { // After 9:00 AM
+        return 'late';
+      } else if (checkInHour < 9) { // Before 9:00 AM
+        return 'present';
+      }
+      
+      return 'present'; // Default for 9:00-9:59 AM
+    } catch (error) {
+      console.error('Error calculating attendance status:', error);
+      return 'present'; // Default to present if there's an error
     }
-    
-    return 'present'; // Default
   };
 
   // Update current time every minute
@@ -360,27 +353,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
     setIsSubmittingLeave(true);
     try {
-      const response = await fetch('/api/user/leave', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: currentUser.username,
-          startDate: leaveRequest.startDate,
-          endDate: leaveRequest.endDate,
-          leaveType: leaveRequest.leaveType,
-          reason: leaveRequest.reason,
-          submittedAt: new Date().toISOString()
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Leave request failed');
-      }
-
-      toast.success('Leave request submitted successfully!');
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Show coming soon message instead of actual API call
+      toast.success('Leave request submitted successfully! This feature will be implemented soon.');
+      
       setShowLeaveDialog(false);
       setLeaveRequest({
         startDate: getDhakaDate(),
@@ -388,7 +366,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         leaveType: 'casual',
         reason: ''
       });
-      onAttendanceUpdate(); // Refresh attendance data
+      
+      // Note: We're not calling onAttendanceUpdate() since this is just a mock
+      // When the feature is implemented, you can uncomment this:
+      // onAttendanceUpdate();
+      
     } catch (error: any) {
       console.error('Leave request error:', error);
       toast.error(error.message || 'Failed to submit leave request');
@@ -509,6 +491,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       <DialogTitle>Submit Leave Request</DialogTitle>
                       <DialogDescription>
                         Fill out the form below to request leave. Your request will be reviewed by management.
+                        <span className="block mt-1 text-xs text-amber-600 dark:text-amber-400">
+                          Note: This feature is currently in development
+                        </span>
                       </DialogDescription>
                     </DialogHeader>
                     

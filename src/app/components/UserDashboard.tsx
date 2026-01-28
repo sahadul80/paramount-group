@@ -486,27 +486,6 @@ export default function UserDashboard() {
               <FiUsers className="w-4 h-4" />
               <span>Users</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="inbox" 
-              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200 hover:bg-accent"
-            >
-              <div className="relative">
-                <FiInbox className="w-4 h-4" />
-                {unreadMessages.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {unreadMessages.length}
-                  </span>
-                )}
-              </div>
-              <span>Inbox</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="groups" 
-              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200 hover:bg-accent"
-            >
-              <FiFolder className="w-4 h-4" />
-              <span>Groups</span>
-            </TabsTrigger>
           </TabsList>
         </div>
 

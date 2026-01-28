@@ -1,7 +1,5 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import GroupsTab from './GroupsTab';
-import InboxTab from './InboxTab';
 import ProfileTab from './ProfileTab';
 import UsersTab from './UsersTab';
 import { TabValue, User, Group, Message } from '@/types/users';
@@ -108,29 +106,6 @@ const TabContent: React.FC<TabContentProps> = ({
             onUserDeleted={onUserDeleted}
             onUserSelect={handleUserSelect}
             onUserDeselect={handleUserDeselect}
-          />
-        );
-
-      case 'inbox':
-        return (
-          <InboxTab 
-            messages={memoizedMessages} 
-            setMessages={setMessages} 
-            loading={tabState.loading}
-            currentUser={currentUser}
-            users={memoizedUsers}
-            sendMessage={sendMessage}
-          />
-        );
-
-      case 'groups':
-        return (
-          <GroupsTab 
-            groups={memoizedGroups} 
-            setGroups={setGroups} 
-            loading={tabState.loading}
-            users={memoizedUsers} 
-            currentUser={currentUser}
           />
         );
 

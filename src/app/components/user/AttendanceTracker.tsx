@@ -166,8 +166,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   // Get current Dhaka date
   const getCurrentDhakaDate = () => {
     const now = new Date();
-    // Add 6 hours to get Dhaka timezone
-    const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+    const dhakaTime = new Date(now.getTime());
     
     const year = dhakaTime.getUTCFullYear();
     const month = (dhakaTime.getUTCMonth() + 1).toString().padStart(2, '0');

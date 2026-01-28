@@ -41,145 +41,77 @@ interface LeaveRequestData {
   reason: string;
 }
 
-const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ 
-  attendance, 
-  currentUser,
-  onAttendanceUpdate 
-}) => {
-  // Get current UTC time + 6 hours for Dhaka (GMT+6)
-  const getCurrentUtcTime = () => {
+// Centralized time utility functions
+const TimeUtils = {
+  // Get current Dhaka time (GMT+6)
+  getCurrentDhakaTime: () => {
     const now = new Date();
-    const dhakaTime = new Date(now.getTime());
-    return dhakaTime.toISOString();
-  };
-
-  // Get current date in YYYY-MM-DD format (UTC+6 for Dhaka)
-  const getCurrentUtcDate = () => {
-    const now = new Date();
-    // Add 6 hours for Dhaka timezone
+    // Dhaka is UTC+6, so add 6 hours to UTC
     const dhakaTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
-    return dhakaTime.toISOString().split('T')[0];
-  };
+    return dhakaTime;
+  },
 
-  // Format time string to HH:mm (handles various formats)
-  const formatDisplayTime = (timeValue?: string | null): string => {
+  // Get formatted Dhaka time
+  getFormattedDhakaTime: () => {
+    const dhakaTime = TimeUtils.getCurrentDhakaTime();
+    const hours24 = dhakaTime.getUTCHours();
+    const minutes = dhakaTime.getUTCMinutes();
+    const hours12 = hours24 % 12 || 12;
+    const ampm = hours24 >= 12 ? 'PM' : 'AM';
+    
+    return {
+      hours: hours24,
+      minutes,
+      formatted24h: `${hours24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`,
+      formatted12h: `${hours12}:${minutes.toString().padStart(2, '0')} ${ampm}`,
+      isoString: dhakaTime.toISOString()
+    };
+  },
+
+  // Get Dhaka date in YYYY-MM-DD format
+  getDhakaDate: () => {
+    const dhakaTime = TimeUtils.getCurrentDhakaTime();
+    const year = dhakaTime.getUTCFullYear();
+    const month = (dhakaTime.getUTCMonth() + 1).toString().padStart(2, '0');
+    const day = dhakaTime.getUTCDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  // Format any time string to HH:mm
+  formatTime: (timeValue?: string | null): string => {
     if (!timeValue || timeValue === '--:--') return '--:--';
     
-    // Debug log to see what format we're receiving
-    console.log('formatDisplayTime received:', timeValue);
-    
     try {
-      // Check if it's already in HH:mm format
-      if (/^\d{1,2}:\d{2}$/.test(timeValue)) {
-        const [hours, minutes] = timeValue.split(':');
-        const hoursNum = parseInt(hours, 10);
-        const minutesNum = parseInt(minutes, 10);
-        
-        // Validate hours and minutes
-        if (hoursNum >= 0 && hoursNum < 24 && minutesNum >= 0 && minutesNum < 60) {
-          return `${hoursNum.toString().padStart(2, '0')}:${minutesNum.toString().padStart(2, '0')}`;
-        }
-      }
-      
-      // Check if it's in 12-hour format with AM/PM
-      const time12hMatch = timeValue.match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)/i);
-      if (time12hMatch) {
-        let hours = parseInt(time12hMatch[1], 10);
-        const minutes = parseInt(time12hMatch[2], 10);
-        const period = time12hMatch[3].toUpperCase();
-        
-        // Convert 12-hour to 24-hour format
-        if (period === 'PM' && hours < 12) {
-          hours += 12;
-        } else if (period === 'AM' && hours === 12) {
-          hours = 0;
-        }
-        
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      }
-      
-      // Try parsing as ISO date string
-      try {
-        const date = new Date(timeValue);
-        if (!isNaN(date.getTime())) {
-          // Get UTC hours and minutes (add 6 for Dhaka timezone)
-          let hours = date.getUTCHours() + 6;
-          const minutes = date.getUTCMinutes();
-          
-          // Handle overflow to next day
-          if (hours >= 24) {
-            hours -= 24;
-          }
-          
-          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        }
-      } catch (e) {
-        console.log('Failed to parse as ISO date:', e);
-      }
-      
-      // Try parsing as simple time string (h:mm or hh:mm)
-      const simpleTimeMatch = timeValue.match(/(\d{1,2}):(\d{2})/);
-      if (simpleTimeMatch) {
-        const hours = parseInt(simpleTimeMatch[1], 10);
-        const minutes = parseInt(simpleTimeMatch[2], 10);
-        
+      // If already in HH:mm format
+      if (/^\d{2}:\d{2}$/.test(timeValue)) {
+        const [hours, minutes] = timeValue.split(':').map(Number);
         if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
           return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         }
       }
       
-      console.warn('Unrecognized time format:', timeValue);
+      // Try parsing as Date object
+      const date = new Date(timeValue);
+      if (!isNaN(date.getTime())) {
+        // Extract time from UTC date (since we store in Dhaka time)
+        const hours = date.getUTCHours();
+        const minutes = date.getUTCMinutes();
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      }
+      
       return '--:--';
     } catch (error) {
-      console.error('Error formatting time:', error, 'Value:', timeValue);
+      console.error('Error formatting time:', error);
       return '--:--';
     }
-  };
-
-  // Get current Dhaka time for display and submission
-  const getCurrentDhakaTime = () => {
-    const now = new Date();
-    // Get current UTC time
-    const utcHours = now.getUTCHours();
-    const utcMinutes = now.getUTCMinutes();
-    
-    // Convert UTC to Dhaka (UTC+6)
-    let dhakaHours = utcHours + 6;
-    // Handle overflow to next day
-    if (dhakaHours >= 24) {
-      dhakaHours -= 24;
-    }
-    
-    const hours24 = dhakaHours;
-    const hours12 = dhakaHours % 12 || 12;
-    const ampm = dhakaHours >= 12 ? 'PM' : 'AM';
-    
-    return {
-      hours: dhakaHours,
-      minutes: utcMinutes,
-      formatted24h: `${hours24.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`,
-      formatted12h: `${hours12}:${utcMinutes.toString().padStart(2, '0')} ${ampm}`
-    };
-  };
-
-  // Get current Dhaka date
-  const getCurrentDhakaDate = () => {
-    const now = new Date();
-    const dhakaTime = new Date(now.getTime());
-    
-    const year = dhakaTime.getUTCFullYear();
-    const month = (dhakaTime.getUTCMonth() + 1).toString().padStart(2, '0');
-    const day = dhakaTime.getUTCDate().toString().padStart(2, '0');
-    
-    return `${year}-${month}-${day}`;
-  };
+  },
 
   // Format date for display
-  const formatDisplayDate = (dateString?: string): string => {
+  formatDate: (dateString?: string): string => {
     if (!dateString) return '';
     
     try {
-      const date = new Date(dateString);
+      const date = new Date(dateString + 'T00:00:00+06:00'); // Assume Dhaka timezone
       if (isNaN(date.getTime())) return '';
       
       return date.toLocaleDateString('en-US', {
@@ -192,17 +124,53 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       console.error('Error formatting date:', error);
       return '';
     }
-  };
+  },
 
-  const [currentDhakaTime, setCurrentDhakaTime] = useState(getCurrentDhakaTime());
-  const [currentDhakaDate, setCurrentDhakaDate] = useState(getCurrentDhakaDate());
+  // Calculate attendance status based on check-in time
+  calculateStatus: (checkInTime?: string): string => {
+    if (!checkInTime) return 'absent';
+    
+    const formattedTime = TimeUtils.formatTime(checkInTime);
+    if (formattedTime === '--:--') return 'absent';
+    
+    try {
+      const [hoursStr, minutesStr] = formattedTime.split(':');
+      const checkInHour = parseInt(hoursStr, 10);
+      const checkInMinute = parseInt(minutesStr, 10);
+      
+      const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+      const nineThirtyAM = 9 * 60 + 30; // 9:30 AM
+      const elevenAM = 11 * 60;         // 11:00 AM
+      
+      if (checkInTotalMinutes > elevenAM) {
+        return 'half-day';
+      } else if (checkInTotalMinutes > nineThirtyAM) {
+        return 'late';
+      }
+      
+      return 'present';
+    } catch (error) {
+      console.error('Error calculating status:', error);
+      return 'present';
+    }
+  }
+};
+
+const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ 
+  attendance, 
+  currentUser,
+  onAttendanceUpdate 
+}) => {
+  // State using centralized utilities
+  const [currentDhakaTime, setCurrentDhakaTime] = useState(TimeUtils.getFormattedDhakaTime());
+  const [currentDhakaDate, setCurrentDhakaDate] = useState(TimeUtils.getDhakaDate());
   const [isLoading, setIsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lng: number; address?: string} | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [leaveRequest, setLeaveRequest] = useState<LeaveRequestData>({
-    startDate: getCurrentDhakaDate(),
-    endDate: getCurrentDhakaDate(),
+    startDate: TimeUtils.getDhakaDate(),
+    endDate: TimeUtils.getDhakaDate(),
     leaveType: 'casual',
     reason: ''
   });
@@ -211,55 +179,18 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   // Find today's attendance record
   const currentRecord = attendance.find(record => {
     try {
-      const recordDate = new Date(record.date);
-      if (isNaN(recordDate.getTime())) return false;
-      
-      const recordDateStr = recordDate.toISOString().split('T')[0];
-      const todayDate = new Date(getCurrentUtcTime()).toISOString().split('T')[0];
-      
-      return recordDateStr === todayDate;
+      return record.date === currentDhakaDate;
     } catch (error) {
-      console.error('Error comparing dates:', error);
+      console.error('Error finding record:', error);
       return false;
     }
   });
 
-  // Calculate attendance status based on check-in time
-  const calculateAttendanceStatus = (checkInTime?: string): string => {
-    if (!checkInTime) return 'absent';
-    
-    try {
-      const formattedTime = formatDisplayTime(checkInTime);
-      if (formattedTime === '--:--') return 'absent';
-      
-      const [hoursStr, minutesStr] = formattedTime.split(':');
-      const checkInHour = parseInt(hoursStr, 10);
-      const checkInMinute = parseInt(minutesStr, 10);
-      
-      const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
-      const elevenAM = 11 * 60; // 11:00 AM
-      const nineAM = 9 * 60;    // 9:00 AM
-      
-      if (checkInTotalMinutes > elevenAM) {
-        return 'half-day';
-      } else if (checkInHour >= 9 && checkInTotalMinutes > nineAM) {
-        return 'late';
-      } else if (checkInHour < 9) {
-        return 'present';
-      }
-      
-      return 'present';
-    } catch (error) {
-      console.error('Error calculating attendance status:', error);
-      return 'present';
-    }
-  };
-
   // Update current time every minute
   useEffect(() => {
     const updateTime = () => {
-      setCurrentDhakaTime(getCurrentDhakaTime());
-      setCurrentDhakaDate(getCurrentDhakaDate());
+      setCurrentDhakaTime(TimeUtils.getFormattedDhakaTime());
+      setCurrentDhakaDate(TimeUtils.getDhakaDate());
     };
 
     updateTime();
@@ -362,6 +293,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     return 'not-checked-in';
   };
 
+  // Handle attendance check-in/out
   const handleAttendance = async (type: 'check-in' | 'check-out') => {
     if (!userLocation) {
       toast.error("Waiting for location... Please try again.");
@@ -370,11 +302,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
     setIsLoading(true);
     try {
-      const dhakaTime = currentDhakaTime;
-      const dhakaDate = currentDhakaDate;
-      
-      // Always send in 24-hour format
-      const time24h = dhakaTime.formatted24h;
+      // Get current Dhaka timestamp
+      const dhakaTimestamp = TimeUtils.getCurrentDhakaTime().toISOString();
       
       const response = await fetch('/api/user/attendance/check', {
         method: 'POST',
@@ -385,20 +314,21 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           username: currentUser.username,
           type,
           location: userLocation,
-          time: time24h, // Send as 24-hour format
-          date: dhakaDate,
-          timestamp: getCurrentUtcTime(), // Send UTC+6 timestamp
+          time: currentDhakaTime.formatted24h, // Use 24-hour format
+          date: currentDhakaDate,
+          timestamp: dhakaTimestamp, // Send ISO timestamp
           timezone: 'Asia/Dhaka',
-          status: type === 'check-in' ? calculateAttendanceStatus(time24h) : undefined
+          status: type === 'check-in' ? TimeUtils.calculateStatus(currentDhakaTime.formatted24h) : undefined
         })
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Attendance failed');
+        throw new Error(data.error || 'Attendance failed');
       }
 
-      toast.success(`Successfully ${type === 'check-in' ? 'checked in' : 'checked out'} at ${time24h} (Bangladesh Time)!`);
+      toast.success(`Successfully ${type === 'check-in' ? 'checked in' : 'checked out'} at ${currentDhakaTime.formatted12h} (Bangladesh Time)!`);
       onAttendanceUpdate();
     } catch (error: any) {
       console.error('Attendance error:', error);
@@ -406,6 +336,56 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Calculate today's work progress
+  const calculateWorkProgress = () => {
+    if (!currentRecord?.checkIn || currentRecord.checkOut) return 0;
+    
+    try {
+      const checkInFormatted = TimeUtils.formatTime(currentRecord.checkIn);
+      if (checkInFormatted === '--:--') return 0;
+      
+      const [checkInHour, checkInMinute] = checkInFormatted.split(':').map(Number);
+      const currentHour = currentDhakaTime.hours;
+      const currentMinute = currentDhakaTime.minutes;
+      
+      const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+      const currentTotalMinutes = currentHour * 60 + currentMinute;
+      
+      const workDayMinutes = 8 * 60; // 8 hours work day
+      const elapsedMinutes = currentTotalMinutes - checkInTotalMinutes;
+      
+      // Ensure progress is between 0-100
+      return Math.min(Math.max((elapsedMinutes / workDayMinutes) * 100, 0), 100);
+    } catch (error) {
+      console.error('Error calculating work progress:', error);
+      return 0;
+    }
+  };
+
+  // Calculate current status based on time
+  const getCurrentTimeStatus = () => {
+    const currentTotalMinutes = currentDhakaTime.hours * 60 + currentDhakaTime.minutes;
+    const elevenAM = 11 * 60;
+    const nineThirtyAM = 9 * 60 + 30;
+    
+    if (currentTotalMinutes > elevenAM) {
+      return { 
+        status: 'half-day', 
+        message: 'Arrival after 11:00 AM is considered half day' 
+      };
+    } else if (currentTotalMinutes > nineThirtyAM) {
+      return { 
+        status: 'late', 
+        message: 'Arrival after 9:30 AM is considered late' 
+      };
+    }
+    
+    return { 
+      status: 'on-time', 
+      message: 'You can check in' 
+    };
   };
 
   const handleLeaveRequest = async () => {
@@ -420,8 +400,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       toast.success('Leave request submitted successfully! This feature will be implemented soon.');
       setShowLeaveDialog(false);
       setLeaveRequest({
-        startDate: getCurrentDhakaDate(),
-        endDate: getCurrentDhakaDate(),
+        startDate: TimeUtils.getDhakaDate(),
+        endDate: TimeUtils.getDhakaDate(),
         leaveType: 'casual',
         reason: ''
       });
@@ -434,57 +414,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   };
 
   const status = getCurrentStatus();
-
-  // Calculate today's work progress if checked in
-  const calculateWorkProgress = () => {
-    if (!currentRecord?.checkIn || currentRecord.checkOut) return 0;
-    
-    try {
-      const checkInFormatted = formatDisplayTime(currentRecord.checkIn);
-      if (checkInFormatted === '--:--') return 0;
-      
-      const [checkInHour, checkInMinute] = checkInFormatted.split(':').map(Number);
-      const currentHour = currentDhakaTime.hours;
-      const currentMinute = currentDhakaTime.minutes;
-      
-      const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
-      const currentTotalMinutes = currentHour * 60 + currentMinute;
-      
-      const totalMinutes = 9 * 60; // 8 hours work day
-      const elapsedMinutes = currentTotalMinutes - checkInTotalMinutes;
-      
-      return Math.min(Math.max((elapsedMinutes / totalMinutes) * 100, 0), 100);
-    } catch (error) {
-      console.error('Error calculating work progress:', error);
-      return 0;
-    }
-  };
-
   const workProgress = calculateWorkProgress();
-
-  // Calculate current status based on time
-  const getCurrentTimeStatus = () => {
-    const currentHour = currentDhakaTime.hours;
-    const currentMinute = currentDhakaTime.minutes;
-    const currentTotalMinutes = currentHour * 60 + currentMinute;
-    
-    // 11:00 AM in minutes
-    const elevenAM = 11 * 60;
-    const nineAM = 9 * 60;
-    
-    if (currentTotalMinutes > elevenAM) {
-      return { status: 'half-day', message: 'Arrival after 11:00 AM is considered half day' };
-    } else if (currentHour >= 9 && currentTotalMinutes > nineAM) {
-      return { status: 'late', message: 'Arrival after 9:00 AM is considered late' };
-    }
-    
-    return { status: 'on-time', message: 'You can check in' };
-  };
-
   const timeStatus = getCurrentTimeStatus();
-
-  // Format today's date for display
-  const displayDate = formatDisplayDate(getCurrentUtcTime());
+  const displayDate = TimeUtils.formatDate(currentDhakaDate);
 
   return (
     <>
@@ -571,7 +503,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                             type="date"
                             value={leaveRequest.startDate}
                             onChange={(e) => setLeaveRequest({...leaveRequest, startDate: e.target.value})}
-                            min={getCurrentDhakaDate()}
+                            min={TimeUtils.getDhakaDate()}
                             required
                           />
                         </div>
@@ -723,7 +655,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               )}
             </AnimatePresence>
             
-            {/* Check In/Out Button */}
+            {/* Check In/Out Buttons */}
             <AnimatePresence mode="wait">
               {status === 'not-checked-in' && (
                 <motion.div
@@ -826,7 +758,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 </div>
                 <div className="text-2xl md:text-3xl font-bold text-card-foreground 
                                dark:text-gray-100 mb-1">
-                  {formatDisplayTime(currentRecord?.checkIn)}
+                  {TimeUtils.formatTime(currentRecord?.checkIn)}
                 </div>
                 {currentRecord?.checkInLocation?.address && (
                   <div className="text-xs text-muted-foreground truncate 
@@ -855,7 +787,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 </div>
                 <div className="text-2xl md:text-3xl font-bold text-card-foreground 
                                dark:text-gray-100 mb-1">
-                  {formatDisplayTime(currentRecord?.checkOut)}
+                  {TimeUtils.formatTime(currentRecord?.checkOut)}
                 </div>
                 {currentRecord?.checkOutLocation?.address && (
                   <div className="text-xs text-muted-foreground truncate 
@@ -921,7 +853,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   </div>
                   <div className="text-lg md:text-xl font-semibold text-card-foreground 
                                  dark:text-gray-100">
-                    {formatDisplayTime(currentRecord.checkIn)}
+                    {TimeUtils.formatTime(currentRecord.checkIn)}
                   </div>
                 </div>
 
@@ -930,7 +862,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   <div className="text-xs text-muted-foreground mb-1 dark:text-gray-400">
                     Current Status
                   </div>
-                  {getStatusBadge(calculateAttendanceStatus(currentRecord.checkIn))}
+                  {getStatusBadge(TimeUtils.calculateStatus(currentRecord.checkIn))}
                 </div>
               </motion.div>
             )}
@@ -989,11 +921,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                                         text-xs text-muted-foreground dark:text-gray-500">
                             <div className="flex items-center gap-1">
                               <FiSunrise className="w-3 h-3" />
-                              <span>{formatDisplayTime(record.checkIn)}</span>
+                              <span>{TimeUtils.formatTime(record.checkIn)}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <FiSunset className="w-3 h-3" />
-                              <span>{formatDisplayTime(record.checkOut)}</span>
+                              <span>{TimeUtils.formatTime(record.checkOut)}</span>
                             </div>
                             {record.totalHours && (
                               <div className="flex items-center gap-1">

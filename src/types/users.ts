@@ -159,6 +159,8 @@ export interface AttendanceRecord {
   overtimeHours?: number;
   notes?: string;
   approvedBy?: string;
+  timestamp?: string;
+  timezone?: string;
 }
 
 export interface MealRecord {

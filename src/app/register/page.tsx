@@ -52,7 +52,7 @@ export default function RegisterPage() {
         return;
       }
 
-      if (errors.username?.includes("must be at least 3") || errors.username?.includes("Only lowercase letters")) {
+      if (errors.username?.includes("must be at least 3") || errors.username?.includes("only lowercase letters")) {
         return;
       }
 
@@ -130,7 +130,7 @@ export default function RegisterPage() {
           newErrors.username = "Username must be at least 3 characters";
           setUsernameSuggestion("");
         } else if (!/^[a-z0-9_]+$/.test(value)) {
-          newErrors.username = "Only lowercase letters, numbers and underscores";
+          newErrors.username = "Only lowercase letters, numbers and underscores are allowed (no spaces)";
           setUsernameSuggestion("");
         } else if (existingUsernames.includes(value.toLowerCase())) {
           // This will be handled by the useEffect
@@ -197,7 +197,13 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const processedValue = name === "username" ? value.toLowerCase() : value;
+    let processedValue = value;
+    
+    // For username, convert to lowercase and remove spaces immediately
+    if (name === "username") {
+      processedValue = value.toLowerCase().replace(/\s/g, '');
+    }
+    
     setFormData(prev => ({ ...prev, [name]: processedValue }));
     
     // Don't validate username here - let the useEffect handle it

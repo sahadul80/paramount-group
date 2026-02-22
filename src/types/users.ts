@@ -136,10 +136,10 @@ export interface TaskComment {
 export interface AttendanceRecord {
   id: string;
   userName: string;
-  date: string; // ISO string (YYYY-MM-DD)
-  checkIn?: string; // Time string (HH:MM)
-  checkOut?: string; // Time string (HH:MM)
-  status: 'present' | 'absent' | 'late' | 'half-day' | 'holiday' | 'leave';
+  date: string; 
+  checkIn?: string;
+  checkOut?: string;
+  status: 'present' | 'absent' | 'late' | 'half-day' | 'holiday' | 'on-leave';
   location?: {
     lat: number;
     lng: number;

@@ -13,14 +13,12 @@ import {
   FiCheckCircle,
   FiXCircle,
   FiTrendingUp,
-  FiBarChart2,
   FiUser,
   FiEye,
   FiMapPin,
-  FiArrowUp,
-  FiArrowDown,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiRefreshCw
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { Badge } from '../ui/badge';
@@ -30,8 +28,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
 import {
@@ -40,6 +36,65 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+
+// Time utility functions (unchanged)
+const TimeUtils = {
+  formatTimeForTable: (timeValue?: string | null): string => {
+    if (!timeValue || timeValue === '--:--') return '--:--';
+    try {
+      let hours: number, minutes: number;
+      const timeStr = timeValue.trim();
+      if (/^\d{2}:\d{2}$/.test(timeStr)) {
+        [hours, minutes] = timeStr.split(':').map(Number);
+      } else if (timeStr.includes('T') || timeStr.includes(' ')) {
+        const timePart = timeStr.split(/[T\s]/)[1] || timeStr;
+        const timeMatch = timePart.match(/(\d{2}):(\d{2})/);
+        if (timeMatch) {
+          hours = parseInt(timeMatch[1], 10);
+          minutes = parseInt(timeMatch[2], 10);
+        } else {
+          return '--:--';
+        }
+      } else {
+        const date = new Date(timeStr);
+        if (isNaN(date.getTime())) return '--:--';
+        hours = date.getHours();
+        minutes = date.getMinutes();
+      }
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const hours12 = hours % 12 || 12;
+      return `${hours12}:${minutes.toString().padStart(2, '0')}${ampm}`;
+    } catch {
+      return '--:--';
+    }
+  },
+
+  calculateHoursWithOvertime: (checkInTime?: string, checkOutTime?: string): { regular: number; overtime: number } => {
+    if (!checkInTime || !checkOutTime) return { regular: 0, overtime: 0 };
+    const getMinutes = (time: string): number => {
+      const formatted = TimeUtils.formatTimeForTable(time);
+      const match = formatted.match(/(\d+):(\d+)(AM|PM)/i);
+      if (!match) return 0;
+      let hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const ampm = match[3].toUpperCase();
+      if (ampm === 'PM' && hours !== 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    };
+    const inMinutes = getMinutes(checkInTime);
+    const outMinutes = getMinutes(checkOutTime);
+    if (inMinutes === 0 || outMinutes === 0) return { regular: 0, overtime: 0 };
+    let totalMinutes = outMinutes - inMinutes;
+    if (totalMinutes > 4 * 60) totalMinutes -= 60;
+    const regularMinutes = Math.min(totalMinutes, 9 * 60);
+    const overtimeMinutes = Math.max(totalMinutes - 9 * 60, 0);
+    return {
+      regular: regularMinutes / 60,
+      overtime: overtimeMinutes / 60,
+    };
+  },
+};
 
 interface AttendanceViewerProps {
   currentUser?: User;
@@ -51,8 +106,9 @@ type DateRange = {
 };
 
 type ViewMode = 'day' | 'week' | 'month' | 'custom';
+type ExportType = 'detailed' | 'summary';
 
-// Date helper functions
+// Date helper functions (unchanged)
 const getStartOfWeek = (date: Date): Date => {
   const d = new Date(date);
   const day = d.getDay();
@@ -119,13 +175,12 @@ const formatDate = (date: Date, format: string): string => {
 };
 
 const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
-  // State
+  // State (unchanged)
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Filters
   const [selectedUser, setSelectedUser] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -134,16 +189,19 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
     from: getStartOfWeek(new Date()),
     to: getEndOfWeek(new Date())
   });
-  const [showDatePicker, setShowDatePicker] = useState(false);
   
-  // Dialog state
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-
-  // Mobile state
+  const [exportType, setExportType] = useState<ExportType>('detailed');
   const [isMobile, setIsMobile] = useState(false);
 
-  // Check mobile viewport on mount and resize
+  // If currentUser is provided, default to that user
+  useEffect(() => {
+    if (currentUser) {
+      setSelectedUser(currentUser.username);
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -151,7 +209,6 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Fetch all users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -164,51 +221,36 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
         toast.error('Failed to load users');
       }
     };
-
     fetchUsers();
   }, []);
 
-  // Fetch attendance data based on filters
   useEffect(() => {
     const fetchAttendance = async () => {
       setLoading(true);
       setError(null);
-
       try {
         let url = '/api/user/attendance/get?';
         const params = new URLSearchParams();
-
-        // Add user filter
-        if (selectedUser !== 'all') {
-          params.append('username', selectedUser);
-        }
-
-        // Add date range filter based on view mode
+        if (selectedUser !== 'all') params.append('username', selectedUser);
         if (viewMode === 'day') {
-          const formattedDate = formatDate(selectedDate, 'yyyy-MM-dd');
-          params.append('date', formattedDate);
+          params.append('date', formatDate(selectedDate, 'yyyy-MM-dd'));
         } else if (viewMode === 'custom' && dateRange.from && dateRange.to) {
           params.append('startDate', formatDate(dateRange.from, 'yyyy-MM-dd'));
           params.append('endDate', formatDate(dateRange.to, 'yyyy-MM-dd'));
         } else {
-          let startDate: Date;
-          let endDate: Date;
-
+          let startDate: Date, endDate: Date;
           if (viewMode === 'week') {
             startDate = getStartOfWeek(selectedDate);
             endDate = getEndOfWeek(selectedDate);
-          } else { // month
+          } else {
             startDate = getStartOfMonth(selectedDate);
             endDate = getEndOfMonth(selectedDate);
           }
-
           params.append('startDate', formatDate(startDate, 'yyyy-MM-dd'));
           params.append('endDate', formatDate(endDate, 'yyyy-MM-dd'));
         }
-
         url += params.toString();
         const response = await fetch(url);
-
         if (!response.ok) throw new Error('Failed to fetch attendance data');
         const data = await response.json();
         setAttendanceData(data);
@@ -220,21 +262,20 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
         setLoading(false);
       }
     };
-
     fetchAttendance();
   }, [selectedUser, viewMode, selectedDate, dateRange]);
 
-  // Calculate statistics
   const stats = useMemo(() => {
     const totalRecords = attendanceData.length;
     const presentCount = attendanceData.filter(r => r.status === 'present').length;
     const absentCount = attendanceData.filter(r => r.status === 'absent').length;
     const lateCount = attendanceData.filter(r => r.status === 'late').length;
     const halfDayCount = attendanceData.filter(r => r.status === 'half-day').length;
-
-    const totalHours = attendanceData.reduce((sum, record) => sum + (record.totalHours || 0), 0);
+    const totalHours = attendanceData.reduce((sum, record) => {
+      const hours = TimeUtils.calculateHoursWithOvertime(record.checkIn, record.checkOut);
+      return sum + hours.regular;
+    }, 0);
     const avgHours = totalRecords > 0 ? totalHours / totalRecords : 0;
-
     return {
       totalRecords,
       presentCount,
@@ -246,14 +287,12 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
     };
   }, [attendanceData]);
 
-  // Filter by search query
   const filteredData = useMemo(() => {
     return attendanceData.filter(record => {
       const user = users.find(u => u.username === record.userName);
       const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase() : record.userName.toLowerCase();
       const department = user?.department?.toLowerCase() || '';
       const position = user?.position?.toLowerCase() || '';
-
       const searchLower = searchQuery.toLowerCase();
       return (
         userName.includes(searchLower) ||
@@ -265,19 +304,19 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
     });
   }, [attendanceData, users, searchQuery]);
 
-  // Group by user for summary view
-  const userSummary = useMemo(() => {
-    const summary: Record<string, {
-      user: User;
-      records: AttendanceRecord[];
-      totalDays: number;
-      presentDays: number;
-      absentDays: number;
-      lateDays: number;
-      totalHours: number;
-      avgHours: number;
-    }> = {};
+  interface UserSummary {
+    user: User;
+    records: AttendanceRecord[];
+    totalDays: number;
+    presentDays: number;
+    absentDays: number;
+    lateDays: number;
+    totalHours: number;
+    avgHours: number;
+  }
 
+  const userSummary = useMemo<Record<string, UserSummary>>(() => {
+    const summary: Record<string, UserSummary> = {};
     attendanceData.forEach(record => {
       if (!summary[record.userName]) {
         const user = users.find(u => u.username === record.userName);
@@ -292,147 +331,138 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
           avgHours: 0
         };
       }
-
+      const hours = TimeUtils.calculateHoursWithOvertime(record.checkIn, record.checkOut);
       summary[record.userName].records.push(record);
       summary[record.userName].totalDays++;
-      summary[record.userName].totalHours += record.totalHours || 0;
-
+      summary[record.userName].totalHours += hours.regular;
       switch (record.status) {
-        case 'present':
-          summary[record.userName].presentDays++;
-          break;
-        case 'absent':
-          summary[record.userName].absentDays++;
-          break;
-        case 'late':
-          summary[record.userName].lateDays++;
-          break;
+        case 'present': summary[record.userName].presentDays++; break;
+        case 'absent': summary[record.userName].absentDays++; break;
+        case 'late': summary[record.userName].lateDays++; break;
       }
     });
-
-    // Calculate averages
     Object.keys(summary).forEach(userName => {
-      const userSummaryData = summary[userName];
-      userSummaryData.avgHours = userSummaryData.totalDays > 0 
-        ? userSummaryData.totalHours / userSummaryData.totalDays 
-        : 0;
+      const s = summary[userName];
+      s.avgHours = s.totalDays > 0 ? s.totalHours / s.totalDays : 0;
     });
-
     return summary;
   }, [attendanceData, users]);
 
-  // Get status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'present':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">Present</Badge>;
-      case 'absent':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-xs">Absent</Badge>;
-      case 'late':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 text-xs">Late</Badge>;
-      case 'half-day':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">Half Day</Badge>;
-      case 'holiday':
-        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-xs">Holiday</Badge>;
-      case 'leave':
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100 text-xs">Leave</Badge>;
-      default:
-        return <Badge variant="outline" className="text-xs">Unknown</Badge>;
+      case 'present': return <Badge className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5">Present</Badge>;
+      case 'absent': return <Badge className="bg-red-100 text-red-800 text-xs px-1.5 py-0.5">Absent</Badge>;
+      case 'late': return <Badge className="bg-yellow-100 text-yellow-800 text-xs px-1.5 py-0.5">Late</Badge>;
+      case 'half-day': return <Badge className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5">Half Day</Badge>;
+      case 'holiday': return <Badge className="bg-purple-100 text-purple-800 text-xs px-1.5 py-0.5">Holiday</Badge>;
+      case 'leave': return <Badge className="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5">Leave</Badge>;
+      default: return <Badge variant="outline" className="text-xs px-1.5 py-0.5">Unknown</Badge>;
     }
   };
 
-  // Format time
-  const formatTime = (time?: string) => {
-    if (!time) return '--:--';
-    return time;
-  };
-
-  // Handle view mode change
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
-    
     const now = new Date();
     switch (mode) {
-      case 'day':
-        setSelectedDate(now);
-        break;
-      case 'week':
-        setDateRange({
-          from: getStartOfWeek(now),
-          to: getEndOfWeek(now)
-        });
-        break;
-      case 'month':
-        setDateRange({
-          from: getStartOfMonth(now),
-          to: getEndOfMonth(now)
-        });
+      case 'day': setSelectedDate(now); break;
+      case 'week': setDateRange({ from: getStartOfWeek(now), to: getEndOfWeek(now) }); break;
+      case 'month': setDateRange({ from: getStartOfMonth(now), to: getEndOfMonth(now) }); break;
+      case 'custom':
+        if (!dateRange.from || !dateRange.to) {
+          setDateRange({ from: getStartOfWeek(now), to: getEndOfWeek(now) });
+        }
         break;
     }
   };
 
-  // Export to CSV
   const handleExportCSV = () => {
-    if (filteredData.length === 0) {
+    if (filteredData.length === 0 && exportType === 'detailed') {
       toast.error('No data to export');
       return;
     }
-
-    const headers = ['User', 'Date', 'Check In', 'Check Out', 'Status', 'Total Hours', 'Location'];
-    const csvRows = [
-      headers.join(','),
-      ...filteredData.map(record => {
+    if (Object.keys(userSummary).length === 0 && exportType === 'summary') {
+      toast.error('No summary data to export');
+      return;
+    }
+    let headers: string[], rows: string[][];
+    if (exportType === 'detailed') {
+      headers = ['Employee', 'Date', 'Check In', 'Check Out', 'Status', 'Regular Hours', 'Overtime', 'Location'];
+      rows = filteredData.map(record => {
         const user = users.find(u => u.username === record.userName);
         const userName = user ? `${user.firstName || ''} ${user.lastName || ''}` : record.userName;
         const location = record.checkInLocation?.address || 'N/A';
-        
+        const hours = TimeUtils.calculateHoursWithOvertime(record.checkIn, record.checkOut);
         return [
           `"${userName}"`,
           record.date,
-          formatTime(record.checkIn),
-          formatTime(record.checkOut),
+          TimeUtils.formatTimeForTable(record.checkIn),
+          TimeUtils.formatTimeForTable(record.checkOut),
           record.status,
-          record.totalHours?.toFixed(2) || '0',
-          `"${location.split(',')[0]}"`
-        ].join(',');
-      })
-    ];
-
+          hours.regular.toFixed(2),
+          hours.overtime.toFixed(2),
+          `"${location}"`
+        ];
+      });
+    } else {
+      headers = ['Employee', 'Present', 'Absent', 'Late', 'Total Days', 'Avg Hours', 'Attendance Rate (%)'];
+      rows = Object.entries(userSummary).map(([username, summary]) => {
+        const userName = `${summary.user.firstName || ''} ${summary.user.lastName || ''}`.trim() || username;
+        const attendanceRate = summary.totalDays > 0 ? (summary.presentDays / summary.totalDays) * 100 : 0;
+        return [
+          `"${userName}"`,
+          summary.presentDays.toString(),
+          summary.absentDays.toString(),
+          summary.lateDays.toString(),
+          summary.totalDays.toString(),
+          summary.avgHours.toFixed(2),
+          attendanceRate.toFixed(2)
+        ];
+      });
+    }
+    const csvRows = [headers.join(','), ...rows.map(row => row.join(','))];
     const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `attendance-${formatDate(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.download = `attendance-${exportType}-${formatDate(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-
-    toast.success('Attendance data exported successfully');
+    toast.success(`${exportType} attendance data exported successfully`);
   };
 
-  // Handle record click for details
   const handleRecordClick = (record: AttendanceRecord) => {
     setSelectedRecord(record);
     setShowDetailsDialog(true);
   };
 
-  // Reset filters
   const handleResetFilters = () => {
-    setSelectedUser('all');
     setSearchQuery('');
     setViewMode('week');
     setSelectedDate(new Date());
-    setDateRange({
-      from: getStartOfWeek(new Date()),
-      to: getEndOfWeek(new Date())
-    });
+    setDateRange({ from: getStartOfWeek(new Date()), to: getEndOfWeek(new Date()) });
+    if (!currentUser) {
+      setSelectedUser('all');
+    }
+  };
+
+  const handleGoToToday = () => {
+    const today = new Date();
+    setSelectedDate(today);
+    if (viewMode === 'week') {
+      setDateRange({ from: getStartOfWeek(today), to: getEndOfWeek(today) });
+    } else if (viewMode === 'month') {
+      setDateRange({ from: getStartOfMonth(today), to: getEndOfMonth(today) });
+    } else if (viewMode === 'custom') {
+      setDateRange({ from: getStartOfWeek(today), to: getEndOfWeek(today) });
+    }
   };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-border mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading attendance data...</p>
         </div>
       </div>
@@ -446,13 +476,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
           <div className="text-center text-red-600">
             <FiXCircle className="w-12 h-12 mx-auto mb-4" />
             <p className="text-lg font-medium">{error}</p>
-            <Button 
-              variant="outline" 
-              className="mt-4"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </Button>
+            <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
           </div>
         </CardContent>
       </Card>
@@ -460,137 +484,120 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 px-2 md:px-0">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4">
+    <div className="space-y-3 md:space-y-4 px-2 md:px-0">
+      {/* Header with export dropdown */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight">Attendance Tracker</h2>
-          <p className="text-xs md:text-sm text-muted-foreground">
-            View and manage employee attendance records
-          </p>
+          <h2 className="text-lg md:text-xl font-bold tracking-tight">Attendance Tracker</h2>
+          <p className="text-xs text-muted-foreground">View and manage employee attendance records</p>
         </div>
-        <Button onClick={handleExportCSV} className="gap-2 w-full sm:w-auto">
-          <FiDownload className="w-4 h-4" />
-          <span className="hidden sm:inline">Export CSV</span>
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Select value={exportType} onValueChange={(value: ExportType) => setExportType(value)}>
+            <SelectTrigger className="h-8 w-[100px] text-xs">
+              <SelectValue placeholder="Export type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="detailed">Detailed</SelectItem>
+              <SelectItem value="summary">Summary</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={handleExportCSV} size="sm" className="h-8 gap-1 text-xs">
+            <FiDownload className="w-3 h-3" />
+            <span className="hidden sm:inline">Export CSV</span>
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <Card className="col-span-1">
-          <CardContent className="p-3 md:p-4">
+          <CardContent className="p-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs md:text-sm text-muted-foreground">Total Records</p>
-                <p className="text-lg md:text-2xl font-bold">{stats.totalRecords}</p>
+                <p className="text-xs text-muted-foreground">Total Records</p>
+                <p className="text-base font-bold">{stats.totalRecords}</p>
               </div>
-              <FiUsers className="w-6 h-6 md:w-8 md:h-8 text-primary/20" />
+              <FiUsers className="w-5 h-5 text-primary/20" />
             </div>
           </CardContent>
         </Card>
-
         <Card className="col-span-1">
-          <CardContent className="p-3 md:p-4">
+          <CardContent className="p-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs md:text-sm text-muted-foreground">Present Rate</p>
-                <p className="text-lg md:text-2xl font-bold">{stats.presentPercentage.toFixed(1)}%</p>
+                <p className="text-xs text-muted-foreground">Present Rate</p>
+                <p className="text-base font-bold">{stats.presentPercentage.toFixed(1)}%</p>
               </div>
-              <FiCheckCircle className="w-6 h-6 md:w-8 md:h-8 text-green-500/20" />
+              <FiCheckCircle className="w-5 h-5 text-green-500/20" />
             </div>
           </CardContent>
         </Card>
-
         <Card className="col-span-1">
-          <CardContent className="p-3 md:p-4">
+          <CardContent className="p-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs md:text-sm text-muted-foreground">Avg. Hours/Day</p>
-                <p className="text-lg md:text-2xl font-bold">{stats.avgHours.toFixed(1)}h</p>
+                <p className="text-xs text-muted-foreground">Avg. Hours/Day</p>
+                <p className="text-base font-bold">{stats.avgHours.toFixed(1)}h</p>
               </div>
-              <FiClock className="w-6 h-6 md:w-8 md:h-8 text-blue-500/20" />
+              <FiClock className="w-5 h-5 text-blue-500/20" />
             </div>
           </CardContent>
         </Card>
-
         <Card className="col-span-1">
-          <CardContent className="p-3 md:p-4">
+          <CardContent className="p-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs md:text-sm text-muted-foreground">Late Entries</p>
-                <p className="text-lg md:text-2xl font-bold">{stats.lateCount}</p>
+                <p className="text-xs text-muted-foreground">Late Entries</p>
+                <p className="text-base font-bold">{stats.lateCount}</p>
               </div>
-              <FiTrendingUp className="w-6 h-6 md:w-8 md:h-8 text-yellow-500/20" />
+              <FiTrendingUp className="w-5 h-5 text-yellow-500/20" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Main Table Card with integrated filters and tabs */}
       <Card>
-        <CardHeader className="pb-3 md:pb-4">
-          <CardTitle className="text-base md:text-lg flex items-center gap-2">
-            <FiFilter className="w-4 h-4 md:w-5 md:h-5" />
-            Filters
-          </CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-1"><FiFilter className="w-4 h-4" />Filters</CardTitle>
         </CardHeader>
-        <CardContent className="pb-3 md:pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+        <CardContent className="pb-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {/* Search */}
             <div className="relative">
-              <FiSearch className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-10"
-              />
+              <FiSearch className="absolute left-2 top-2.5 h-3 w-3 text-muted-foreground" />
+              <Input placeholder="Search by name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-7 h-8 text-xs" />
             </div>
 
-            {/* User Filter */}
-            <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Select employee" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Employees</SelectItem>
-                {users.map(user => (
-                  <SelectItem key={user.username} value={user.username}>
-                    {user.firstName} {user.lastName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* User Filter - hidden if currentUser is provided */}
+            {!currentUser && (
+              <Select value={selectedUser} onValueChange={setSelectedUser}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select employee" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Employees</SelectItem>
+                  {users.map(user => (
+                    <SelectItem key={user.username} value={user.username} className="text-xs">{user.firstName} {user.lastName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
-            {/* View Mode - Mobile dropdown, desktop select */}
+            {/* View Mode */}
             {isMobile ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-10 w-full justify-start">
-                    <FiCalendar className="mr-2 h-4 w-4" />
-                    <span className="capitalize">{viewMode} View</span>
-                  </Button>
+                  <Button variant="outline" className="h-8 w-full justify-start text-xs"><FiCalendar className="mr-2 h-3 w-3" /><span className="capitalize">{viewMode} View</span></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">
-                  <DropdownMenuItem onClick={() => handleViewModeChange('day')}>
-                    Day View
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleViewModeChange('week')}>
-                    Week View
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleViewModeChange('month')}>
-                    Month View
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleViewModeChange('custom')}>
-                    Custom Range
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleViewModeChange('day')} className="text-xs">Day View</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleViewModeChange('week')} className="text-xs">Week View</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleViewModeChange('month')} className="text-xs">Month View</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleViewModeChange('custom')} className="text-xs">Custom Range</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Select value={viewMode} onValueChange={(value: ViewMode) => handleViewModeChange(value)}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="View mode" />
-                </SelectTrigger>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="View mode" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="day">Day View</SelectItem>
                   <SelectItem value="week">Week View</SelectItem>
@@ -600,546 +607,253 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
               </Select>
             )}
 
-            {/* Date Selection based on view mode */}
+            {/* Date Selection */}
             {viewMode === 'day' && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal h-10"
-                  >
-                    <FiCalendar className="mr-2 h-4 w-4" />
-                    {formatDate(selectedDate, 'MMM dd')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Input type="date" value={formatDate(selectedDate, 'yyyy-MM-dd')} onChange={(e) => { const d = new Date(e.target.value + 'T00:00:00'); if (!isNaN(d.getTime())) setSelectedDate(d); }} className="h-8 text-xs" />
             )}
-
             {viewMode === 'custom' && (
-              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal h-10"
-                  >
-                    <FiCalendar className="mr-2 h-4 w-4" />
-                    {dateRange.from ? (
-                      dateRange.to ? (
-                        <>
-                          {formatDate(dateRange.from, "MMM dd")} -{" "}
-                          {formatDate(dateRange.to, "MMM dd")}
-                        </>
-                      ) : (
-                        formatDate(dateRange.from, "MMM dd")
-                      )
-                    ) : (
-                      <span>Pick date range</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange.from}
-                    selected={dateRange.from ? { from: dateRange.from, to: dateRange.to } : undefined}
-                    onSelect={(range) => {
-                      setDateRange(range || { from: undefined, to: undefined });
-                      if (range?.from && range?.to) {
-                        setShowDatePicker(false);
-                      }
-                    }}
-                    numberOfMonths={isMobile ? 1 : 2}
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
-
-            {viewMode === 'week' && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10"
-                  onClick={() => {
-                    const newDate = new Date(selectedDate);
-                    newDate.setDate(newDate.getDate() - 7);
-                    setSelectedDate(newDate);
-                    setDateRange({
-                      from: getStartOfWeek(newDate),
-                      to: getEndOfWeek(newDate)
-                    });
-                  }}
-                >
-                  <FiChevronLeft className="h-4 w-4" />
-                </Button>
-                <div className="text-center flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    W{getWeekNumber(dateRange.from || new Date())}, {selectedDate.getFullYear()}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {formatDate(dateRange.from || new Date(), 'MMM dd')} - {formatDate(dateRange.to || new Date(), 'MMM dd')}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10"
-                  onClick={() => {
-                    const newDate = new Date(selectedDate);
-                    newDate.setDate(newDate.getDate() + 7);
-                    setSelectedDate(newDate);
-                    setDateRange({
-                      from: getStartOfWeek(newDate),
-                      to: getEndOfWeek(newDate)
-                    });
-                  }}
-                >
-                  <FiChevronRight className="h-4 w-4" />
-                </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input type="date" value={dateRange.from ? formatDate(dateRange.from, 'yyyy-MM-dd') : ''} onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined }))} className="h-8 text-xs flex-1" placeholder="From" />
+                <Input type="date" value={dateRange.to ? formatDate(dateRange.to, 'yyyy-MM-dd') : ''} onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined }))} className="h-8 text-xs flex-1" placeholder="To" />
               </div>
             )}
-
-            {viewMode === 'month' && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10"
-                  onClick={() => {
-                    const newDate = new Date(selectedDate);
-                    newDate.setMonth(newDate.getMonth() - 1);
-                    setSelectedDate(newDate);
-                    setDateRange({
-                      from: getStartOfMonth(newDate),
-                      to: getEndOfMonth(newDate)
-                    });
-                  }}
-                >
-                  <FiChevronLeft className="h-4 w-4" />
-                </Button>
+            {viewMode === 'week' && (
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { const nd = new Date(selectedDate); nd.setDate(nd.getDate() - 7); setSelectedDate(nd); setDateRange({ from: getStartOfWeek(nd), to: getEndOfWeek(nd) }); }}><FiChevronLeft className="h-3 w-3" /></Button>
                 <div className="text-center flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {formatDate(selectedDate, 'MMM yyyy')}
-                  </p>
+                  <p className="text-xs font-medium truncate">W{getWeekNumber(dateRange.from || new Date())}, {selectedDate.getFullYear()}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{formatDate(dateRange.from || new Date(), 'MMM dd')} - {formatDate(dateRange.to || new Date(), 'MMM dd')}</p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10"
-                  onClick={() => {
-                    const newDate = new Date(selectedDate);
-                    newDate.setMonth(newDate.getMonth() + 1);
-                    setSelectedDate(newDate);
-                    setDateRange({
-                      from: getStartOfMonth(newDate),
-                      to: getEndOfMonth(newDate)
-                    });
-                  }}
-                >
-                  <FiChevronRight className="h-4 w-4" />
-                </Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { const nd = new Date(selectedDate); nd.setDate(nd.getDate() + 7); setSelectedDate(nd); setDateRange({ from: getStartOfWeek(nd), to: getEndOfWeek(nd) }); }}><FiChevronRight className="h-3 w-3" /></Button>
+              </div>
+            )}
+            {viewMode === 'month' && (
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { const nd = new Date(selectedDate); nd.setMonth(nd.getMonth() - 1); setSelectedDate(nd); setDateRange({ from: getStartOfMonth(nd), to: getEndOfMonth(nd) }); }}><FiChevronLeft className="h-3 w-3" /></Button>
+                <div className="text-center flex-1 min-w-0"><p className="text-xs font-medium truncate">{formatDate(selectedDate, 'MMMM yyyy')}</p></div>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { const nd = new Date(selectedDate); nd.setMonth(nd.getMonth() + 1); setSelectedDate(nd); setDateRange({ from: getStartOfMonth(nd), to: getEndOfMonth(nd) }); }}><FiChevronRight className="h-3 w-3" /></Button>
               </div>
             )}
           </div>
 
-          <div className="flex justify-end mt-3 md:mt-4">
-            <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-              Reset Filters
-            </Button>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleGoToToday}><FiRefreshCw className="w-3 h-3 mr-1" />Today</Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleResetFilters}>Reset</Button>
           </div>
         </CardContent>
-      </Card>
 
-      {/* Tabs for different views */}
-      <Tabs defaultValue="detailed" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="detailed">Detailed</TabsTrigger>
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-        </TabsList>
+        {/* Tabs inside the same card */}
+        <Tabs defaultValue="detailed" className="w-full">
+          <div className="px-4">
+            <TabsList className="grid w-full grid-cols-2 h-8">
+              <TabsTrigger value="detailed" className="text-xs">Detailed</TabsTrigger>
+              <TabsTrigger value="summary" className="text-xs">Summary</TabsTrigger>
+            </TabsList>
+          </div>
 
-        <TabsContent value="detailed">
-          <Card>
-            <CardHeader className="pb-3 md:pb-4">
-              <CardTitle className="text-base md:text-lg">Attendance Records</CardTitle>
-              <CardDescription className="text-xs md:text-sm">
-                Showing {filteredData.length} records
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 md:p-6">
-              <div className="overflow-x-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="whitespace-nowrap">Employee</TableHead>
-                      <TableHead className="whitespace-nowrap">Date</TableHead>
-                      <TableHead className="whitespace-nowrap">Check In</TableHead>
-                      <TableHead className="whitespace-nowrap">Check Out</TableHead>
-                      <TableHead className="whitespace-nowrap">Status</TableHead>
-                      <TableHead className="whitespace-nowrap">Hours</TableHead>
-                      {!isMobile && <TableHead className="whitespace-nowrap">Location</TableHead>}
-                      <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredData.length === 0 ? (
+          <TabsContent value="detailed">
+            <CardContent className="p-0 pt-2">
+              <div className="rounded-md border-border overflow-hidden">
+                <div className="max-h-[400px] overflow-y-auto">
+                  <Table className="min-w-full">
+                    <thead className="sticky top-0 bg-background z-10 border-b">
                       <TableRow>
-                        <TableCell colSpan={isMobile ? 7 : 8} className="text-center py-8 text-muted-foreground">
-                          No attendance records found for the selected filters
-                        </TableCell>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1">Employee</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1">Date</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1">In</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1">Out</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1">Status</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1">Hours</TableHead>
+                        {!isMobile && <TableHead className="whitespace-nowrap text-xs px-2 py-1">Location</TableHead>}
+                        <TableHead className="text-right whitespace-nowrap text-xs px-2 py-1">Actions</TableHead>
                       </TableRow>
-                    ) : (
-                      filteredData.map((record) => {
-                        const user = users.find(u => u.username === record.userName);
-                        return (
-                          <TableRow key={record.id} className="hover:bg-muted/50">
-                            <TableCell>
-                              <div className="flex items-center gap-2 md:gap-3 min-w-[150px]">
-                                {user?.avatar ? (
-                                  <img
-                                    src={user.avatar}
-                                    alt={user.username}
-                                    className="w-6 h-6 md:w-8 md:h-8 rounded-full"
-                                  />
-                                ) : (
-                                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <FiUser className="w-3 h-3 md:w-4 md:h-4 text-primary" />
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <p className="font-medium text-xs md:text-sm truncate">
-                                    {user ? `${user.firstName || ''} ${user.lastName || ''}` : record.userName}
-                                  </p>
-                                  {!isMobile && (
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {user?.position || 'N/A'}
-                                    </p>
+                    </thead>
+                    <tbody>
+                      {filteredData.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={isMobile ? 7 : 8} className="text-center py-4 text-xs text-muted-foreground">
+                            No records found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredData.map((record) => {
+                          const user = users.find(u => u.username === record.userName);
+                          const hours = TimeUtils.calculateHoursWithOvertime(record.checkIn, record.checkOut);
+                          return (
+                            <TableRow key={record.id} className="hover:bg-muted/50">
+                              <TableCell className="px-2 py-1">
+                                <div className="flex items-center gap-1 min-w-[120px]">
+                                  {user?.avatar ? (
+                                    <img src={user.avatar} alt={user.username} className="w-5 h-5 rounded-full flex-shrink-0" />
+                                  ) : (
+                                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                      <FiUser className="w-3 h-3 text-primary" />
+                                    </div>
                                   )}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium text-xs truncate">
+                                      {user ? `${user.firstName || ''} ${user.lastName || ''}` : record.userName}
+                                    </p>
+                                  </div>
                                 </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <div>
-                                <p className="font-medium text-xs md:text-sm">{formatDate(new Date(record.date), 'MMM dd')}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {formatDate(new Date(record.date), 'EEE')}
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <div className="flex items-center gap-1 md:gap-2">
-                                <FiClock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                                <span className="text-xs md:text-sm">{formatTime(record.checkIn)}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <div className="flex items-center gap-1 md:gap-2">
-                                <FiClock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                                <span className="text-xs md:text-sm">{formatTime(record.checkOut)}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="min-w-[80px]">
-                                {getStatusBadge(record.status)}
-                              </div>
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <div className="font-medium text-xs md:text-sm">
-                                {record.totalHours ? record.totalHours.toFixed(1) + 'h' : 'N/A'}
-                                {record.overtimeHours && record.overtimeHours > 0 && (
-                                  <Badge variant="outline" className="ml-1 md:ml-2 text-xs">
-                                    +{record.overtimeHours.toFixed(1)}h OT
-                                  </Badge>
-                                )}
-                              </div>
-                            </TableCell>
-                            {!isMobile && (
-                              <TableCell className="max-w-[150px]">
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <div className="flex items-center gap-1 text-sm text-muted-foreground truncate">
-                                        <FiMapPin className="w-4 h-4 flex-shrink-0" />
-                                        <span className="truncate">
-                                          {record.checkInLocation?.address 
-                                            ? record.checkInLocation.address.split(',')[0]
-                                            : 'N/A'}
-                                        </span>
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="max-w-xs">
-                                        {record.checkInLocation?.address || 'No location data'}
-                                      </p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
                               </TableCell>
-                            )}
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => handleRecordClick(record)}
-                              >
-                                <FiEye className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="summary">
-          <Card>
-            <CardHeader className="pb-3 md:pb-4">
-              <CardTitle className="text-base md:text-lg">Employee Summary</CardTitle>
-              <CardDescription className="text-xs md:text-sm">
-                Attendance summary for each employee
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 md:p-6">
-              <div className="overflow-x-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="whitespace-nowrap">Employee</TableHead>
-                      <TableHead className="whitespace-nowrap">Present</TableHead>
-                      <TableHead className="whitespace-nowrap">Absent</TableHead>
-                      <TableHead className="whitespace-nowrap">Late</TableHead>
-                      <TableHead className="whitespace-nowrap">Total Days</TableHead>
-                      <TableHead className="whitespace-nowrap">Avg Hours</TableHead>
-                      <TableHead className="whitespace-nowrap">Attendance Rate</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(userSummary).map(([username, summary]) => (
-                      <TableRow key={username}>
-                        <TableCell>
-                          <div className="flex items-center gap-2 md:gap-3 min-w-[150px]">
-                            {summary.user.avatar ? (
-                              <img
-                                src={summary.user.avatar}
-                                alt={username}
-                                className="w-6 h-6 md:w-8 md:h-8 rounded-full"
-                              />
-                            ) : (
-                              <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <FiUser className="w-3 h-3 md:w-4 md:h-4 text-primary" />
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <p className="font-medium text-xs md:text-sm truncate">
-                                {summary.user.firstName} {summary.user.lastName}
-                              </p>
+                              <TableCell className="whitespace-nowrap px-2 py-1">
+                                <div className="text-xs">{formatDate(new Date(record.date), 'MMM dd')}<span className="text-muted-foreground ml-1">{formatDate(new Date(record.date), 'EEE')}</span></div>
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap px-2 py-1 text-xs">{TimeUtils.formatTimeForTable(record.checkIn)}</TableCell>
+                              <TableCell className="whitespace-nowrap px-2 py-1 text-xs">{TimeUtils.formatTimeForTable(record.checkOut)}</TableCell>
+                              <TableCell className="px-2 py-1"><div className="min-w-[60px]">{getStatusBadge(record.status)}</div></TableCell>
+                              <TableCell className="whitespace-nowrap px-2 py-1 text-xs">
+                                {hours.regular.toFixed(1)}h
+                                {hours.overtime > 0 && <span className="text-amber-600 text-[10px] ml-1">+{hours.overtime.toFixed(1)}h</span>}
+                              </TableCell>
                               {!isMobile && (
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {summary.user.position || summary.user.department || 'N/A'}
-                                </p>
+                                <TableCell className="max-w-[120px] px-2 py-1">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground truncate cursor-help">
+                                          <FiMapPin className="w-3 h-3 flex-shrink-0" />
+                                          <span className="truncate">{record.checkInLocation?.address ? record.checkInLocation.address.split(',')[0] : 'N/A'}</span>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="bottom" className="max-w-xs">
+                                        <p className="text-xs break-words">{record.checkInLocation?.address || 'No location data'}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </TableCell>
                               )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                            <span className="text-green-800 font-medium text-xs md:text-sm">{summary.presentDays}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-red-100 flex items-center justify-center mx-auto">
-                            <span className="text-red-800 font-medium text-xs md:text-sm">{summary.absentDays}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-yellow-100 flex items-center justify-center mx-auto">
-                            <span className="text-yellow-800 font-medium text-xs md:text-sm">{summary.lateDays}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-xs md:text-sm text-center">{summary.totalDays}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-xs md:text-sm text-center">{summary.avgHours.toFixed(1)}h</div>
-                        </TableCell>
-                        <TableCell className="min-w-[120px]">
-                          <div className="flex items-center gap-2">
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-green-500 h-2 rounded-full"
-                                style={{ width: `${summary.totalDays > 0 ? (summary.presentDays / summary.totalDays) * 100 : 0}%` }}
-                              />
-                            </div>
-                            <span className="text-xs font-medium whitespace-nowrap">
-                              {summary.totalDays > 0 
-                                ? ((summary.presentDays / summary.totalDays) * 100).toFixed(1)
-                                : '0'
-                              }%
-                            </span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                              <TableCell className="text-right px-2 py-1">
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleRecordClick(record)}>
+                                  <FiEye className="w-3 h-3" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
               </div>
             </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+
+          <TabsContent value="summary">
+            <CardContent className="p-0 pt-2">
+              <div className="rounded-md border overflow-hidden">
+                <div className="max-h-[400px] overflow-y-auto">
+                  <Table className="min-w-full">
+                    <thead className="sticky top-0 bg-background z-10 border-b">
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1">Employee</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1 text-center">P</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1 text-center">A</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1 text-center">L</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1 text-center">Days</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1 text-center">Avg H</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 py-1">Rate</TableHead>
+                      </TableRow>
+                    </thead>
+                    <tbody>
+                      {Object.entries(userSummary).map(([username, summary]) => (
+                        <TableRow key={username}>
+                          <TableCell className="px-2 py-1">
+                            <div className="flex items-center gap-1 min-w-[120px]">
+                              {summary.user.avatar ? (
+                                <img src={summary.user.avatar} alt={username} className="w-5 h-5 rounded-full flex-shrink-0" />
+                              ) : (
+                                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                  <FiUser className="w-3 h-3 text-primary" />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-xs truncate">{summary.user.firstName} {summary.user.lastName}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center px-2 py-1">
+                            <span className="text-xs font-medium text-green-700">{summary.presentDays}</span>
+                          </TableCell>
+                          <TableCell className="text-center px-2 py-1">
+                            <span className="text-xs font-medium text-red-700">{summary.absentDays}</span>
+                          </TableCell>
+                          <TableCell className="text-center px-2 py-1">
+                            <span className="text-xs font-medium text-yellow-700">{summary.lateDays}</span>
+                          </TableCell>
+                          <TableCell className="text-center px-2 py-1 text-xs">{summary.totalDays}</TableCell>
+                          <TableCell className="text-center px-2 py-1 text-xs">{summary.avgHours.toFixed(1)}h</TableCell>
+                          <TableCell className="px-2 py-1">
+                            <div className="flex items-center gap-1">
+                              <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                                <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${summary.totalDays > 0 ? (summary.presentDays / summary.totalDays) * 100 : 0}%` }} />
+                              </div>
+                              <span className="text-xs whitespace-nowrap">{summary.totalDays > 0 ? ((summary.presentDays / summary.totalDays) * 100).toFixed(0) : '0'}%</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+              </div>
+            </CardContent>
+          </TabsContent>
+        </Tabs>
+      </Card>
 
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="max-w-[95vw] md:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] md:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg md:text-xl">Attendance Details</DialogTitle>
-            <DialogDescription className="text-xs md:text-sm">
-              Complete information about this attendance record
-            </DialogDescription>
+            <DialogTitle className="text-base">Attendance Details</DialogTitle>
+            <DialogDescription className="text-xs">Complete information about this attendance record</DialogDescription>
           </DialogHeader>
-          
           {selectedRecord && (
-            <div className="space-y-4 md:space-y-6">
-              {/* Employee Info */}
-              <div className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-muted rounded-lg">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                 {(() => {
                   const user = users.find(u => u.username === selectedRecord.userName);
                   return (
                     <>
                       {user?.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={user.username}
-                          className="w-12 h-12 md:w-16 md:h-16 rounded-full"
-                        />
+                        <img src={user.avatar} alt={user.username} className="w-8 h-8 rounded-full flex-shrink-0" />
                       ) : (
-                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                          <FiUser className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <FiUser className="w-4 h-4 text-primary" />
                         </div>
                       )}
-                      <div className="min-w-0">
-                        <h3 className="text-base md:text-lg font-semibold truncate">
-                          {user ? `${user.firstName || ''} ${user.lastName || ''}` : selectedRecord.userName}
-                        </h3>
-                        <p className="text-xs md:text-sm text-muted-foreground truncate">
-                          {user?.position} • {user?.department}
-                        </p>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-semibold truncate">{user ? `${user.firstName || ''} ${user.lastName || ''}` : selectedRecord.userName}</h3>
+                        <p className="text-xs text-muted-foreground truncate">{user?.position} • {user?.department}</p>
                       </div>
                     </>
                   );
                 })()}
               </div>
-
-              {/* Attendance Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                <div className="space-y-1 md:space-y-2">
-                  <h4 className="font-medium text-sm md:text-base">Date</h4>
-                  <p className="text-sm md:text-base">
-                    {formatDate(new Date(selectedRecord.date), 'EEEE, MMMM dd, yyyy')}
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div><span className="text-xs text-muted-foreground">Date</span><p className="text-xs">{formatDate(new Date(selectedRecord.date), 'EEE, MMM dd, yyyy')}</p></div>
+                <div><span className="text-xs text-muted-foreground">Status</span><div>{getStatusBadge(selectedRecord.status)}</div></div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Check In</span>
+                  <div className="flex items-center gap-1"><FiClock className="w-3 h-3" /><span className="text-xs">{TimeUtils.formatTimeForTable(selectedRecord.checkIn)}</span></div>
+                  {selectedRecord.checkInLocation && <p className="text-[10px] text-muted-foreground truncate">{selectedRecord.checkInLocation.address?.split(',')[0]}</p>}
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Check Out</span>
+                  <div className="flex items-center gap-1"><FiClock className="w-3 h-3" /><span className="text-xs">{TimeUtils.formatTimeForTable(selectedRecord.checkOut)}</span></div>
+                  {selectedRecord.checkOutLocation && <p className="text-[10px] text-muted-foreground truncate">{selectedRecord.checkOutLocation.address?.split(',')[0]}</p>}
+                </div>
+                <div className="col-span-2">
+                  <span className="text-xs text-muted-foreground">Total Hours</span>
+                  <p className="text-sm font-bold">
+                    {(() => { const h = TimeUtils.calculateHoursWithOvertime(selectedRecord.checkIn, selectedRecord.checkOut); return `${h.regular.toFixed(1)}h` + (h.overtime > 0 ? ` (+${h.overtime.toFixed(1)}h OT)` : ''); })()}
                   </p>
                 </div>
-                
-                <div className="space-y-1 md:space-y-2">
-                  <h4 className="font-medium text-sm md:text-base">Status</h4>
-                  <div>{getStatusBadge(selectedRecord.status)}</div>
-                </div>
-
-                <div className="space-y-1 md:space-y-2">
-                  <h4 className="font-medium text-sm md:text-base">Check In</h4>
-                  <div className="flex items-center gap-2">
-                    <FiClock className="w-4 h-4 md:w-5 md:h-5" />
-                    <span className="text-base md:text-lg">{formatTime(selectedRecord.checkIn)}</span>
-                  </div>
-                  {selectedRecord.checkInLocation && (
-                    <p className="text-xs md:text-sm text-muted-foreground truncate">
-                      <FiMapPin className="inline w-3 h-3 md:w-4 md:h-4 mr-1" />
-                      {selectedRecord.checkInLocation.address}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1 md:space-y-2">
-                  <h4 className="font-medium text-sm md:text-base">Check Out</h4>
-                  <div className="flex items-center gap-2">
-                    <FiClock className="w-4 h-4 md:w-5 md:h-5" />
-                    <span className="text-base md:text-lg">{formatTime(selectedRecord.checkOut)}</span>
-                  </div>
-                  {selectedRecord.checkOutLocation && (
-                    <p className="text-xs md:text-sm text-muted-foreground truncate">
-                      <FiMapPin className="inline w-3 h-3 md:w-4 md:h-4 mr-1" />
-                      {selectedRecord.checkOutLocation.address}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1 md:space-y-2">
-                  <h4 className="font-medium text-sm md:text-base">Total Hours</h4>
-                  <p className="text-xl md:text-2xl font-bold">
-                    {selectedRecord.totalHours?.toFixed(1) || '0'} hours
-                  </p>
-                </div>
-
-                {selectedRecord.overtimeHours && selectedRecord.overtimeHours > 0 && (
-                  <div className="space-y-1 md:space-y-2">
-                    <h4 className="font-medium text-sm md:text-base">Overtime</h4>
-                    <p className="text-lg text-yellow-600">
-                      +{selectedRecord.overtimeHours.toFixed(1)} hours
-                    </p>
-                  </div>
-                )}
               </div>
-
-              {/* Notes */}
               {selectedRecord.notes && (
-                <div className="space-y-1 md:space-y-2">
-                  <h4 className="font-medium text-sm md:text-base">Notes</h4>
-                  <p className="text-sm md:text-base text-muted-foreground">{selectedRecord.notes}</p>
-                </div>
-              )}
-
-              {/* Location Map Preview */}
-              {(selectedRecord.checkInLocation || selectedRecord.checkOutLocation) && (
-                <div className="space-y-1 md:space-y-2">
-                  <h4 className="font-medium text-sm md:text-base">Locations</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                    {selectedRecord.checkInLocation && (
-                      <div className="p-3 border rounded-lg">
-                        <p className="text-sm font-medium">Check-in Location</p>
-                        <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {selectedRecord.checkInLocation.address}
-                        </p>
-                        <p className="text-xs mt-1">
-                          Coordinates: {selectedRecord.checkInLocation.lat.toFixed(6)}, {selectedRecord.checkInLocation.lng.toFixed(6)}
-                        </p>
-                      </div>
-                    )}
-                    {selectedRecord.checkOutLocation && (
-                      <div className="p-3 border rounded-lg">
-                        <p className="text-sm font-medium">Check-out Location</p>
-                        <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {selectedRecord.checkOutLocation.address}
-                        </p>
-                        <p className="text-xs mt-1">
-                          Coordinates: {selectedRecord.checkOutLocation.lat.toFixed(6)}, {selectedRecord.checkOutLocation.lng.toFixed(6)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <div><span className="text-xs text-muted-foreground">Notes</span><p className="text-xs mt-1">{selectedRecord.notes}</p></div>
               )}
             </div>
           )}

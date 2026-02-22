@@ -31,12 +31,12 @@ export default function LoginPage() {
     logAccess();
   }, []);
 
-  // Handle browser back button
+  // Handle browser back button and existing session
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
     if (token && role) {
-      router.push(role);
+      router.push(`/${role}`);
     } else {
       const handleBackButton = (event: PopStateEvent) => {
         event.preventDefault();
@@ -54,27 +54,27 @@ export default function LoginPage() {
 
   // Handle redirect after successful action
   useEffect(() => {
-    if (redirectPath) {
-      // Start progress animation
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(progressInterval);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 150); // Update every 150ms for 1.5s total
-      
-      const timer = setTimeout(() => {
-        router.push(redirectPath);
-      }, 1500);
-      
-      return () => {
-        clearTimeout(timer);
-        clearInterval(progressInterval);
-      };
-    }
+    if (!redirectPath) return;
+
+    // Start progress animation
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 150); // Update every 150ms for 1.5s total
+    
+    const timer = setTimeout(() => {
+      router.push(redirectPath);
+    }, 1500);
+    
+    return () => {
+      clearTimeout(timer);
+      clearInterval(progressInterval);
+    };
   }, [redirectPath, router]);
 
   async function handleLogin(event: React.FormEvent) {
@@ -119,7 +119,7 @@ export default function LoginPage() {
           });
           setShowSuccess(true);
           setTimeout(() => {
-            setRedirectPath(data.role);
+            setRedirectPath(`/${data.role}`); // Added leading slash
           }, 500);
         } else {
           setError("Your Registration is pending, You can login once an admin authorize you.");
@@ -267,7 +267,7 @@ export default function LoginPage() {
                     id="username"
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
                     className="w-full h-10 rounded-lg border border-input bg-background p-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none" 
                     placeholder="Username"
                     disabled={isLoading}

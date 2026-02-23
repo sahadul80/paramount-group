@@ -1,6 +1,6 @@
 // components/user/DesktopTabs.tsx
 import React from 'react';
-import { FiUser, FiUsers, FiMail, FiMessageSquare } from "react-icons/fi";
+import { FiUser, FiUsers, FiMail, FiMessageSquare, FiOctagon } from "react-icons/fi";
 import { TabsList, TabsTrigger } from '../ui/tabs';
 import { Badge } from "../ui/badge";
 import { TabValue } from '@/types/users';
@@ -54,6 +54,22 @@ const DesktopTabs: React.FC<DesktopTabsProps> = ({
       >
         <span className="mr-2"><FiMessageSquare /></span> 
         <span>Groups</span>
+      </TabsTrigger>
+      <TabsTrigger 
+        value="attendance-tracker" 
+        className="flex-1 flex items-center justify-center py-3 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+        onClick={() => setActiveTab('attendance-tracker')}
+      >
+        <span className="mr-2"><FiOctagon /></span> 
+        <span>Attendance Tracker</span>
+      </TabsTrigger>
+      <TabsTrigger 
+        value="cars" 
+        className="flex-1 flex items-center justify-center py-3 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+        onClick={() => setActiveTab('cars')}
+      >
+        <span className="mr-2"><FiOctagon /></span> 
+        <span>Cars</span>
       </TabsTrigger>
     </TabsList>
   );

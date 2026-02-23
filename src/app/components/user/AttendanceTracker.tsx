@@ -1,11 +1,11 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react';
 import { AttendanceRecord } from '@/types/users';
-import { 
-  FiClock, 
-  FiCheckCircle, 
- FiXCircle, 
-  FiCalendar, 
+import {
+  FiClock,
+  FiCheckCircle,
+  FiXCircle,
+  FiCalendar,
   FiMapPin,
   FiWatch,
   FiSunrise,
@@ -36,6 +36,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 interface AttendanceTrackerProps {
   attendance: AttendanceRecord[];
@@ -64,12 +65,9 @@ interface GeocodedAddress {
   accuracy?: number;
 }
 
-// Centralized time utilities
+// ==================== TIME UTILITIES ====================
 const TimeUtils = {
-  getCurrentDhakaTime: () => {
-    const now = new Date();
-    return new Date(now.getTime() + (6 * 60 * 60 * 1000));
-  },
+  getCurrentDhakaTime: () => new Date(new Date().getTime() + 6 * 60 * 60 * 1000),
 
   getFormattedDhakaTime: () => {
     const dhakaTime = TimeUtils.getCurrentDhakaTime();
@@ -94,44 +92,49 @@ const TimeUtils = {
     return `${year}-${month}-${day}`;
   },
 
-  formatTime12h: (timeValue?: string | null): string => {
+  normalizeTimeString: (timeValue?: string | Date | null): string => {
     if (!timeValue || timeValue === '--:--') return '--:--';
-    try {
-      let hours: number, minutes: number;
-      if (/^\d{2}:\d{2}$/.test(timeValue)) {
-        [hours, minutes] = timeValue.split(':').map(Number);
-      } else {
-        const date = new Date(timeValue);
-        if (isNaN(date.getTime())) return '--:--';
-        hours = date.getUTCHours();
-        minutes = date.getUTCMinutes();
-      }
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const hours12 = hours % 12 || 12;
-      return `${hours12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-    } catch {
-      return '--:--';
+    let timeStr: string;
+    if (typeof timeValue !== 'string') {
+      try { timeStr = timeValue.toISOString(); } catch { return '--:--'; }
+    } else { timeStr = timeValue; }
+    const ampmMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (ampmMatch) {
+      let hours = parseInt(ampmMatch[1], 10);
+      const minutes = parseInt(ampmMatch[2], 10);
+      const ampm = ampmMatch[3].toUpperCase();
+      if (ampm === 'PM' && hours !== 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     }
+    if (/^\d{2}:\d{2}$/.test(timeStr)) return timeStr;
+    if (timeStr.includes('T')) timeStr = timeStr.split('T')[1];
+    if (timeStr.includes(' ')) { const parts = timeStr.split(' '); if (parts.length > 1) timeStr = parts[1]; }
+    timeStr = timeStr.replace(/[Z+-].*$/, '').replace(/\.\d+$/, '');
+    const match = timeStr.match(/\d{1,2}:\d{2}/);
+    if (match) {
+      const [h, m] = match[0].split(':');
+      return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+    }
+    return '--:--';
   },
 
-  formatTimeForTable: (timeValue?: string | null): string => {
-    if (!timeValue || timeValue === '--:--') return '--:--';
-    try {
-      let hours: number, minutes: number;
-      if (/^\d{2}:\d{2}$/.test(timeValue)) {
-        [hours, minutes] = timeValue.split(':').map(Number);
-      } else {
-        const date = new Date(timeValue);
-        if (isNaN(date.getTime())) return '--:--';
-        hours = date.getUTCHours();
-        minutes = date.getUTCMinutes();
-      }
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const hours12 = hours % 12 || 12;
-      return `${hours12}:${minutes.toString().padStart(2, '0')}${ampm}`;
-    } catch {
-      return '--:--';
-    }
+  formatTime12h: (timeValue?: string | Date | null): string => {
+    const normalized = TimeUtils.normalizeTimeString(timeValue);
+    if (normalized === '--:--') return '--:--';
+    const [hours, minutes] = normalized.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    return `${hours12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  },
+
+  formatTimeForTable: (timeValue?: string | Date | null): string => {
+    const normalized = TimeUtils.normalizeTimeString(timeValue);
+    if (normalized === '--:--') return '--:--';
+    const [hours, minutes] = normalized.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    return `${hours12}:${minutes.toString().padStart(2, '0')}${ampm}`;
   },
 
   formatDate: (dateString?: string): string => {
@@ -140,64 +143,56 @@ const TimeUtils = {
       const date = new Date(dateString + 'T00:00:00+06:00');
       if (isNaN(date.getTime())) return '';
       return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    } catch {
-      return '';
-    }
+    } catch { return ''; }
   },
 
-  calculateStatus: (checkInTime?: string): string => {
+  calculateStatus: (checkInTime?: string | Date | null): string => {
     if (!checkInTime) return 'absent';
-    const formattedTime = TimeUtils.formatTime12h(checkInTime);
-    if (formattedTime === '--:--') return 'absent';
+    const formatted = TimeUtils.formatTime12h(checkInTime);
+    if (formatted === '--:--') return 'absent';
     try {
-      const timeMatch = formattedTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
-      if (!timeMatch) return 'present';
-      let hours = parseInt(timeMatch[1], 10);
-      const minutes = parseInt(timeMatch[2], 10);
-      const ampm = timeMatch[3].toUpperCase();
+      const match = formatted.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (!match) return 'present';
+      let hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const ampm = match[3].toUpperCase();
       if (ampm === 'PM' && hours !== 12) hours += 12;
       if (ampm === 'AM' && hours === 12) hours = 0;
-      const checkInTotalMinutes = hours * 60 + minutes;
-      const nineFiveAM = 9 * 60 + 5;
-      const elevenAM = 11 * 60;
-      if (checkInTotalMinutes > elevenAM) return 'half-day';
-      if (checkInTotalMinutes > nineFiveAM) return 'late';
+      const total = hours * 60 + minutes;
+      if (total > 11 * 60) return 'half-day';
+      if (total > 9 * 60 + 5) return 'late';
       return 'present';
-    } catch {
-      return 'present';
-    }
+    } catch { return 'present'; }
   },
 
-  calculateWorkingHours: (checkInTime?: string, checkOutTime?: string): number => {
+  calculateWorkingHours: (checkInTime?: string | Date | null, checkOutTime?: string | Date | null): number => {
     if (!checkInTime || !checkOutTime) return 0;
     try {
-      const getMinutes = (timeStr: string): number => {
-        const formatted = TimeUtils.formatTime12h(timeStr);
-        const timeMatch = formatted.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (!timeMatch) return 0;
-        let hours = parseInt(timeMatch[1], 10);
-        const minutes = parseInt(timeMatch[2], 10);
-        const ampm = timeMatch[3].toUpperCase();
-        if (ampm === 'PM' && hours !== 12) hours += 12;
-        if (ampm === 'AM' && hours === 12) hours = 0;
-        return hours * 60 + minutes;
+      const getMinutes = (t: string | Date): number => {
+        const f = TimeUtils.formatTime12h(t);
+        const m = f.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!m) return 0;
+        let h = parseInt(m[1], 10);
+        const min = parseInt(m[2], 10);
+        const a = m[3].toUpperCase();
+        if (a === 'PM' && h !== 12) h += 12;
+        if (a === 'AM' && h === 12) h = 0;
+        return h * 60 + min;
       };
-      const inMinutes = getMinutes(checkInTime);
-      const outMinutes = getMinutes(checkOutTime);
-      if (inMinutes === 0 || outMinutes === 0) return 0;
-      let totalMinutes = outMinutes - inMinutes;
-      if (totalMinutes > 4 * 60) totalMinutes -= 60;
-      return Math.min(totalMinutes / 60, 9);
-    } catch {
-      return 0;
-    }
+      const inMin = getMinutes(checkInTime);
+      const outMin = getMinutes(checkOutTime);
+      if (inMin === 0 || outMin === 0) return 0;
+      let total = outMin - inMin;
+      if (total > 4 * 60) total -= 60; // lunch break
+      return Math.min(Math.max(total / 60, 0), 9);
+    } catch { return 0; }
   },
 
   formatDateForCSV: (dateString: string) => dateString,
-  formatTimeForCSV: (timeValue?: string | null) => TimeUtils.formatTime12h(timeValue)
+  formatTimeForCSV: (timeValue?: string | Date | null) => TimeUtils.formatTime12h(timeValue)
 };
 
-// Address utilities
+// ==================== ADDRESS UTILITIES ====================
 const AddressUtils = {
   formatFullAddress: (address: GeocodedAddress): string => {
     if (address.formatted) return address.formatted;
@@ -211,7 +206,6 @@ const AddressUtils = {
     if (address.components.country) parts.push(address.components.country);
     return parts.join(', ');
   },
-
   parseAddressString: (addressString: string): GeocodedAddress => {
     try {
       const parsed = JSON.parse(addressString);
@@ -232,10 +226,10 @@ const AddressUtils = {
   }
 };
 
-// CSV utilities
+// ==================== CSV UTILITIES ====================
 const CSVUtils = {
   generateCSVData: (attendance: AttendanceRecord[], includeDetails: boolean = true): string => {
-    const headers = includeDetails 
+    const headers = includeDetails
       ? ['Date','Day','Check In','Check Out','Working Hours','Overtime','Status','Check In Location','Check Out Location']
       : ['Date','Day','Check In','Check Out','Working Hours','Overtime','Status'];
     const rows = attendance.map(record => {
@@ -257,7 +251,6 @@ const CSVUtils = {
     });
     return [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
   },
-
   downloadCSV: (data: string, filename: string) => {
     const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -271,8 +264,11 @@ const CSVUtils = {
   }
 };
 
-const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, currentUser, onAttendanceUpdate }) => {
-  // State
+const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
+  attendance,
+  currentUser,
+  onAttendanceUpdate
+}) => {
   const [currentDhakaTime, setCurrentDhakaTime] = useState(TimeUtils.getFormattedDhakaTime());
   const [currentDhakaDate, setCurrentDhakaDate] = useState(TimeUtils.getDhakaDate());
   const [isLoading, setIsLoading] = useState(false);
@@ -294,15 +290,36 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
   const [expandedLocationId, setExpandedLocationId] = useState<string | null>(null);
   const [csvExportType, setCsvExportType] = useState<'detailed'|'summary'>('detailed');
   const [isExporting, setIsExporting] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const locationWatchId = useRef<number | null>(null);
   const locationRetryCount = useRef(0);
   const maxRetries = 3;
   const locationUpdateInterval = useRef<NodeJS.Timeout | null>(null);
 
-  const currentRecord = attendance.find(r => r.date === currentDhakaDate);
+  // Responsive
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  // Update time every minute
+  // Find today's record
+  const currentRecord = attendance.find(record => {
+    try {
+      let recordDateStr: string;
+      if (typeof record.date === 'string') {
+        recordDateStr = record.date.split('T')[0];
+      } else if (record.date && typeof record.date === 'object' && typeof (record.date as any).toISOString === 'function') {
+        recordDateStr = (record.date as Date).toISOString().split('T')[0];
+      } else {
+        recordDateStr = String(record.date);
+      }
+      return recordDateStr === currentDhakaDate;
+    } catch { return false; }
+  });
+
   useEffect(() => {
     const updateTime = () => {
       setCurrentDhakaTime(TimeUtils.getFormattedDhakaTime());
@@ -313,7 +330,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
     return () => clearInterval(interval);
   }, []);
 
-  // Geocoding (simplified, keep original implementation)
   const geocodeCoordinates = async (latitude: number, longitude: number): Promise<GeocodedAddress> => {
     try {
       const services = [
@@ -357,12 +373,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
         formatted: `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`,
         components: { street: `Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }
       };
-    } catch {
-      throw new Error('Geocoding failed');
-    }
+    } catch { throw new Error('Geocoding failed'); }
   };
 
-  // Location fetching
   const fetchUserLocation = async (highAccuracy: boolean = true) => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation not supported");
@@ -428,7 +441,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
     });
   };
 
-  // Attempt to get location on mount (skip iOS Safari)
   useEffect(() => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -439,7 +451,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
     fetchUserLocation(true);
   }, []);
 
-  // Periodic location updates
   useEffect(() => {
     if (userLocation && !locationLoading) {
       if (locationUpdateInterval.current) clearInterval(locationUpdateInterval.current);
@@ -451,7 +462,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
     };
   }, [userLocation, locationLoading]);
 
-  // Helper functions
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'present': return <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">Present</Badge>;
@@ -529,15 +539,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
       const currentMinutes = currentDhakaTime.hours * 60 + currentDhakaTime.minutes;
       const elapsed = currentMinutes - checkInMinutes;
       return Math.min(Math.max((elapsed / (9 * 60)) * 100, 0), 100);
-    } catch {
-      return 0;
-    }
+    } catch { return 0; }
   };
 
   const getCurrentTimeStatus = () => {
     const currentMinutes = currentDhakaTime.hours * 60 + currentDhakaTime.minutes;
     if (currentMinutes > 11 * 60) return { status: 'half-day', message: 'After 11:00 AM is half day' };
-    if (currentMinutes > 9 * 60 + 30) return { status: 'late', message: 'After 9:30 AM is late' };
+    if (currentMinutes > 9 * 60 + 5) return { status: 'late', message: 'After 9:05 AM is late' };
     return { status: 'on-time', message: 'You can check in' };
   };
 
@@ -557,30 +565,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
     } finally {
       setIsSubmittingLeave(false);
     }
-  };
-
-  const formatTableLocation = (record: AttendanceRecord) => {
-    const loc = record.checkInLocation?.address;
-    if (!loc) return null;
-    const isExpanded = expandedLocationId === record.id;
-    return (
-      <div className="flex items-start gap-1 max-w-[180px]">
-        <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className={`text-xs text-muted-foreground ${!isExpanded ? 'truncate' : 'break-words'}`}>
-            {loc}
-          </div>
-          {loc.length > 50 && (
-            <button
-              className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1"
-              onClick={() => setExpandedLocationId(isExpanded ? null : record.id)}
-            >
-              {isExpanded ? <><FiChevronUp className="w-3 h-3" /> Less</> : <><FiChevronDown className="w-3 h-3" /> More</>}
-            </button>
-          )}
-        </div>
-      </div>
-    );
   };
 
   const handleExportCSV = () => {
@@ -607,7 +591,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
     <TooltipProvider>
       <div className="w-full max-w-full">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-          {/* Today's Card - Compact */}
+          {/* Today's Card */}
           <Card className="border-border shadow-sm dark:bg-gray-900/50">
             <CardHeader className="pb-2">
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -618,7 +602,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
                     </div>
                     <span>Today's Attendance</span>
                   </CardTitle>
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <div className="flex flex-wrap items-center gap-1.5 text-sm">
                     <span className="text-muted-foreground">{displayDate}</span>
                     <Badge variant="outline" className="border-blue-200 text-blue-700 bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/30">GMT+6</Badge>
                     <span className="text-muted-foreground">{currentDhakaTime.formatted12h}</span>
@@ -678,101 +662,132 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Location display - compact collapsible */}
-              <AnimatePresence>
-                {locationLoading ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-2 rounded-lg bg-muted/50 border flex items-center gap-2 text-sm">
-                    <FiLoader className="animate-spin w-4 h-4" />
-                    <span>Getting location...</span>
-                  </motion.div>
-                ) : userLocation ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-2 rounded-lg bg-blue-50/50 border border-blue-200 dark:bg-blue-900/10 dark:border-blue-800">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FiMapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                        <span className="text-xs truncate">{userLocation.address?.split(',')[0] || 'Location acquired'}</span>
+              {/* Combined row: location + check buttons */}
+              <div className="flex flex-col md:flex-row gap-2">
+                {/* Location display - left side */}
+                <div className="flex-1 min-w-0">
+                  <AnimatePresence>
+                    {locationLoading ? (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-2 rounded-lg bg-muted/50 border flex items-center gap-2 text-sm">
+                        <FiLoader className="animate-spin w-4 h-4" />
+                        <span>Getting location...</span>
+                      </motion.div>
+                    ) : userLocation ? (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-2 rounded-lg bg-blue-50/50 border border-blue-200 dark:bg-blue-900/10 dark:border-blue-800">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FiMapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                            <span className="text-sm truncate">{userLocation.address?.split(',')[0] || 'Location acquired'}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {getAccuracyBadge(locationAccuracy)}
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowLocationDetails(!showLocationDetails)}>
+                              <FiMap className="w-3 h-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => fetchUserLocation(true)}>
+                              <FiRefreshCw className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        {showLocationDetails && (
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: 'auto' }}
+                            className="mt-2 pt-2 border-t text-xs text-muted-foreground grid grid-cols-2 gap-1"
+                          >
+                            <div>Lat: {userLocation.lat.toFixed(6)}</div>
+                            <div>Lng: {userLocation.lng.toFixed(6)}</div>
+                            <div className="col-span-2 truncate">{userLocation.address}</div>
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    ) : locationError ? (
+                      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-sm flex items-center justify-between">
+                        <span>{locationError}</span>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => fetchUserLocation(true)}>Retry</Button>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {getAccuracyBadge(locationAccuracy)}
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowLocationDetails(!showLocationDetails)}>
-                          <FiMap className="w-3 h-3" />
+                    ) : null}
+                  </AnimatePresence>
+                </div>
+
+                {/* Check In/Out Buttons - right side */}
+                <div className="md:w-64 flex-shrink-0">
+                  <AnimatePresence mode="wait">
+                    {status === 'not-checked-in' && (
+                      <motion.div key="check-in">
+                        <Button onClick={() => handleAttendance('check-in')} className="w-full gap-2 h-10 text-base" disabled={isLoading || locationLoading}>
+                          {isLoading ? <FiLoader className="animate-spin" /> : <FiCheckCircle />}
+                          {isLoading ? 'Checking in...' : 'Check In'}
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => fetchUserLocation(true)}>
-                          <FiRefreshCw className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                    {showLocationDetails && (
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: 'auto' }}
-                        className="mt-2 pt-2 border-t text-xs text-muted-foreground grid grid-cols-2 gap-1"
-                      >
-                        <div>Lat: {userLocation.lat.toFixed(6)}</div>
-                        <div>Lng: {userLocation.lng.toFixed(6)}</div>
-                        <div className="col-span-2 truncate">{userLocation.address}</div>
                       </motion.div>
                     )}
-                  </motion.div>
-                ) : locationError ? (
-                  <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs flex items-center justify-between">
-                    <span>{locationError}</span>
-                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => fetchUserLocation(true)}>Retry</Button>
-                  </div>
-                ) : null}
-              </AnimatePresence>
-
-              {/* Check In/Out Buttons */}
-              <AnimatePresence mode="wait">
-                {status === 'not-checked-in' && (
-                  <motion.div key="check-in">
-                    <Button onClick={() => handleAttendance('check-in')} className="w-full gap-2 h-10" disabled={isLoading || locationLoading}>
-                      {isLoading ? <FiLoader className="animate-spin" /> : <FiCheckCircle />}
-                      {isLoading ? 'Checking in...' : 'Check In'}
-                    </Button>
-                  </motion.div>
-                )}
-                {status === 'checked-in' && (
-                  <motion.div key="check-out" className="space-y-2">
-                    <Button onClick={() => handleAttendance('check-out')} variant="outline" className="w-full gap-2 h-10" disabled={isLoading}>
-                      {isLoading ? <FiLoader className="animate-spin" /> : <FiXCircle />}
-                      {isLoading ? 'Checking out...' : 'Check Out'}
-                    </Button>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>Work Progress</span>
-                        <span>{workProgress.toFixed(0)}%</span>
-                      </div>
-                      <Progress value={workProgress} className="h-1.5" />
-                    </div>
-                  </motion.div>
-                )}
-                {status === 'checked-out' && (
-                  <Badge className="w-full py-2 bg-green-100 text-green-800 border-green-200 justify-center">
-                    <FiCheckCircle className="mr-2" /> Attendance Completed
-                  </Badge>
-                )}
-              </AnimatePresence>
-
-              {/* Time boxes - smaller */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-center p-2 rounded-lg bg-blue-50/50 border border-blue-100">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <FiSunrise className="w-3 h-3 text-blue-600" />
-                    <span className="text-xs text-muted-foreground">Check In</span>
-                  </div>
-                  <div className="text-base font-semibold">{TimeUtils.formatTime12h(currentRecord?.checkIn)}</div>
-                </div>
-                <div className="text-center p-2 rounded-lg bg-purple-50/50 border border-purple-100">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <FiSunset className="w-3 h-3 text-purple-600" />
-                    <span className="text-xs text-muted-foreground">Check Out</span>
-                  </div>
-                  <div className="text-base font-semibold">{TimeUtils.formatTime12h(currentRecord?.checkOut)}</div>
+                    {status === 'checked-in' && (
+                      <motion.div key="check-out" className="space-y-2">
+                        <Button onClick={() => handleAttendance('check-out')} variant="outline" className="w-full gap-2 h-10 text-base" disabled={isLoading}>
+                          {isLoading ? <FiLoader className="animate-spin" /> : <FiXCircle />}
+                          {isLoading ? 'Checking out...' : 'Check Out'}
+                        </Button>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>Work Progress</span>
+                            <span>{workProgress.toFixed(0)}%</span>
+                          </div>
+                          <Progress value={workProgress} className="h-1.5" />
+                        </div>
+                      </motion.div>
+                    )}
+                    {status === 'checked-out' && (
+                      <Badge className="w-full py-2 bg-green-100 text-green-800 border-green-200 justify-center text-base">
+                        <FiCheckCircle className="mr-2" /> Attendance Completed
+                      </Badge>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
-              {/* Stats - compact grid */}
+              {/* Time boxes with location details */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-center p-2 rounded-lg bg-blue-50/50 border border-blue-100">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <FiSunrise className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm text-muted-foreground">Check In</span>
+                  </div>
+                  <div className="text-lg font-semibold">{TimeUtils.formatTime12h(currentRecord?.checkIn)}</div>
+                  {currentRecord?.checkInLocation && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <p className="text-xs text-muted-foreground truncate mt-1 cursor-help" title={currentRecord.checkInLocation.address}>
+                          {currentRecord.checkInLocation.address?.split(',')[0]}
+                        </p>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <p className="text-xs break-words">{currentRecord.checkInLocation.address}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+                <div className="text-center p-2 rounded-lg bg-purple-50/50 border border-purple-100">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <FiSunset className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm text-muted-foreground">Check Out</span>
+                  </div>
+                  <div className="text-lg font-semibold">{TimeUtils.formatTime12h(currentRecord?.checkOut)}</div>
+                  {currentRecord?.checkOutLocation && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <p className="text-xs text-muted-foreground truncate mt-1 cursor-help" title={currentRecord.checkOutLocation.address}>
+                          {currentRecord.checkOutLocation.address?.split(',')[0]}
+                        </p>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <p className="text-xs break-words">{currentRecord.checkOutLocation.address}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats */}
               {currentRecord && (
                 <div className="grid grid-cols-4 gap-1 text-center">
                   <div className="p-1.5 rounded bg-gray-50 dark:bg-gray-800">
@@ -796,7 +811,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
             </CardContent>
           </Card>
 
-          {/* Recent Attendance - compact list */}
+          {/* Recent Attendance */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-base font-semibold flex items-center gap-2">
@@ -805,7 +820,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
               </h4>
               <div className="flex items-center gap-2">
                 <Select value={csvExportType} onValueChange={(v: any) => setCsvExportType(v)}>
-                  <SelectTrigger className="h-7 w-[80px] text-xs">
+                  <SelectTrigger className="h-8 w-[80px] text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -813,60 +828,53 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
                     <SelectItem value="summary">Summary</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleExportCSV} disabled={isExporting || attendance.length === 0}>
+                <Button variant="outline" size="sm" className="h-8 text-sm gap-1" onClick={handleExportCSV} disabled={isExporting || attendance.length === 0}>
                   {isExporting ? <FiLoader className="animate-spin w-3 h-3" /> : <FiDownload className="w-3 h-3" />}
                   CSV
                 </Button>
               </div>
             </div>
 
-            {/* Desktop header */}
-            <div className="hidden md:grid md:grid-cols-12 gap-2 px-2 mb-1 text-xs font-medium text-muted-foreground">
-              <div className="col-span-2">Date</div>
-              <div className="col-span-2 text-center">In</div>
-              <div className="col-span-2 text-center">Out</div>
-              <div className="col-span-2 text-center">Hours</div>
-              <div className="col-span-2 text-center">Status</div>
-              <div className="col-span-2">Location</div>
-            </div>
-
-            <div className="space-y-1">
-              {attendance.slice(0, 10).map((record, idx) => (
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-2">
+              {attendance.slice(0, 10).map((record) => (
                 <Card key={record.id} className="border-border dark:bg-gray-900/50">
-                  <CardContent className="p-2">
-                    {/* Mobile layout */}
-                    <div className="md:hidden space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FiCalendarIcon className="w-4 h-4 text-primary" />
-                          <span className="text-sm font-medium">
-                            {new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                          {getStatusBadge(record.status)}
-                        </div>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FiCalendarIcon className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                        {getStatusBadge(record.status)}
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div><span className="text-muted-foreground">In:</span> {TimeUtils.formatTimeForTable(record.checkIn)}</div>
-                        <div><span className="text-muted-foreground">Out:</span> {TimeUtils.formatTimeForTable(record.checkOut)}</div>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span>Hours: {record.totalHours?.toFixed(1)}h</span>
-                        {record.overtimeHours ? <span className="text-amber-600">+{record.overtimeHours.toFixed(1)}h OT</span> : null}
-                      </div>
-                      {formatTableLocation(record) && <div className="pt-1 border-t">{formatTableLocation(record)}</div>}
                     </div>
-
-                    {/* Desktop layout */}
-                    <div className="hidden md:grid md:grid-cols-12 gap-2 items-center text-sm">
-                      <div className="col-span-2">{new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                      <div className="col-span-2 text-center">{TimeUtils.formatTimeForTable(record.checkIn)}</div>
-                      <div className="col-span-2 text-center">{TimeUtils.formatTimeForTable(record.checkOut)}</div>
-                      <div className="col-span-2 text-center">
-                        {record.totalHours?.toFixed(1)}h
-                        {record.overtimeHours ? <span className="text-xs text-amber-600 block">+{record.overtimeHours.toFixed(1)}h OT</span> : null}
-                      </div>
-                      <div className="col-span-2 text-center">{getStatusBadge(record.status)}</div>
-                      <div className="col-span-2">{formatTableLocation(record)}</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div><span className="text-muted-foreground">In:</span> {TimeUtils.formatTimeForTable(record.checkIn)}</div>
+                      <div><span className="text-muted-foreground">Out:</span> {TimeUtils.formatTimeForTable(record.checkOut)}</div>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Hours: {record.totalHours?.toFixed(1)}h</span>
+                      {record.overtimeHours ? <span className="text-amber-600">+{record.overtimeHours.toFixed(1)}h OT</span> : null}
+                    </div>
+                    {/* Locations on mobile */}
+                    <div className="pt-1 border-t text-xs space-y-1">
+                      {record.checkInLocation && (
+                        <div className="flex items-start gap-1">
+                          <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground break-words" title={record.checkInLocation.address}>
+                            In: {record.checkInLocation.address}
+                          </span>
+                        </div>
+                      )}
+                      {record.checkOutLocation && (
+                        <div className="flex items-start gap-1">
+                          <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground break-words" title={record.checkOutLocation.address}>
+                            Out: {record.checkOutLocation.address}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -874,6 +882,90 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance, curre
               {attendance.length === 0 && (
                 <div className="text-center py-6 text-muted-foreground text-sm">No attendance records</div>
               )}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block rounded-md border overflow-hidden">
+              <div className="max-h-[400px] overflow-y-auto">
+                <Table className="min-w-full">
+                  <TableHeader className="sticky top-0 bg-background z-10 border-b">
+                    <TableRow>
+                      <TableHead className="text-sm px-3 py-2">Date</TableHead>
+                      <TableHead className="text-sm px-3 py-2 text-center">In</TableHead>
+                      <TableHead className="text-sm px-3 py-2 text-center">Out</TableHead>
+                      <TableHead className="text-sm px-3 py-2 text-center">Hours</TableHead>
+                      <TableHead className="text-sm px-3 py-2 text-center">Status</TableHead>
+                      <TableHead className="text-sm px-3 py-2">Locations</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {attendance.slice(0, 10).map((record) => {
+                      const hours = record.totalHours?.toFixed(1) || '0.0';
+                      const overtime = record.overtimeHours;
+                      return (
+                        <TableRow key={record.id} className="hover:bg-muted/50">
+                          <TableCell className="px-3 py-2 whitespace-nowrap text-sm">
+                            {new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-center text-sm">
+                            {TimeUtils.formatTimeForTable(record.checkIn)}
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-center text-sm">
+                            {TimeUtils.formatTimeForTable(record.checkOut)}
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-center text-sm">
+                            {hours}h
+                            {overtime ? <span className="text-amber-600 text-xs block">+{overtime.toFixed(1)}h OT</span> : null}
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-center">
+                            {getStatusBadge(record.status)}
+                          </TableCell>
+                          <TableCell className="px-3 py-2 max-w-[200px]">
+                            <div className="space-y-1">
+                              {record.checkInLocation && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground truncate cursor-help">
+                                      <FiMapPin className="w-3 h-3 flex-shrink-0" />
+                                      <span className="truncate">In: {record.checkInLocation.address?.split(',')[0]}</span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="max-w-xs">
+                                    <p className="text-sm break-words">In: {record.checkInLocation.address}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              {record.checkOutLocation && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground truncate cursor-help">
+                                      <FiMapPin className="w-3 h-3 flex-shrink-0" />
+                                      <span className="truncate">Out: {record.checkOutLocation.address?.split(',')[0]}</span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="max-w-xs">
+                                    <p className="text-sm break-words">Out: {record.checkOutLocation.address}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              {!record.checkInLocation && !record.checkOutLocation && (
+                                <span className="text-sm text-muted-foreground">N/A</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {attendance.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-4 text-sm text-muted-foreground">
+                          No attendance records
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </div>
         </motion.div>

@@ -44,6 +44,8 @@ export default function UserDashboard() {
     users: { loaded: false, loading: false },
     inbox: { loaded: false, loading: false },
     groups: { loaded: false, loading: false },
+    attendanceTracker: { loaded: false, loading: false },
+    cars: { loaded: false, loading: false },
   });
 
   const [retryCount, setRetryCount] = useState(0);

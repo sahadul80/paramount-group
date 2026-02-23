@@ -95,7 +95,7 @@ export interface SSEEvent {
 }
 
 // Tab Types
-export type TabValue = "profile" | "users" | "inbox" | "groups";
+export type TabValue = "profile" | "users" | "inbox" | "groups" | "attendance-tracker" | "cars";
 
 // Tab State
 export interface TabState {

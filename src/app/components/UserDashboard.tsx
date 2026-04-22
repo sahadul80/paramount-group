@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { 
   User, 
@@ -19,9 +19,7 @@ import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { 
   FiUser, 
-  FiUsers, 
-  FiInbox, 
-  FiFolder
+  FiUsers,
 } from "react-icons/fi";
 import ParamountLoader from "./Loader";
 import { userApi, messageApi, groupApi, sseApi } from "@/app/lib/api";
@@ -39,6 +37,7 @@ export default function UserDashboard() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
   
+  // Tab loading states – added "travel"
   const [tabData, setTabData] = useState<TabData>({
     profile: { loaded: true, loading: false },
     users: { loaded: false, loading: false },
@@ -46,13 +45,14 @@ export default function UserDashboard() {
     groups: { loaded: false, loading: false },
     attendanceTracker: { loaded: false, loading: false },
     cars: { loaded: false, loading: false },
+    travel: { loaded: false, loading: false },          // ← new travel tab
   });
 
   const [retryCount, setRetryCount] = useState(0);
   const [tabLoadingProgress, setTabLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Refs to keep state fresh inside callbacks
+  // Refs
   const usersRef = useRef(users);
   const messagesRef = useRef(messages);
   const groupsRef = useRef(groups);
@@ -70,7 +70,7 @@ export default function UserDashboard() {
     selectedUsernameRef.current = selectedUsername;
   }, [users, messages, groups, activeTab, currentUser, selectedUsername]);
 
-  // Fetch current user on component mount
+  // Fetch current user on mount
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
@@ -81,7 +81,6 @@ export default function UserDashboard() {
         toast.error("Failed to load your profile");
       }
     };
-    
     fetchCurrentUser();
   }, []);
 
@@ -105,7 +104,6 @@ export default function UserDashboard() {
     return cleanup;
   }, [retryCount]);
 
-  /** ----------------------------- SSE EVENT HANDLER ----------------------------- **/
   const handleSSEEvent = useCallback((event: SSEEvent) => {
     switch (event.type) {
       case "user":
@@ -126,7 +124,6 @@ export default function UserDashboard() {
     }
   }, []);
 
-  /** ----------------------------- EVENT HANDLERS ----------------------------- **/
   const handleUserEvent = useCallback((data: UserEventData) => {
     if (["created", "updated"].includes(data.action) && data.user) {
       setUsers(prev => {
@@ -135,12 +132,10 @@ export default function UserDashboard() {
           ? prev.map(u => u.username === data.user?.username ? data.user! : u)
           : [...prev, data.user!];
         
-        // Update selected user if it's the one being updated
         if (selectedUsernameRef.current === data.user?.username) {
-          // This will trigger the selected user to be updated from the users list
+          // trigger update
         }
         
-        // Update currentUser if it's the current user being updated
         if (currentUserRef.current?.username === data.user?.username) {
           setCurrentUser(data.user!);
         }
@@ -148,16 +143,10 @@ export default function UserDashboard() {
         return updatedUsers;
       });
     } else if (data.action === "deleted" && data.username) {
-      setUsers(prev => {
-        const filteredUsers = prev.filter(u => u.username !== data.username);
-        
-        // Clear selected user if it was deleted
-        if (selectedUsernameRef.current === data.username) {
-          setSelectedUsername(null);
-        }
-        
-        return filteredUsers;
-      });
+      setUsers(prev => prev.filter(u => u.username !== data.username));
+      if (selectedUsernameRef.current === data.username) {
+        setSelectedUsername(null);
+      }
     }
   }, []);
 
@@ -168,9 +157,7 @@ export default function UserDashboard() {
         toast.message(`New Message From: ${data.message?.from}`);
       }
     } else if (data.action === "updated" && data.message) {
-      setMessages(prev =>
-        prev.map(m => (m.id === data.message?.id ? data.message! : m))
-      );
+      setMessages(prev => prev.map(m => m.id === data.message?.id ? data.message! : m));
     } else if (data.action === "deleted" && data.messageId) {
       setMessages(prev => prev.filter(m => m.id !== data.messageId));
     }
@@ -180,9 +167,7 @@ export default function UserDashboard() {
     if (data.action === "created" && data.group) {
       setGroups(prev => [...prev, data.group!]);
     } else if (data.action === "updated" && data.group) {
-      setGroups(prev =>
-        prev.map(g => (g.id === data.group?.id ? data.group! : g))
-      );
+      setGroups(prev => prev.map(g => g.id === data.group?.id ? data.group! : g));
     } else if (data.action === "deleted" && data.groupId) {
       setGroups(prev => prev.filter(g => g.id !== data.groupId));
     }
@@ -207,12 +192,8 @@ export default function UserDashboard() {
       setIsLoading(true);
       const result = await userApi.getAllUsers();
       setIsLoading(false);
-      
-      if (result) {
-        setUsers(result);
-      } else {
-        toast.error("Failed to fetch users");
-      }
+      if (result) setUsers(result);
+      else toast.error("Failed to fetch users");
     } catch (err) {
       console.error("Fetch users error:", err);
       toast.error("Failed to load users");
@@ -223,11 +204,8 @@ export default function UserDashboard() {
   const fetchMessages = useCallback(async () => {
     try {
       const result = await messageApi.getMessages();
-      if (result) {
-        setMessages(result);
-      } else {
-        toast.error("Failed to fetch messages");
-      }
+      if (result) setMessages(result);
+      else toast.error("Failed to fetch messages");
     } catch (err) {
       console.error("Fetch messages error:", err);
       toast.error("Failed to load messages");
@@ -237,11 +215,8 @@ export default function UserDashboard() {
   const fetchGroups = useCallback(async () => {
     try {
       const result = await groupApi.getGroups();
-      if (result) {
-        setGroups(result);
-      } else {
-        toast.error("Failed to fetch groups");
-      }
+      if (result) setGroups(result);
+      else toast.error("Failed to fetch groups");
     } catch (err) {
       console.error("Fetch groups error:", err);
       toast.error("Failed to load groups");
@@ -250,14 +225,11 @@ export default function UserDashboard() {
 
   /** ----------------------------- TAB REFRESH ----------------------------- **/
   useEffect(() => {
-    // Create a new AbortController for this effect
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
 
     const refreshTab = async () => {
       const tabKey = activeTab;
-      
-      // Skip if already loading
       if (tabData[tabKey]?.loading) return;
       
       setTabData(prev => ({
@@ -266,7 +238,6 @@ export default function UserDashboard() {
       }));
 
       try {
-        // Check if the component is still mounted and request not aborted
         if (signal.aborted) return;
 
         switch (activeTab) {
@@ -280,11 +251,14 @@ export default function UserDashboard() {
             await fetchGroups();
             break;
           case "profile":
-            await fetchUsers();
+            await fetchUsers(); // maybe also fetch profile details?
             break;
+          case "travel":
+            // TravelTab handles its own data – just mark loaded
+            break;
+          // Add other cases (attendanceTracker, cars) if needed
         }
 
-        // Check again before updating state
         if (!signal.aborted) {
           setTabData(prev => ({
             ...prev,
@@ -292,7 +266,6 @@ export default function UserDashboard() {
           }));
         }
       } catch (error: any) {
-        // Only log and show toast if it's not an abort error
         if (error.name !== 'AbortError') {
           console.error(`Failed to refresh ${activeTab} tab:`, error);
           if (!signal.aborted) {
@@ -307,7 +280,6 @@ export default function UserDashboard() {
 
     refreshTab();
 
-    // Cleanup function to abort ongoing requests
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -320,13 +292,8 @@ export default function UserDashboard() {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (Object.values(tabData).some(t => t.loading)) {
-      interval = setInterval(
-        () =>
-          setTabLoadingProgress(prev =>
-            prev >= 100 ? 100 : prev + 10
-          ),
-        100
-      );
+      interval = setInterval(() =>
+        setTabLoadingProgress(prev => prev >= 100 ? 100 : prev + 10), 100);
     } else {
       setTabLoadingProgress(0);
     }
@@ -339,13 +306,8 @@ export default function UserDashboard() {
       setIsLoading(true);
       const result = await userApi.updateUserStatus(username, 2);
       setIsLoading(false);
-      
       if (result) {
-        setUsers(prev =>
-          prev.map(u =>
-            u.username === username ? { ...u, status: 2 } : u
-          )
-        );
+        setUsers(prev => prev.map(u => u.username === username ? { ...u, status: 2 } : u));
         toast.success("User activated successfully!");
       } else {
         toast.error("Approval failed");
@@ -360,16 +322,9 @@ export default function UserDashboard() {
   const handleProfileUpdate = async (updatedUser: User) => {
     try {
       if (!updatedUser.username) throw new Error("Invalid user");
-      
-      const result : User = await userApi.updateUser(updatedUser.username, updatedUser);
+      const result: User = await userApi.updateUser(updatedUser.username, updatedUser);
       if (result) {
-        setUsers(prev =>
-          prev.map(u =>
-            u.username === updatedUser.username ? result : u
-          )
-        );
-        
-        // Update currentUser state
+        setUsers(prev => prev.map(u => u.username === updatedUser.username ? result : u));
         setCurrentUser(result);
         return true;
       } else {
@@ -384,20 +339,12 @@ export default function UserDashboard() {
   const handleUserUpdate = async (username: string, updatedUser: Partial<User>) => {
     try {
       if (!username) throw new Error("Invalid user");
-      
       const result = await userApi.updateUser(username, updatedUser);
       if (result) {
-        setUsers(prev =>
-          prev.map(u =>
-            u.username === username ? { ...u, ...updatedUser } : u
-          )
-        );
-        
-        // Update currentUser if it's the current user
+        setUsers(prev => prev.map(u => u.username === username ? { ...u, ...updatedUser } : u));
         if (currentUser?.username === username) {
           setCurrentUser(prev => prev ? { ...prev, ...updatedUser } : null);
         }
-        
         return result;
       } else {
         throw new Error("Update failed");
@@ -428,16 +375,13 @@ export default function UserDashboard() {
     }
   };
 
-  // Get selected user from users list
   const selectedUser = selectedUsername 
     ? users.find(u => u.username === selectedUsername) || null
     : null;
 
-  /** ----------------------------- UNREAD + LOADING ----------------------------- **/
   const unreadMessages = messages.filter(m => !m.read);
   const isTabLoading = Object.values(tabData).some(t => t.loading);
 
-  /** ----------------------------- RENDER ----------------------------- **/
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -471,9 +415,9 @@ export default function UserDashboard() {
         onValueChange={(val) => setActiveTab(val as TabValue)}
         className="flex flex-col max-h-[94vh]"
       >
-        {/* Desktop Tabs Header */}
+        {/* Desktop Tabs Header – now with 5 columns */}
         <div className="sticky top-0 z-30 hidden md:block bg-background/80 backdrop-blur-md">
-          <TabsList className="grid w-full grid-cols-4 bg-transparent gap-1 mb-2">
+          <TabsList className="grid w-full grid-cols-5 bg-transparent gap-1 mb-2">
             <TabsTrigger 
               value="profile" 
               className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200 hover:bg-accent"

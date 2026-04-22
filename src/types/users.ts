@@ -1,4 +1,4 @@
-import { Location } from "./transport";
+import { Employee, Location } from "./transport";
 
 export interface User {
   id?: string;
@@ -95,7 +95,7 @@ export interface SSEEvent {
 }
 
 // Tab Types
-export type TabValue = "profile" | "users" | "inbox" | "groups" | "attendance-tracker" | "cars";
+export type TabValue = "profile" | "users" | "inbox" | "groups" | "attendance-tracker" | "cars" | "travel";
 
 // Tab State
 export interface TabState {
@@ -219,3 +219,4 @@ export interface Document {
   status: 'active' | 'expired' | 'pending';
   tags?: string[];
 }
+export type TravelAllowedEmployee = Employee;

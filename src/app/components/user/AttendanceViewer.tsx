@@ -193,19 +193,35 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
 
   useEffect(() => {
     const fetchAttendance = async () => {
-      setLoading(true); setError(null);
+      setLoading(true);
+      setError(null);
+
+      // Guard: custom mode requires both dates
+      if (viewMode === 'custom' && (!dateRange.from || !dateRange.to)) {
+        setAttendanceData([]);
+        setLoading(false);
+        return;
+      }
+
       try {
         let url = '/api/user/attendance/get?';
         const params = new URLSearchParams();
         if (selectedUser !== 'all') params.append('username', selectedUser);
-        if (viewMode === 'day') params.append('date', DateUtils.formatDate(selectedDate, 'yyyy-MM-dd'));
-        else if (viewMode === 'custom' && dateRange.from && dateRange.to) {
-          params.append('startDate', DateUtils.formatDate(dateRange.from, 'yyyy-MM-dd'));
-          params.append('endDate', DateUtils.formatDate(dateRange.to, 'yyyy-MM-dd'));
+        if (viewMode === 'day') {
+          params.append('date', DateUtils.formatDate(selectedDate, 'yyyy-MM-dd'));
+        } else if (viewMode === 'custom') {
+          // Both dates are guaranteed to exist here because of the guard above
+          params.append('startDate', DateUtils.formatDate(dateRange.from!, 'yyyy-MM-dd'));
+          params.append('endDate', DateUtils.formatDate(dateRange.to!, 'yyyy-MM-dd'));
         } else {
           let start: Date, end: Date;
-          if (viewMode === 'week') { start = getStartOfWeek(selectedDate); end = getEndOfWeek(selectedDate); }
-          else { start = getStartOfMonth(selectedDate); end = getEndOfMonth(selectedDate); }
+          if (viewMode === 'week') {
+            start = getStartOfWeek(selectedDate);
+            end = getEndOfWeek(selectedDate);
+          } else {
+            start = getStartOfMonth(selectedDate);
+            end = getEndOfMonth(selectedDate);
+          }
           params.append('startDate', DateUtils.formatDate(start, 'yyyy-MM-dd'));
           params.append('endDate', DateUtils.formatDate(end, 'yyyy-MM-dd'));
         }
@@ -214,8 +230,13 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
         if (!response.ok) throw new Error('Failed to fetch attendance data');
         const data = await response.json();
         setAttendanceData(data);
-      } catch (err) { console.error(err); setError('Failed to load attendance data'); toast.error('Failed to load attendance records'); }
-      finally { setLoading(false); }
+      } catch (err) {
+        console.error(err);
+        setError('Failed to load attendance data');
+        toast.error('Failed to load attendance records');
+      } finally {
+        setLoading(false);
+      }
     };
     fetchAttendance();
   }, [selectedUser, viewMode, selectedDate, dateRange]);
@@ -250,7 +271,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
   interface UserSummary { user: User; records: AttendanceRecord[]; totalDays: number; presentDays: number; absentDays: number; lateDays: number; totalHours: number; avgHours: number; }
   const userSummary = useMemo<Record<string, UserSummary>>(() => {
     const summary: Record<string, UserSummary> = {};
-    attendanceData.forEach(record => {
+    filteredData.forEach(record => {   // ← FIXED: use filteredData instead of attendanceData
       if (!summary[record.userName]) {
         const user = users.find(u => u.username === record.userName);
         summary[record.userName] = {
@@ -269,7 +290,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
     });
     Object.values(summary).forEach(s => s.avgHours = s.totalDays ? s.totalHours / s.totalDays : 0);
     return summary;
-  }, [attendanceData, users]);
+  }, [filteredData, users]);   // ← FIXED: dependency updated
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -377,7 +398,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Select value={exportType} onValueChange={(v: ExportType) => setExportType(v)}>
-              <SelectTrigger className="h-8 w-[90px] text-sm">
+              <SelectTrigger className="h-8 w-20 text-sm">
                 <SelectValue placeholder="Export" />
               </SelectTrigger>
               <SelectContent>
@@ -495,7 +516,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
             <TabsContent value="detailed">
               <CardContent className="p-0">
                 <div className="rounded-md border-t overflow-hidden">
-                  <div className="max-h-[400px] overflow-y-auto">
+                  <div className="max-h-100 overflow-y-auto">
                     <Table className="min-w-full">
                       <TableHeader className="sticky top-0 bg-background z-10 border-b">
                         <TableRow>
@@ -519,7 +540,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                             return (
                               <TableRow key={record.id} className="hover:bg-muted/50">
                                 <TableCell className="px-3 py-2">
-                                  <div className="flex items-center gap-1 min-w-[100px]">
+                                  <div className="flex items-center gap-1 min-w-25">
                                     {user?.avatar ? <img src={user.avatar} alt="" className="w-6 h-6 rounded-full" /> : <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center"><FiUser className="w-3 h-3 text-primary" /></div>}
                                     <span className="text-sm truncate" title={user ? `${user.firstName} ${user.lastName}` : record.userName}>{user ? `${user.firstName || ''} ${user.lastName || ''}` : record.userName}</span>
                                   </div>
@@ -533,18 +554,18 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                                   {hours.overtime > 0 && <span className="text-amber-600 text-xs ml-1">+{hours.overtime.toFixed(1)}h</span>}
                                 </TableCell>
                                 {!isMobile && (
-                                  <TableCell className="max-w-[200px] px-3 py-2">
+                                  <TableCell className="max-w-50 px-3 py-2">
                                     <div className="space-y-1">
                                       {record.checkInLocation && (
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <div className="flex items-center gap-1 text-sm text-muted-foreground truncate cursor-help">
-                                              <FiMapPin className="w-3 h-3 flex-shrink-0" />
+                                              <FiMapPin className="w-3 h-3 shrink-0" />
                                               <span className="truncate">In: {record.checkInLocation.address?.split(',')[0]}</span>
                                             </div>
                                           </TooltipTrigger>
                                           <TooltipContent side="bottom" className="max-w-xs">
-                                            <p className="text-sm break-words">In: {record.checkInLocation.address}</p>
+                                            <p className="text-sm wrap-break-words">In: {record.checkInLocation.address}</p>
                                           </TooltipContent>
                                         </Tooltip>
                                       )}
@@ -552,12 +573,12 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <div className="flex items-center gap-1 text-sm text-muted-foreground truncate cursor-help">
-                                              <FiMapPin className="w-3 h-3 flex-shrink-0" />
+                                              <FiMapPin className="w-3 h-3 shrink-0" />
                                               <span className="truncate">Out: {record.checkOutLocation.address?.split(',')[0]}</span>
                                             </div>
                                           </TooltipTrigger>
                                           <TooltipContent side="bottom" className="max-w-xs">
-                                            <p className="text-sm break-words">Out: {record.checkOutLocation.address}</p>
+                                            <p className="text-sm wrap-break-words">Out: {record.checkOutLocation.address}</p>
                                           </TooltipContent>
                                         </Tooltip>
                                       )}
@@ -587,7 +608,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
             <TabsContent value="summary">
               <CardContent className="p-0">
                 <div className="rounded-md border-t overflow-hidden">
-                  <div className="max-h-[400px] overflow-y-auto">
+                  <div className="max-h-100 overflow-y-auto">
                     <Table className="min-w-full">
                       <TableHeader className="sticky top-0 bg-background z-10 border-b">
                         <TableRow>
@@ -604,7 +625,7 @@ const AttendanceViewer: React.FC<AttendanceViewerProps> = ({ currentUser }) => {
                         {Object.entries(userSummary).map(([username, s]) => (
                           <TableRow key={username}>
                             <TableCell className="px-3 py-2">
-                              <div className="flex items-center gap-1 min-w-[100px]">
+                              <div className="flex items-center gap-1 min-w-25">
                                 {s.user.avatar ? <img src={s.user.avatar} alt="" className="w-6 h-6 rounded-full" /> : <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center"><FiUser className="w-3 h-3 text-primary" /></div>}
                                 <span className="text-sm truncate" title={`${s.user.firstName} ${s.user.lastName}`}>{s.user.firstName} {s.user.lastName}</span>
                               </div>

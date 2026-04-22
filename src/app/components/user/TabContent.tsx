@@ -108,7 +108,6 @@ const TabContent: React.FC<TabContentProps> = ({
             onUserDeselect={handleUserDeselect}
           />
         );
-
       default:
         return <TabNotFound />;
     }

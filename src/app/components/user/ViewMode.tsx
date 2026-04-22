@@ -117,7 +117,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
                   alt={currentUser.username} 
                   className="object-cover"
                 />
-                <AvatarFallback className="text-xl bg-gradient-to-r from-blue-100 to-purple-100 text-text">
+                <AvatarFallback className="text-xl bg-linear-to-r from-blue-100 to-purple-100 text-text">
                   {currentUser.firstName?.charAt(0) || currentUser.username?.charAt(0)}
                   {currentUser.lastName?.charAt(0)}
                 </AvatarFallback>
@@ -171,7 +171,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
             <div className="mt-2 flex flex-col">
                 <a 
                     href={`mailto:${currentUser.email}`} 
-                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-1 max-w-[192px] break-all whitespace-normal"
+                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-1 max-w-48 break-all whitespace-normal"
                 >
                     <FiMail />
                     {currentUser.email}
@@ -180,7 +180,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
                 {currentUser.phone && (
                     <a
                     href={`tel:${currentUser.phone}`} 
-                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-1 max-w-[192px] break-all whitespace-normal"
+                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-1 max-w-48 break-all whitespace-normal"
                     >
                     <FiPhone />
                     {currentUser.phone}

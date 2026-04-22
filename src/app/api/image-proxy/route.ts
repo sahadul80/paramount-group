@@ -23,10 +23,23 @@ export async function GET(req: NextRequest) {
 
     console.log("Fetched image content-type:", imageResponse.headers["content-type"]);
 
+    // Safely extract content-type as a string
+    let contentType = "image/jpeg"; // fallback
+    const rawContentType = imageResponse.headers["content-type"];
+    if (typeof rawContentType === "string") {
+      contentType = rawContentType;
+    } else if (Array.isArray(rawContentType) && rawContentType.length > 0) {
+      contentType = rawContentType[0];
+    } else if (rawContentType && typeof rawContentType === "object") {
+      // In case it's an AxiosHeaders object with a get method
+      const maybeString = (rawContentType as any).get?.("content-type") || (rawContentType as any).toString?.();
+      if (typeof maybeString === "string") contentType = maybeString;
+    }
+
     return new Response(imageResponse.data, {
       status: 200,
       headers: {
-        "Content-Type": imageResponse.headers["content-type"] || "image/jpeg",
+        "Content-Type": contentType,
         "Cache-Control": "public, max-age=3600",
         "Content-Disposition": "inline",
       },

@@ -757,7 +757,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                         <p className="text-[10px] text-muted-foreground truncate mt-0.5 cursor-help">{currentRecord.checkInLocation.address?.split(',')[0]}</p>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs">
-                        <p className="text-xs break-words">{currentRecord.checkInLocation.address}</p>
+                        <p className="text-xs wrap-break-words">{currentRecord.checkInLocation.address}</p>
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -774,7 +774,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                         <p className="text-[10px] text-muted-foreground truncate mt-0.5 cursor-help">{currentRecord.checkOutLocation.address?.split(',')[0]}</p>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs">
-                        <p className="text-xs break-words">{currentRecord.checkOutLocation.address}</p>
+                        <p className="text-xs wrap-break-words">{currentRecord.checkOutLocation.address}</p>
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -861,7 +861,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
             {/* Desktop Table - compact */}
             <div className="hidden md:block rounded-md border overflow-hidden">
-              <div className="max-h-[300px] overflow-y-auto">
+              <div className="max-h-75 overflow-y-auto">
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10 border-b">
                     <TableRow>

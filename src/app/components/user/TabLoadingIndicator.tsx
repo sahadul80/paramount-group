@@ -25,7 +25,7 @@ const TabLoadingIndicator: React.FC<TabLoadingIndicatorProps> = ({
               className="fixed top-0 left-0 w-full h-1 bg-secondary/30 z-50 origin-left backdrop-blur-sm"
             >
               <motion.div
-                className="h-full bg-linear-to-r from-primary via-primary/80 to-primary"
+                className="h-full bg-gradient-to-r from-primary via-primary/80 to-primary"
                 initial={{ width: "0%" }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.2, ease: "linear" }}
@@ -62,7 +62,7 @@ const TabLoadingIndicator: React.FC<TabLoadingIndicatorProps> = ({
                     </div>
                     <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
                       <motion.div
-                        className="h-full bg-linear-to-r from-primary to-primary/70"
+                        className="h-full bg-gradient-to-r from-primary to-primary/70"
                         initial={{ width: "0%" }}
                         animate={{ width: `${progress}%` }}
                         transition={{ duration: 0.2, ease: "linear" }}

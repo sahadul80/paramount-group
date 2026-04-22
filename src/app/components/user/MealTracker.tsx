@@ -52,7 +52,7 @@ const MealTracker: React.FC<MealTrackerProps> = ({ mealRecords, onRecordMeal }) 
       </div>
 
       {/* Today's Summary */}
-      <Card className="border-border bg-linear-to-br from-card to-card/80">
+      <Card className="border-border bg-gradient-to-br from-card to-card/80">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <FiCoffee className="w-5 h-5" />

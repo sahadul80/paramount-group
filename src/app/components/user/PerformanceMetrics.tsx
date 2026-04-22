@@ -43,7 +43,7 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ tasks, a
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Task Completion */}
-        <Card className="border-border bg-linear-to-br from-card to-card/80">
+        <Card className="border-border bg-gradient-to-br from-card to-card/80">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <FiTarget className="w-5 h-5" />
@@ -70,7 +70,7 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ tasks, a
         </Card>
 
         {/* Attendance */}
-        <Card className="border-border bg-linear-to-br from-card to-card/80">
+        <Card className="border-border bg-gradient-to-br from-card to-card/80">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <FiActivity className="w-5 h-5" />
@@ -97,7 +97,7 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ tasks, a
         </Card>
 
         {/* Productivity */}
-        <Card className="border-border bg-linear-to-br from-card to-card/80">
+        <Card className="border-border bg-gradient-to-br from-card to-card/80">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <FiTrendingUp className="w-5 h-5" />
@@ -121,7 +121,7 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ tasks, a
         </Card>
 
         {/* Priority Tasks */}
-        <Card className="border-border bg-linear-to-br from-card to-card/80">
+        <Card className="border-border bg-gradient-to-br from-card to-card/80">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <FiAward className="w-5 h-5" />

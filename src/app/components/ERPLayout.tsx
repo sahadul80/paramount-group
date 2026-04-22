@@ -36,7 +36,7 @@ export function ERPLayout({ children }: ERPLayoutProps) {
             <LogOutButton username={username} />
           </header>
           {/* Main content */}
-          <main className="flex flex-col bg-muted/20 flex-1 p-1">
+          <main className="flex flex-col p-4 bg-muted/20 flex-1 p-1">
             {children}
           </main>
         </div>

@@ -76,7 +76,7 @@ export function AppSidebar() {
           onClick={toggleSidebar}
         >
           <div className="flex justify-start items-center gap-2">
-            <FiHome className="h-8 w-8 text-primary flex-shrink-0" />
+            <FiHome className="h-8 w-8 text-primary shrink-0" />
             <AnimatePresence mode="wait">
               {!isCollapsed && (
                 <motion.div
@@ -112,7 +112,7 @@ export function AppSidebar() {
                   }`}
                   onClick={handleLinkClick}
                 >
-                  <item.icon className="h-6 w-6 flex-shrink-0" />
+                  <item.icon className="h-6 w-6 shrink-0" />
                   <AnimatePresence mode="wait">
                     {!isCollapsed && (
                       <motion.span
@@ -183,7 +183,7 @@ export function AppSidebar() {
                         }`}
                         onClick={handleLinkClick}
                       >
-                        <item.icon className="h-6 w-6 flex-shrink-0" />
+                        <item.icon className="h-6 w-6 shrink-0" />
                         <span className="ml-3 whitespace-nowrap overflow-hidden">
                           {item.title}
                         </span>

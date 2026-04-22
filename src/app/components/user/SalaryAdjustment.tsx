@@ -57,7 +57,7 @@ const SalaryAdjustment: React.FC<SalaryAdjustmentProps> = ({ currentSalary, onSa
       </div>
 
       {/* Current Salary Card */}
-      <Card className="border-border bg-gradient-to-br from-card to-card/80">
+      <Card className="border-border bg-linear-to-br from-card to-card/80">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <FiDollarSign className="w-5 h-5" />

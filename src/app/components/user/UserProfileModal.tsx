@@ -166,7 +166,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
       
       <DialogContent className="max-w-xl sm:max-w-[90vw] max-h-[90vh] rounded-xl overflow-hidden shadow-2xl">
         {/* Profile header */}
-        <DialogHeader className="bg-gradient-to-r from-primary to-secondary p-4 flex flex-row items-center text-center">
+        <DialogHeader className="bg-linear-to-r from-primary to-secondary p-4 flex flex-row items-center text-center">
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -383,7 +383,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 onSubmit={handleSubmit}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 border-1 border-border rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 border border-border rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-border">
                   <div className="p-2 sm:p-4">
                     <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
                       <FiBriefcase className="text-primary" />

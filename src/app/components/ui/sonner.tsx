@@ -64,7 +64,7 @@ export type AppToastPayload = {
 /** wrapper that renders title + description into a ReactNode for Sonner */
 export function toast({ title, description, ...options }: AppToastPayload) {
   const content = (
-    <div className="min-w-[200px]">
+    <div className="min-w-50">
       {title && <div className="font-semibold mb-1">{title}</div>}
       {description && <div className="text-sm">{description}</div>}
     </div>

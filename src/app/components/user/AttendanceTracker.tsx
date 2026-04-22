@@ -617,7 +617,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                         <span className="hidden sm:inline">Leave</span>
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-100">
                       <DialogHeader>
                         <DialogTitle>Submit Leave Request</DialogTitle>
                         <DialogDescription>Fill out the form (demo).</DialogDescription>
@@ -676,7 +676,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-2 rounded-lg bg-blue-50/50 border border-blue-200 dark:bg-blue-900/10 dark:border-blue-800">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
-                            <FiMapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                            <FiMapPin className="w-4 h-4 text-blue-600 shrink-0" />
                             <span className="text-sm truncate">{userLocation.address?.split(',')[0] || 'Location acquired'}</span>
                           </div>
                           <div className="flex items-center gap-1">
@@ -711,7 +711,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 </div>
 
                 {/* Check In/Out Buttons - right side */}
-                <div className="md:w-64 flex-shrink-0">
+                <div className="md:w-64 shrink-0">
                   <AnimatePresence mode="wait">
                     {status === 'not-checked-in' && (
                       <motion.div key="check-in">
@@ -761,7 +761,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                         </p>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs">
-                        <p className="text-xs break-words">{currentRecord.checkInLocation.address}</p>
+                        <p className="text-xs wrap-break-word">{currentRecord.checkInLocation.address}</p>
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -780,7 +780,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                         </p>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs">
-                        <p className="text-xs break-words">{currentRecord.checkOutLocation.address}</p>
+                        <p className="text-xs wrap-break-word">{currentRecord.checkOutLocation.address}</p>
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -820,7 +820,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               </h4>
               <div className="flex items-center gap-2">
                 <Select value={csvExportType} onValueChange={(v: any) => setCsvExportType(v)}>
-                  <SelectTrigger className="h-8 w-[80px] text-sm">
+                  <SelectTrigger className="h-8 w-20 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -861,16 +861,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     <div className="pt-1 border-t text-xs space-y-1">
                       {record.checkInLocation && (
                         <div className="flex items-start gap-1">
-                          <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span className="text-muted-foreground break-words" title={record.checkInLocation.address}>
+                          <FiMapPin className="w-3 h-3 mt-0.5 shrink-0" />
+                          <span className="text-muted-foreground wrap-break-word" title={record.checkInLocation.address}>
                             In: {record.checkInLocation.address}
                           </span>
                         </div>
                       )}
                       {record.checkOutLocation && (
                         <div className="flex items-start gap-1">
-                          <FiMapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span className="text-muted-foreground break-words" title={record.checkOutLocation.address}>
+                          <FiMapPin className="w-3 h-3 mt-0.5 shrink-0" />
+                          <span className="text-muted-foreground wrap-break-word" title={record.checkOutLocation.address}>
                             Out: {record.checkOutLocation.address}
                           </span>
                         </div>
@@ -886,7 +886,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
             {/* Desktop Table */}
             <div className="hidden md:block rounded-md border overflow-hidden">
-              <div className="max-h-[400px] overflow-y-auto">
+              <div className="max-h-100 overflow-y-auto">
                 <Table className="min-w-full">
                   <TableHeader className="sticky top-0 bg-background z-10 border-b">
                     <TableRow>
@@ -920,18 +920,18 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           <TableCell className="px-3 py-2 text-center">
                             {getStatusBadge(record.status)}
                           </TableCell>
-                          <TableCell className="px-3 py-2 max-w-[200px]">
+                          <TableCell className="px-3 py-2 max-w-50">
                             <div className="space-y-1">
                               {record.checkInLocation && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="flex items-center gap-1 text-sm text-muted-foreground truncate cursor-help">
-                                      <FiMapPin className="w-3 h-3 flex-shrink-0" />
+                                      <FiMapPin className="w-3 h-3 shrink-0" />
                                       <span className="truncate">In: {record.checkInLocation.address?.split(',')[0]}</span>
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent side="bottom" className="max-w-xs">
-                                    <p className="text-sm break-words">In: {record.checkInLocation.address}</p>
+                                    <p className="text-sm wrap-break-word">In: {record.checkInLocation.address}</p>
                                   </TooltipContent>
                                 </Tooltip>
                               )}
@@ -939,12 +939,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="flex items-center gap-1 text-sm text-muted-foreground truncate cursor-help">
-                                      <FiMapPin className="w-3 h-3 flex-shrink-0" />
+                                      <FiMapPin className="w-3 h-3 shrink-0" />
                                       <span className="truncate">Out: {record.checkOutLocation.address?.split(',')[0]}</span>
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent side="bottom" className="max-w-xs">
-                                    <p className="text-sm break-words">Out: {record.checkOutLocation.address}</p>
+                                    <p className="text-sm wrap-break-word">Out: {record.checkOutLocation.address}</p>
                                   </TooltipContent>
                                 </Tooltip>
                               )}

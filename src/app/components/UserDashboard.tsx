@@ -19,10 +19,7 @@ import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { 
   FiUser, 
-  FiUsers, 
-  FiInbox, 
-  FiFolder,
-  FiMap                 // ← added for travel
+  FiUsers,
 } from "react-icons/fi";
 import ParamountLoader from "./Loader";
 import { userApi, messageApi, groupApi, sseApi } from "@/app/lib/api";
@@ -435,14 +432,6 @@ export default function UserDashboard() {
               <FiUsers className="w-4 h-4" />
               <span>Users</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="travel" 
-              className="flex items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-3 rounded-lg transition-all duration-200 hover:bg-accent"
-            >
-              <FiMap className="w-4 h-4" />
-              <span>Travel</span>
-            </TabsTrigger>
-            {/* Add other tabs (inbox, groups, etc.) as needed */}
           </TabsList>
         </div>
 

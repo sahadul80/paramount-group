@@ -1,4 +1,3 @@
-import { Employee, Location } from "./transport";
 
 export interface User {
   id?: string;
@@ -219,4 +218,3 @@ export interface Document {
   status: 'active' | 'expired' | 'pending';
   tags?: string[];
 }
-export type TravelAllowedEmployee = Employee;
